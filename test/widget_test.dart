@@ -1,8 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:homework_helper/main.dart';
 import 'package:homework_helper/models/assignment.dart';
+import 'package:homework_helper/providers/assignments_provider.dart';
+import 'package:homework_helper/screens/login_screen.dart';
+import 'package:homework_helper/screens/home_screen.dart';
 import 'package:homework_helper/widgets/assignment_card.dart';
+
+/// Wraps [child] in a [ChangeNotifierProvider<AssignmentsProvider>]
+/// and a [MaterialApp] for widget testing.
+Widget _buildTestApp(Widget child) {
+  return ChangeNotifierProvider(
+    create: (_) => AssignmentsProvider(),
+    child: MaterialApp(home: child),
+  );
+}
 
 void main() {
   group('HomeworkHelperApp', () {
@@ -11,23 +24,45 @@ void main() {
       expect(find.byType(MaterialApp), findsOneWidget);
     });
 
-    testWidgets('shows home screen with key elements',
+    testWidgets('shows login screen on launch', (WidgetTester tester) async {
+      await tester.pumpWidget(const HomeworkHelperApp());
+      await tester.pump();
+      expect(find.byType(LoginScreen), findsOneWidget);
+    });
+
+    testWidgets('login screen has Sign In and Sign Up toggles',
         (WidgetTester tester) async {
       await tester.pumpWidget(const HomeworkHelperApp());
       await tester.pump();
-      // Dashboard should show greeting text
+      expect(find.text('Sign In'), findsWidgets);
+      expect(find.text('Sign Up'), findsOneWidget);
+    });
+
+    testWidgets('login screen shows Continue as Guest button',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(const HomeworkHelperApp());
+      await tester.pump();
+      expect(find.text('Continue as Guest'), findsOneWidget);
+    });
+  });
+
+  group('HomeScreen widget', () {
+    testWidgets('shows home screen with key elements',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(_buildTestApp(const HomeScreen()));
+      await tester.pump();
       expect(find.text('Hey there! 👋'), findsOneWidget);
     });
 
     testWidgets('shows Add Task FAB', (WidgetTester tester) async {
-      await tester.pumpWidget(const HomeworkHelperApp());
+      await tester.pumpWidget(_buildTestApp(const HomeScreen()));
       await tester.pump();
       expect(find.text('Add Task'), findsOneWidget);
     });
 
     testWidgets('displays subject filter chips',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const HomeworkHelperApp());
+      await tester.pumpWidget(_buildTestApp(const HomeScreen()));
       await tester.pump();
       expect(find.text('All'), findsOneWidget);
       expect(find.text('Math'), findsOneWidget);
@@ -87,6 +122,42 @@ void main() {
       expect(Subject.allSubjects, contains(Subject.science));
       expect(Subject.allSubjects, contains(Subject.history));
       expect(Subject.allSubjects, contains(Subject.english));
+    });
+  });
+
+  group('AssignmentsProvider', () {
+    test('starts with sample assignments', () {
+      final provider = AssignmentsProvider();
+      expect(provider.assignments.isNotEmpty, true);
+    });
+
+    test('add increases count', () {
+      final provider = AssignmentsProvider();
+      final initial = provider.assignments.length;
+      provider.add(Assignment(
+        id: 'new-1',
+        title: 'New Task',
+        subject: Subject.math,
+        dueDate: DateTime.now().add(const Duration(days: 1)),
+      ));
+      expect(provider.assignments.length, initial + 1);
+    });
+
+    test('toggleComplete flips isCompleted', () {
+      final provider = AssignmentsProvider();
+      final id = provider.assignments.first.id;
+      final before = provider.assignments.first.isCompleted;
+      provider.toggleComplete(id);
+      expect(provider.assignments.first.isCompleted, !before);
+    });
+
+    test('delete removes assignment', () {
+      final provider = AssignmentsProvider();
+      final id = provider.assignments.first.id;
+      final initial = provider.assignments.length;
+      provider.delete(id);
+      expect(provider.assignments.length, initial - 1);
+      expect(provider.assignments.any((a) => a.id == id), false);
     });
   });
 

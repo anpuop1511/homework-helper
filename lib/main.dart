@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'providers/assignments_provider.dart';
 import 'theme/app_theme.dart';
-import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() {
-  runApp(const HomeworkHelperApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AssignmentsProvider(),
+      child: const HomeworkHelperApp(),
+    ),
+  );
 }
 
 /// Root widget for the Homework Helper application.
@@ -19,7 +26,7 @@ class HomeworkHelperApp extends StatelessWidget {
       theme: AppTheme.lightTheme(),
       darkTheme: AppTheme.darkTheme(),
       themeMode: ThemeMode.system,
-      home: const HomeScreen(),
+      home: const LoginScreen(),
     );
   }
 }
