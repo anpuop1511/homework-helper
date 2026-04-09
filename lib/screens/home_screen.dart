@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/assignment.dart';
+import '../providers/assignments_provider.dart';
 import '../widgets/assignment_card.dart';
+import '../widgets/add_task_sheet.dart';
 
 /// The main dashboard screen featuring Material 3 Expressive design.
 /// Displays a motivational header, subject filter chips, and assignment list.
@@ -32,49 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return _motivationQuotes[dayOfYear % _motivationQuotes.length];
   }
 
-  // Assignment state managed with StatefulWidget
-  final List<Assignment> _assignments = [
-    Assignment(
-      id: '1',
-      title: 'Chapter 5 Algebra Problems',
-      subject: Subject.math,
-      dueDate: DateTime.now().add(const Duration(days: 2)),
-    ),
-    Assignment(
-      id: '2',
-      title: 'Lab Report: Chemical Reactions',
-      subject: Subject.science,
-      dueDate: DateTime.now().add(const Duration(days: 1)),
-    ),
-    Assignment(
-      id: '3',
-      title: 'Essay: World War II Causes',
-      subject: Subject.history,
-      dueDate: DateTime.now().add(const Duration(days: 5)),
-    ),
-    Assignment(
-      id: '4',
-      title: 'Shakespeare: Romeo & Juliet Analysis',
-      subject: Subject.english,
-      dueDate: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-    Assignment(
-      id: '5',
-      title: 'Watercolor Landscape Painting',
-      subject: Subject.art,
-      dueDate: DateTime.now().add(const Duration(days: 7)),
-    ),
-    Assignment(
-      id: '6',
-      title: 'Practice Scales — C Major',
-      subject: Subject.music,
-      dueDate: DateTime.now().add(const Duration(days: 3)),
-      isCompleted: true,
-    ),
-  ];
-
-  List<Assignment> get _filteredAssignments {
-    return _assignments.where((a) {
+  List<Assignment> _filteredAssignments(List<Assignment> all) {
+    return all.where((a) {
       final matchesSubject =
           _selectedSubject == Subject.all || a.subject == _selectedSubject;
       final matchesCompletion = _showCompleted || !a.isCompleted;
@@ -88,24 +50,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
   }
 
-  int get _pendingCount =>
-      _assignments.where((a) => !a.isCompleted).length;
-
-  void _toggleAssignment(String id) {
-    setState(() {
-      final idx = _assignments.indexWhere((a) => a.id == id);
-      if (idx != -1) {
-        _assignments[idx].isCompleted = !_assignments[idx].isCompleted;
-      }
-    });
-  }
-
-  void _deleteAssignment(String id) {
-    setState(() {
-      _assignments.removeWhere((a) => a.id == id);
-    });
-  }
-
   void _showAddAssignmentSheet() {
     showModalBottomSheet(
       context: context,
@@ -114,13 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (ctx) => _AddAssignmentSheet(
-        onAdd: (assignment) {
-          setState(() {
-            _assignments.add(assignment);
-          });
-        },
-      ),
+      builder: (_) => const AddTaskSheet(),
     );
   }
 
@@ -128,7 +66,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final filtered = _filteredAssignments;
+    final provider = context.watch<AssignmentsProvider>();
+    final filtered = _filteredAssignments(provider.assignments.toList());
+    final pendingCount = provider.pendingCount;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -142,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
               collapseMode: CollapseMode.pin,
               background: _MotivationHeader(
                 quote: _dailyQuote,
-                pendingCount: _pendingCount,
+                pendingCount: pendingCount,
                 colorScheme: colorScheme,
               ),
             ),
@@ -245,8 +185,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         return AssignmentCard(
                           assignment: assignment,
                           onToggleComplete: () =>
-                              _toggleAssignment(assignment.id),
-                          onDelete: () => _deleteAssignment(assignment.id),
+                              context.read<AssignmentsProvider>().toggleComplete(assignment.id),
+                          onDelete: () => context.read<AssignmentsProvider>().delete(assignment.id),
                         );
                       },
                       childCount: filtered.length,
@@ -436,173 +376,4 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-/// Bottom sheet for adding a new assignment.
-class _AddAssignmentSheet extends StatefulWidget {
-  final void Function(Assignment) onAdd;
 
-  const _AddAssignmentSheet({required this.onAdd});
-
-  @override
-  State<_AddAssignmentSheet> createState() => _AddAssignmentSheetState();
-}
-
-class _AddAssignmentSheetState extends State<_AddAssignmentSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  String _selectedSubject = Subject.math;
-  DateTime _dueDate = DateTime.now().add(const Duration(days: 1));
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _dueDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (picked != null) {
-      setState(() => _dueDate = picked);
-    }
-  }
-
-  void _submit() {
-    if (_formKey.currentState?.validate() ?? false) {
-      final assignment = Assignment(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: _titleController.text.trim(),
-        subject: _selectedSubject,
-        dueDate: _dueDate,
-      );
-      widget.onAdd(assignment);
-      Navigator.of(context).pop();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 24,
-        right: 24,
-        top: 24,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Sheet handle
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Add Assignment',
-              style: textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Title field
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Assignment Title',
-                hintText: 'e.g. Chapter 3 Reading',
-                prefixIcon: Icon(Icons.edit_outlined),
-              ),
-              textCapitalization: TextCapitalization.sentences,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Please enter a title' : null,
-            ),
-            const SizedBox(height: 16),
-            // Subject dropdown
-            DropdownButtonFormField<String>(
-              value: _selectedSubject,
-              decoration: const InputDecoration(
-                labelText: 'Subject',
-                prefixIcon: Icon(Icons.school_outlined),
-              ),
-              borderRadius: BorderRadius.circular(16),
-              items: Subject.allSubjects
-                  .where((s) => s != Subject.all)
-                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                  .toList(),
-              onChanged: (v) {
-                if (v != null) setState(() => _selectedSubject = v);
-              },
-            ),
-            const SizedBox(height: 16),
-            // Due date picker
-            InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: _pickDate,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 16),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today_outlined,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Due: ${DateFormat('EEEE, MMMM d').format(_dueDate)}',
-                      style: textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      Icons.chevron_right,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Submit button
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _submit,
-                icon: const Icon(Icons.add),
-                label: const Text('Add Assignment'),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-}
