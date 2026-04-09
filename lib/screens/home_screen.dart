@@ -28,7 +28,8 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   String get _dailyQuote {
-    final dayOfYear = DateTime.now().difference(DateTime(DateTime.now().year)).inDays;
+    final now = DateTime.now();
+    final dayOfYear = now.difference(DateTime(now.year, 1, 1)).inDays;
     return _motivationQuotes[dayOfYear % _motivationQuotes.length];
   }
 
