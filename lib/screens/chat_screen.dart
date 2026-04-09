@@ -420,7 +420,8 @@ class _TypingIndicatorState extends State<_TypingIndicator>
                 height: 8 + _anims[i].value * 4,
                 decoration: BoxDecoration(
                   color: widget.colorScheme.onSecondaryContainer
-                      .withAlpha(153 + (_anims[i].value * 102).toInt()),
+                      .withAlpha(
+                          (153 + (_anims[i].value * 102)).clamp(0, 255).toInt()),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
