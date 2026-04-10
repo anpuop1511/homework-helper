@@ -141,7 +141,6 @@ class _TimerScreenState extends State<TimerScreen>
                 '$_completedSessions 🍅',
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
               ),
-              tooltip: 'Completed Pomodoros',
             ),
           ),
         ],
