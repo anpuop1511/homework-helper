@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:homework_helper/main.dart';
 import 'package:homework_helper/models/assignment.dart';
 import 'package:homework_helper/providers/assignments_provider.dart';
+import 'package:homework_helper/providers/auth_provider.dart';
 import 'package:homework_helper/providers/chat_provider.dart';
+import 'package:homework_helper/providers/social_provider.dart';
 import 'package:homework_helper/providers/user_provider.dart';
 import 'package:homework_helper/providers/theme_provider.dart';
 import 'package:homework_helper/screens/login_screen.dart';
@@ -19,6 +21,9 @@ Widget _buildTestApp(Widget child) {
       ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ChangeNotifierProvider(create: (_) => UserProvider()),
       ChangeNotifierProvider(create: (_) => ChatProvider()),
+      ChangeNotifierProvider(
+          create: (_) => AuthProvider(firebaseReady: false)),
+      ChangeNotifierProvider(create: (_) => SocialProvider()),
       ChangeNotifierProxyProvider<UserProvider, AssignmentsProvider>(
         create: (_) => AssignmentsProvider(),
         update: (_, userProvider, prev) =>
@@ -36,6 +41,9 @@ Widget _buildFullApp() {
       ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ChangeNotifierProvider(create: (_) => UserProvider()),
       ChangeNotifierProvider(create: (_) => ChatProvider()),
+      ChangeNotifierProvider(
+          create: (_) => AuthProvider(firebaseReady: false)),
+      ChangeNotifierProvider(create: (_) => SocialProvider()),
       ChangeNotifierProxyProvider<UserProvider, AssignmentsProvider>(
         create: (_) => AssignmentsProvider(),
         update: (_, userProvider, prev) =>
