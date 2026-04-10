@@ -93,7 +93,7 @@ class DatabaseService {
     return Assignment(
       id: doc.id,
       title: d['title'] as String,
-      subject: Subject.values[d['subject'] as int],
+      subject: Subject.allSubjects[d['subject'] as int],
       dueDate: DateTime.fromMillisecondsSinceEpoch(d['dueDate'] as int),
       isCompleted: (d['isCompleted'] as bool?) ?? false,
     );
@@ -101,7 +101,7 @@ class DatabaseService {
 
   Map<String, dynamic> _assignmentToMap(Assignment a) => {
         'title': a.title,
-        'subject': a.subject.index,
+        'subject': Subject.allSubjects.indexOf(a.subject),
         'dueDate': a.dueDate.millisecondsSinceEpoch,
         'isCompleted': a.isCompleted,
       };
