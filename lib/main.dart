@@ -1,17 +1,23 @@
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/assignments_provider.dart';
+import 'providers/chat_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/theme_provider.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.instance.init();
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProxyProvider<UserProvider, AssignmentsProvider>(
           create: (_) => AssignmentsProvider(),
           update: (_, userProvider, prev) =>
@@ -25,19 +31,25 @@ void main() {
 
 /// Root widget for the Homework Helper application.
 /// Configures Material 3 theming with light and dark mode support.
+/// Uses [DynamicColorBuilder] to adopt the device's system accent color
+/// when available (Android 12+ / Material You).
 class HomeworkHelperApp extends StatelessWidget {
   const HomeworkHelperApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     final vibe = context.watch<ThemeProvider>().vibe;
-    return MaterialApp(
-      title: 'Homework Helper',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme(vibe),
-      darkTheme: AppTheme.darkTheme(vibe),
-      themeMode: ThemeMode.system,
-      home: const LoginScreen(),
+    return DynamicColorBuilder(
+      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        return MaterialApp(
+          title: 'Homework Helper',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme(vibe, lightDynamic),
+          darkTheme: AppTheme.darkTheme(vibe, darkDynamic),
+          themeMode: ThemeMode.system,
+          home: const LoginScreen(),
+        );
+      },
     );
   }
 }

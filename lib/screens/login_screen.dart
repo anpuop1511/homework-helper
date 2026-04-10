@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import 'main_scaffold.dart';
@@ -72,13 +73,30 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _signInWithGoogle() async {
     setState(() => _isGoogleLoading = true);
-    // Simulated Google Sign-In flow — replace with real google_sign_in when
-    // Firebase is configured.
-    await Future.delayed(const Duration(milliseconds: 1000));
-    if (!mounted) return;
-    setState(() => _isGoogleLoading = false);
-    context.read<UserProvider>().setName('Google User');
-    _navigateToMain();
+    try {
+      final googleSignIn = GoogleSignIn();
+      final account = await googleSignIn.signIn();
+      if (!mounted) return;
+      if (account != null) {
+        final displayName = account.displayName ?? account.email;
+        context.read<UserProvider>().setName(displayName);
+      }
+      // Proceed even if the user cancels – they can re-try.
+      _navigateToMain();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Google Sign-In failed. Please try again.\n$e',
+            style: const TextStyle(fontSize: 13),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
   }
 
   void _navigateToMain() {
@@ -353,7 +371,7 @@ class _LoginScreenState extends State<LoginScreen>
 }
 
 /// The official "Sign in with Google" branded button following Google's
-/// branding guidelines. Uses a mock sign-in flow until Firebase is configured.
+/// branding guidelines. Triggers the real [GoogleSignIn] flow when tapped.
 class _GoogleSignInButton extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onPressed;
