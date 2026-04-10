@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/database_service.dart';
 
 /// Represents an app color "Vibe" — a named theme variant.
 enum AppVibe {
@@ -58,11 +59,13 @@ extension AppVibeExtension on AppVibe {
 }
 
 /// Manages the active [AppVibe] and notifies listeners on change.
-/// Persists the chosen vibe via [SharedPreferences].
+/// Persists the chosen vibe locally via [SharedPreferences] and, when a
+/// Firebase UID is available, syncs it to Cloud Firestore.
 class ThemeProvider extends ChangeNotifier {
   static const _prefKey = 'app_vibe';
 
   AppVibe _vibe = AppVibe.defaultPurple;
+  String? _uid;
 
   AppVibe get vibe => _vibe;
 
@@ -81,11 +84,38 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
+  /// Called when the user signs in or out so the vibe can be synced.
+  Future<void> setUid(String? uid) async {
+    _uid = uid;
+    if (uid == null) return;
+    // Load vibe from cloud; if it differs from local, prefer cloud.
+    try {
+      final data = await DatabaseService.instance.getUserData(uid);
+      final cloudIndex = data?['vibe'] as int?;
+      if (cloudIndex != null &&
+          cloudIndex >= 0 &&
+          cloudIndex < AppVibe.values.length) {
+        final cloudVibe = AppVibe.values[cloudIndex];
+        if (cloudVibe != _vibe) {
+          _vibe = cloudVibe;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt(_prefKey, cloudVibe.index);
+          notifyListeners();
+        }
+      }
+    } catch (_) {
+      // Firestore unavailable — keep local vibe.
+    }
+  }
+
   Future<void> setVibe(AppVibe vibe) async {
     if (_vibe == vibe) return;
     _vibe = vibe;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_prefKey, vibe.index);
+    if (_uid != null) {
+      await DatabaseService.instance.saveVibe(_uid!, vibe);
+    }
   }
 }
