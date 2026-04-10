@@ -1,17 +1,71 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/assignments_provider.dart';
+import '../services/database_service.dart';
+import '../widgets/squircle_avatar.dart';
 import 'settings_screen.dart';
+import 'username_screen.dart';
 
 /// The user profile screen showing gamification stats:
 /// level, XP progress bar, study streak, and assignment summary.
 ///
 /// Redesigned for Android 16 / Material 3 Expressive style.
-class ProfileScreen extends StatelessWidget {
+/// V2.3: Squircle avatar, @username display, profile photo picker, share link.
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _uploadingPhoto = false;
+  Uint8List? _localPhotoBytes;
+
+  Future<void> _pickPhoto() async {
+    final auth = context.read<AuthProvider>();
+    final uid = auth.uid;
+    if (uid == null) return;
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+
+    setState(() {
+      _uploadingPhoto = true;
+      _localPhotoBytes = bytes;
+    });
+
+    try {
+      await DatabaseService.instance.uploadProfilePhoto(uid, bytes);
+    } catch (_) {
+      // Upload failed — keep the local preview.
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
+  }
+
+  void _shareInviteLink(String username) {
+    final link = 'https://homeworkhelper.app/invite/@$username';
+    Share.share(
+      'Add me on Homework Helper! Tap to send a friend request: $link',
+      subject: 'Study with me on Homework Helper 📚',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +78,11 @@ class ProfileScreen extends StatelessWidget {
     final completedCount =
         assignments.assignments.where((a) => a.isCompleted).length;
     final totalCount = assignments.assignments.length;
+
+    final displayName =
+        user.name.isNotEmpty ? user.name : (auth.email?.split('@').first ?? '');
+    final username = auth.username;
+    final photoUrl = auth.currentUser?.photoURL;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -64,46 +123,133 @@ class ProfileScreen extends StatelessWidget {
             Center(
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 44,
-                    backgroundColor: colorScheme.primaryContainer,
-                    child: Text(
-                      user.name.isNotEmpty
-                          ? user.name[0].toUpperCase()
-                          : '?',
-                      style: GoogleFonts.outfit(
-                        fontSize: 40,
-                        fontWeight: FontWeight.w700,
-                        color: colorScheme.onPrimaryContainer,
+                  Stack(
+                    children: [
+                      SquircleAvatar(
+                        radius: 50,
+                        initial: displayName,
+                        photoUrl: photoUrl,
+                        localPhotoBytes: _localPhotoBytes,
                       ),
-                    ),
+                      if (_uploadingPhoto)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black38,
+                              borderRadius:
+                                  BorderRadius.circular(50 * 0.55),
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (auth.isSignedIn)
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: _pickPhoto,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: colorScheme.surface, width: 2),
+                              ),
+                              child: Icon(
+                                Icons.camera_alt_rounded,
+                                size: 16,
+                                color: colorScheme.onPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    user.name,
+                    displayName,
                     style: textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  // @username display or Pick a Handle CTA.
+                  if (username != null && username.isNotEmpty)
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                const UsernameScreen(allowSkip: true)),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '@$username',
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (auth.isSignedIn)
+                    TextButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                const UsernameScreen(allowSkip: true)),
+                      ),
+                      icon: const Icon(Icons.alternate_email_rounded,
+                          size: 16),
+                      label: const Text('Pick a @handle'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: colorScheme.primary,
+                      ),
+                    ),
                   Text(
                     'Level ${user.level} Scholar',
                     style: textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  if (auth.email != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      auth.email!,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
+
+            // ── Share Invite Link ─────────────────────────────────────
+            if (auth.isSignedIn && username != null && username.isNotEmpty) ...[
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () => _shareInviteLink(username),
+                  icon: const Icon(Icons.share_rounded, size: 18),
+                  label: Text(
+                    'Share Invite Link',
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
 
             // ── Level + XP Card ───────────────────────────────────────
             _StatCard(
@@ -286,8 +432,7 @@ class ProfileScreen extends StatelessWidget {
                           ? completedCount / totalCount
                           : 0,
                       minHeight: 10,
-                      backgroundColor:
-                          colorScheme.surfaceContainerHighest,
+                      backgroundColor: colorScheme.surfaceContainerHighest,
                       valueColor: AlwaysStoppedAnimation<Color>(
                           colorScheme.tertiary),
                     ),
@@ -445,8 +590,7 @@ class _XpRow extends StatelessWidget {
           child: Text(label, style: textTheme.bodyMedium),
         ),
         Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
             color: colorScheme.primaryContainer,
             borderRadius: BorderRadius.circular(12),

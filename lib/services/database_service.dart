@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:typed_data';
 import '../models/assignment.dart';
 import '../models/social_models.dart';
 import '../providers/theme_provider.dart';
@@ -6,10 +8,11 @@ import '../providers/theme_provider.dart';
 /// Provides Firestore read/write helpers used by the various providers.
 ///
 /// All operations are scoped to the authenticated user's documents:
-///   users/{uid}                  – XP, level, streak, vibe, email
+///   users/{uid}                  – XP, level, streak, vibe, email, username
 ///   users/{uid}/assignments/{id} – individual assignments
 ///   users/{uid}/friends/{fid}    – accepted friends (sub-collection)
 ///   friend_requests/{id}         – global pending friend requests
+///   usernames/{handle}           – username → uid mapping for uniqueness checks
 class DatabaseService {
   DatabaseService._();
   static final DatabaseService instance = DatabaseService._();
@@ -62,6 +65,68 @@ class DatabaseService {
       {'email': email.toLowerCase()},
       SetOptions(merge: true),
     );
+  }
+
+  // ── Username (@handle) ────────────────────────────────────────────────────
+
+  DocumentReference<Map<String, dynamic>> _usernameDoc(String handle) =>
+      _db.collection('usernames').doc(handle.toLowerCase());
+
+  /// Returns true if [handle] is not already claimed.
+  Future<bool> isUsernameAvailable(String handle) async {
+    final snap = await _usernameDoc(handle).get();
+    return !snap.exists;
+  }
+
+  /// Claims [handle] for [uid].  Atomically writes the `usernames` mapping
+  /// and stores the username on the user document.
+  ///
+  /// Returns an error message on failure, or null on success.
+  Future<String?> claimUsername(String uid, String handle) async {
+    final lower = handle.toLowerCase();
+    try {
+      await _db.runTransaction((tx) async {
+        final snap = await tx.get(_usernameDoc(lower));
+        if (snap.exists) throw Exception('taken');
+        tx.set(_usernameDoc(lower), {'uid': uid});
+        tx.set(_userDoc(uid), {'username': lower}, SetOptions(merge: true));
+      });
+      return null;
+    } catch (e) {
+      if (e.toString().contains('taken')) {
+        return 'That username is already taken. Try another!';
+      }
+      return 'Could not save username. Please try again.';
+    }
+  }
+
+  /// Returns the username stored for [uid], or null if none has been set.
+  Future<String?> getUsernameForUid(String uid) async {
+    final data = await getUserData(uid);
+    return data?['username'] as String?;
+  }
+
+  /// Looks up the UID for a given @[handle].  Returns null if not found.
+  Future<String?> lookupUidByUsername(String handle) async {
+    final snap = await _usernameDoc(handle).get();
+    if (!snap.exists) return null;
+    return snap.data()?['uid'] as String?;
+  }
+
+  // ── Profile photo ─────────────────────────────────────────────────────────
+
+  /// Uploads [bytes] to Firebase Storage and returns the download URL.
+  /// Stores the URL in the user document under `photoUrl`.
+  Future<String> uploadProfilePhoto(String uid, Uint8List bytes) async {
+    final ref = FirebaseStorage.instance
+        .ref()
+        .child('users')
+        .child(uid)
+        .child('profile_photo.jpg');
+    await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+    final url = await ref.getDownloadURL();
+    await _userDoc(uid).set({'photoUrl': url}, SetOptions(merge: true));
+    return url;
   }
 
   // ── Assignments ──────────────────────────────────────────────────────────
@@ -145,12 +210,16 @@ class DatabaseService {
     required String toUid,
     required String fromEmail,
     required String toEmail,
+    String fromUsername = '',
+    String fromName = '',
   }) async {
     final ref = await _requestsCol.add({
       'from': fromUid,
       'to': toUid,
       'fromEmail': fromEmail,
       'toEmail': toEmail,
+      'fromUsername': fromUsername,
+      'fromName': fromName,
       'status': 'pending',
       'timestamp': FieldValue.serverTimestamp(),
     });
@@ -170,6 +239,7 @@ class DatabaseService {
                 fromUid: d['from'] as String,
                 fromEmail: d['fromEmail'] as String? ?? '',
                 fromName: d['fromName'] as String? ?? '',
+                fromUsername: d['fromUsername'] as String? ?? '',
                 toUid: d['to'] as String,
                 timestamp: (d['timestamp'] as Timestamp?)?.toDate() ??
                     DateTime.now(),
@@ -202,6 +272,7 @@ class DatabaseService {
             ? request.fromName
             : request.fromEmail.split('@').first,
         'email': request.fromEmail,
+        'username': request.fromUsername,
         'level': 1,
         'totalXp': 0,
         'streak': 0,

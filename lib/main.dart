@@ -51,6 +51,7 @@ Future<void> main() async {
               auth.uid,
               email: auth.email,
               name: auth.currentUser?.displayName,
+              username: auth.username,
             );
             return provider;
           },

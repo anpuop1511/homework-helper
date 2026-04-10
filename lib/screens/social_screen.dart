@@ -3,8 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/social_provider.dart';
+import 'nfc_bump_screen.dart';
 
-/// The "Social Quad" tab – search for friends by email, view pending
+/// Electric Blue — used for the "Add Friend" action to match the V2.3 design.
+const _kElectricBlue = Color(0xFF007FFF);
+
+/// The "Social Quad" tab – search for friends by @username, view pending
 /// requests, and browse your accepted friends list.
 class SocialScreen extends StatefulWidget {
   const SocialScreen({super.key});
@@ -14,27 +18,27 @@ class SocialScreen extends StatefulWidget {
 }
 
 class _SocialScreenState extends State<SocialScreen> {
-  final _emailController = TextEditingController();
+  final _handleController = TextEditingController();
   bool _searching = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _handleController.dispose();
     super.dispose();
   }
 
   Future<void> _sendRequest(BuildContext context) async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) return;
+    final handle = _handleController.text.trim();
+    if (handle.isEmpty) return;
 
     setState(() => _searching = true);
     final social = context.read<SocialProvider>();
-    final error = await social.sendFriendRequest(email);
+    final error = await social.sendFriendRequestByUsername(handle);
     if (!mounted) return;
     setState(() => _searching = false);
 
     if (error == null) {
-      _emailController.clear();
+      _handleController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Friend request sent! 🎉'),
@@ -92,6 +96,38 @@ class _SocialScreenState extends State<SocialScreen> {
             ),
             const SizedBox(height: 24),
 
+            // ── NFC Buddy Bump Button ─────────────────────────────────
+            FadeInUp(
+              delay: const Duration(milliseconds: 80),
+              duration: const Duration(milliseconds: 400),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const NfcBumpScreen()),
+                  ),
+                  icon: const Icon(Icons.nfc_rounded, size: 20),
+                  label: Text(
+                    'Bump to Study ⚡',
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _kElectricBlue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
             // ── Add Friend Card ───────────────────────────────────────
             FadeInUp(
               delay: const Duration(milliseconds: 100),
@@ -104,7 +140,7 @@ class _SocialScreenState extends State<SocialScreen> {
                     Row(
                       children: [
                         Icon(Icons.person_add_rounded,
-                            color: colorScheme.primary, size: 20),
+                            color: _kElectricBlue, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'Add a Friend',
@@ -121,11 +157,12 @@ class _SocialScreenState extends State<SocialScreen> {
                       children: [
                         Expanded(
                           child: TextField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
+                            controller: _handleController,
+                            keyboardType: TextInputType.text,
                             decoration: InputDecoration(
-                              hintText: 'Friend\'s email address',
-                              prefixIcon: const Icon(Icons.email_outlined),
+                              hintText: '@username',
+                              prefixIcon:
+                                  const Icon(Icons.alternate_email_rounded),
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 12),
                               border: OutlineInputBorder(
@@ -151,12 +188,16 @@ class _SocialScreenState extends State<SocialScreen> {
                               : FilledButton(
                                   onPressed: () => _sendRequest(context),
                                   style: FilledButton.styleFrom(
+                                    backgroundColor: _kElectricBlue,
+                                    foregroundColor: Colors.white,
                                     minimumSize: const Size(48, 48),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
+                                      borderRadius:
+                                          BorderRadius.circular(14),
                                     ),
                                   ),
-                                  child: const Icon(Icons.send_rounded),
+                                  child:
+                                      const Icon(Icons.send_rounded),
                                 ),
                         ),
                       ],
@@ -326,9 +367,13 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayName = request.fromName.isNotEmpty
-        ? request.fromName
-        : request.fromEmail.split('@').first;
+    // Prefer @username, then display name, then email prefix.
+    final displayHandle = request.fromUsername.isNotEmpty
+        ? '@${request.fromUsername}'
+        : (request.fromName.isNotEmpty
+            ? request.fromName
+            : request.fromEmail.split('@').first);
+    final initial = displayHandle.isNotEmpty ? displayHandle[0] : '?';
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -343,7 +388,7 @@ class _RequestCard extends StatelessWidget {
             radius: 22,
             backgroundColor: colorScheme.secondaryContainer,
             child: Text(
-              displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+              initial.toUpperCase(),
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 color: colorScheme.onSecondaryContainer,
@@ -356,16 +401,19 @@ class _RequestCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  displayName,
+                  displayHandle,
                   style: const TextStyle(fontWeight: FontWeight.w700),
                   overflow: TextOverflow.ellipsis,
                 ),
-                Text(
-                  request.fromEmail,
-                  style: TextStyle(
-                      fontSize: 12, color: colorScheme.onSurfaceVariant),
-                  overflow: TextOverflow.ellipsis,
-                ),
+                if (request.fromUsername.isNotEmpty &&
+                    request.fromName.isNotEmpty)
+                  Text(
+                    request.fromName,
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurfaceVariant),
+                    overflow: TextOverflow.ellipsis,
+                  ),
               ],
             ),
           ),
@@ -421,13 +469,18 @@ class _FriendCard extends StatelessWidget {
           CircleAvatar(
             radius: 22,
             backgroundColor: colorScheme.primaryContainer,
-            child: Text(
-              friend.initials,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: colorScheme.onPrimaryContainer,
-              ),
-            ),
+            backgroundImage: friend.photoUrl != null && friend.photoUrl!.isNotEmpty
+                ? NetworkImage(friend.photoUrl!)
+                : null,
+            child: friend.photoUrl == null || friend.photoUrl!.isEmpty
+                ? Text(
+                    friend.initials,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -435,17 +488,29 @@ class _FriendCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  friend.name.isNotEmpty ? friend.name : friend.email,
+                  friend.username.isNotEmpty
+                      ? '@${friend.username}'
+                      : (friend.name.isNotEmpty ? friend.name : friend.email),
                   style: const TextStyle(fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                 ),
-                Text(
-                  'Level ${friend.level} · ${friend.totalXp} XP',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colorScheme.onSurfaceVariant,
+                if (friend.username.isNotEmpty && friend.name.isNotEmpty)
+                  Text(
+                    friend.name,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  )
+                else
+                  Text(
+                    'Level ${friend.level} · ${friend.totalXp} XP',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -478,12 +543,14 @@ class _FriendCard extends StatelessWidget {
   }
 
   void _showRemoveDialog(BuildContext context) {
+    final displayName = friend.username.isNotEmpty
+        ? '@${friend.username}'
+        : (friend.name.isNotEmpty ? friend.name : friend.email);
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Remove Friend'),
-        content: Text(
-            'Remove ${friend.name.isNotEmpty ? friend.name : friend.email} from your friends?'),
+        content: Text('Remove $displayName from your friends?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -533,7 +600,7 @@ class _EmptyFriendsCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Search by email above to add friends\nand see their progress!',
+            'Search by @username above to add friends\nor use "Bump to Study" to connect instantly!',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,

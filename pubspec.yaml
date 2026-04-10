@@ -25,6 +25,11 @@ dependencies:
   speech_to_text: ^7.0.0
   flutter_tts: ^4.2.0
   animate_do: ^3.3.4
+  nfc_manager: ^3.5.0
+  image_picker: ^1.1.2
+  firebase_storage: ^12.3.0
+  qr_flutter: ^4.1.0
+  share_plus: ^10.1.0
 
 dev_dependencies:
   flutter_test:
