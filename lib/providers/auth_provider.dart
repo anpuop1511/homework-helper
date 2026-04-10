@@ -79,7 +79,10 @@ class AuthProvider extends ChangeNotifier {
       _username = await DatabaseService.instance.getUsernameForUid(uid);
       _usernameLoaded = true;
       notifyListeners();
-    } catch (_) {}
+    } catch (_) {
+      _usernameLoaded = true;
+      notifyListeners();
+    }
   }
 
   /// Signs in with [email] and [password].

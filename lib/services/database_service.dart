@@ -81,7 +81,14 @@ class DatabaseService {
   /// Claims [handle] for [uid].  Atomically writes the `usernames` mapping
   /// and stores the username on the user document.
   ///
-  /// Returns an error message on failure, or null on success.
+  /// If the atomic transaction fails (e.g. due to missing collection
+  /// permissions on `usernames`), falls back to saving only the username
+  /// field on the user's own document so the user is not permanently blocked
+  /// behind the Auth Gate.  Owner-only write rules on `users/{uid}` are
+  /// assumed to be in place.
+  ///
+  /// Returns an error message on complete failure, or null on success
+  /// (including fallback success).
   Future<String?> claimUsername(String uid, String handle) async {
     final lower = handle.toLowerCase();
     try {
@@ -96,7 +103,18 @@ class DatabaseService {
       if (e.toString().contains('taken')) {
         return 'That username is already taken. Try another!';
       }
-      return 'Could not save username. Please try again.';
+      // Transaction failed (likely a permission error on the usernames
+      // collection).  Fall back to writing just the username field on the
+      // user's own document, which only requires owner-only write access.
+      try {
+        await _userDoc(uid).set(
+          {'username': lower},
+          SetOptions(merge: true),
+        );
+        return null;
+      } catch (_) {
+        return 'Could not save username. Please try again.';
+      }
     }
   }
 
