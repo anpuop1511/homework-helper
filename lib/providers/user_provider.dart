@@ -121,6 +121,23 @@ class UserProvider extends ChangeNotifier {
     await prefs.setString(_prefName, name);
   }
 
+  /// Signs the user out by resetting all local state and clearing persisted
+  /// preferences.  The UI is responsible for navigating back to [LoginScreen].
+  Future<void> logout() async {
+    _xp = 0;
+    _level = 1;
+    _streak = 0;
+    _name = 'Student';
+    _lastActiveDate = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_prefXp);
+    await prefs.remove(_prefLevel);
+    await prefs.remove(_prefStreak);
+    await prefs.remove(_prefName);
+    await prefs.remove(_prefLastActive);
+  }
+
   static DateTime _dateOnly(DateTime dt) =>
       DateTime(dt.year, dt.month, dt.day);
 }
