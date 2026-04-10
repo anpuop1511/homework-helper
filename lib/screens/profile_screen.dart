@@ -202,7 +202,7 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '${user.xp + (user.level - 1) * user.xpForNextLevel}',
+                        '${user.totalXp}',
                         style: textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                           color: colorScheme.primary,

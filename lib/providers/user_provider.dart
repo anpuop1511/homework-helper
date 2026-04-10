@@ -27,6 +27,13 @@ class UserProvider extends ChangeNotifier {
   /// XP needed to reach the next level from the current one.
   int get xpForNextLevel => _baseXp * _level;
 
+  /// Total XP earned across all levels (historical).
+  int get totalXp {
+    // Sum of XP for levels 1..(level-1) = _baseXp * (level-1)*level / 2
+    final previousLevelsXp = _baseXp * (_level - 1) * _level ~/ 2;
+    return previousLevelsXp + _xp;
+  }
+
   /// Fraction of progress within the current level (0.0 – 1.0).
   double get levelProgress =>
       (xpForNextLevel > 0) ? (_xp / xpForNextLevel).clamp(0.0, 1.0) : 1.0;
@@ -87,6 +94,7 @@ class UserProvider extends ChangeNotifier {
 
   /// Awards [amount] XP and handles level-ups.
   void awardXp(int amount) {
+    assert(amount > 0, 'awardXp called with non-positive amount: $amount');
     if (amount <= 0) return;
     _xp += amount;
     // Level up while XP exceeds threshold
@@ -94,7 +102,6 @@ class UserProvider extends ChangeNotifier {
       _xp -= xpForNextLevel;
       _level += 1;
     }
-    _updateStreak();
     notifyListeners();
     _save();
   }

@@ -150,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen>
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
-                      'or sign in with email',
+                      'or continue with email',
                       style: textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
