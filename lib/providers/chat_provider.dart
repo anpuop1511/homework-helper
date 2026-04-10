@@ -36,7 +36,7 @@ class ChatProvider extends ChangeNotifier {
       'with plain text (not LaTeX). Keep responses focused.';
 
   late final GenerativeModel _model;
-  late final ChatSession _session;
+  late ChatSession _session;
 
   final List<ChatMessage> _messages = [
     ChatMessage(
@@ -119,7 +119,7 @@ class ChatProvider extends ChangeNotifier {
 
   /// Clears the conversation and starts a fresh chat session.
   void clearChat() {
-    _session.history.clear();
+    _session = _model.startChat();
     _messages
       ..clear()
       ..add(ChatMessage(
