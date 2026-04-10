@@ -1,3 +1,3 @@
 class AppSecrets {
-  static const String geminiApiKey = 'AIzaSyBwbsvwA9zouM1cVAAAFW45yC-QSwAIvsY';
+  static const String geminiApiKey = 'AIzaSyCt0QjscceRsJNlB-j-DOd9xeckMzPGCoE';
 }
