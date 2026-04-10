@@ -182,7 +182,7 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-
+  /// Clears the conversation and starts a fresh chat session.
   void clearChat() {
     _session = _model.startChat();
     _messages
