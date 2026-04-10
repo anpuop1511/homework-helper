@@ -31,7 +31,7 @@ Future<void> main() async {
 
 /// Root widget for the Homework Helper application.
 /// Configures Material 3 theming with light and dark mode support.
-/// Uses [DynamicColorBuilder] to adopt the device's system accent colour
+/// Uses [DynamicColorBuilder] to adopt the device's system accent color
 /// when available (Android 12+ / Material You).
 class HomeworkHelperApp extends StatelessWidget {
   const HomeworkHelperApp({super.key});

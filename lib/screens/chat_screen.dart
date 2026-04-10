@@ -106,11 +106,11 @@ class _ChatScreenState extends State<ChatScreen> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              itemCount:
-                  chat.messages.length + (chat.isStreaming ? 0 : 0),
+              itemCount: chat.messages.length,
               itemBuilder: (context, index) {
                 final msg = chat.messages[index];
-                // Show streaming indicator on the last AI message if empty
+                // While Gemini is streaming, the last AI message starts as an
+                // empty placeholder – show the typing indicator until text arrives.
                 if (!msg.isUser &&
                     index == chat.messages.length - 1 &&
                     msg.text.isEmpty &&
