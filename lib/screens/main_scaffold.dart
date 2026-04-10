@@ -3,9 +3,10 @@ import 'home_screen.dart';
 import 'subjects_screen.dart';
 import 'timer_screen.dart';
 import 'chat_screen.dart';
+import 'profile_screen.dart';
 
 /// The root scaffold of the app with a bottom navigation bar.
-/// Contains four tabs: Home, Subjects, Timer, and Chat.
+/// Contains five tabs: Home, Subjects, Timer, Chat, and Profile.
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
 
@@ -21,6 +22,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     SubjectsScreen(),
     TimerScreen(),
     ChatScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -54,6 +56,11 @@ class _MainScaffoldState extends State<MainScaffold> {
             icon: Icon(Icons.chat_bubble_outline_rounded),
             selectedIcon: Icon(Icons.chat_bubble_rounded),
             label: 'Study Chat',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded),
+            label: 'Profile',
           ),
         ],
       ),

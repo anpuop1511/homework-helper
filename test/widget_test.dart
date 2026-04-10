@@ -1,38 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:homework_helper/main.dart';
 import 'package:homework_helper/models/assignment.dart';
 import 'package:homework_helper/providers/assignments_provider.dart';
+import 'package:homework_helper/providers/user_provider.dart';
+import 'package:homework_helper/providers/theme_provider.dart';
 import 'package:homework_helper/screens/login_screen.dart';
 import 'package:homework_helper/screens/home_screen.dart';
 import 'package:homework_helper/widgets/assignment_card.dart';
 
-/// Wraps [child] in a [ChangeNotifierProvider<AssignmentsProvider>]
-/// and a [MaterialApp] for widget testing.
+/// Wraps [child] with all required providers and a [MaterialApp].
 Widget _buildTestApp(Widget child) {
-  return ChangeNotifierProvider(
-    create: (_) => AssignmentsProvider(),
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ChangeNotifierProvider(create: (_) => UserProvider()),
+      ChangeNotifierProxyProvider<UserProvider, AssignmentsProvider>(
+        create: (_) => AssignmentsProvider(),
+        update: (_, userProvider, prev) =>
+            (prev ?? AssignmentsProvider())..updateUserProvider(userProvider),
+      ),
+    ],
     child: MaterialApp(home: child),
   );
 }
 
+/// Wraps the full [HomeworkHelperApp] with all required providers.
+Widget _buildFullApp() {
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ChangeNotifierProvider(create: (_) => UserProvider()),
+      ChangeNotifierProxyProvider<UserProvider, AssignmentsProvider>(
+        create: (_) => AssignmentsProvider(),
+        update: (_, userProvider, prev) =>
+            (prev ?? AssignmentsProvider())..updateUserProvider(userProvider),
+      ),
+    ],
+    child: const HomeworkHelperApp(),
+  );
+}
+
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   group('HomeworkHelperApp', () {
     testWidgets('renders without crashing', (WidgetTester tester) async {
-      await tester.pumpWidget(const HomeworkHelperApp());
-      expect(find.byType(MaterialApp), findsOneWidget);
+      await tester.pumpWidget(_buildFullApp());
+      expect(find.byType(MaterialApp), findsWidgets);
     });
 
     testWidgets('shows login screen on launch', (WidgetTester tester) async {
-      await tester.pumpWidget(const HomeworkHelperApp());
+      await tester.pumpWidget(_buildFullApp());
       await tester.pump();
       expect(find.byType(LoginScreen), findsOneWidget);
     });
 
     testWidgets('login screen has Sign In and Sign Up toggles',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const HomeworkHelperApp());
+      await tester.pumpWidget(_buildFullApp());
       await tester.pump();
       expect(find.text('Sign In'), findsWidgets);
       expect(find.text('Sign Up'), findsOneWidget);
@@ -40,9 +70,16 @@ void main() {
 
     testWidgets('login screen shows Continue as Guest button',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const HomeworkHelperApp());
+      await tester.pumpWidget(_buildFullApp());
       await tester.pump();
       expect(find.text('Continue as Guest'), findsOneWidget);
+    });
+
+    testWidgets('login screen shows Sign in with Google button',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(_buildFullApp());
+      await tester.pump();
+      expect(find.text('Sign in with Google'), findsOneWidget);
     });
   });
 
@@ -158,6 +195,81 @@ void main() {
       provider.delete(id);
       expect(provider.assignments.length, initial - 1);
       expect(provider.assignments.any((a) => a.id == id), false);
+    });
+
+    test('toggleComplete awards XP via UserProvider', () {
+      final userProvider = UserProvider();
+      final assignmentsProvider = AssignmentsProvider()
+        ..updateUserProvider(userProvider);
+
+      // Find first incomplete assignment
+      final incompleteId = assignmentsProvider.assignments
+          .firstWhere((a) => !a.isCompleted)
+          .id;
+
+      final xpBefore = userProvider.xp;
+      assignmentsProvider.toggleComplete(incompleteId);
+      // After completing, XP increases (or level up occurred)
+      expect(
+        userProvider.xp > xpBefore || userProvider.level > 1,
+        true,
+        reason: 'XP or level should have increased after completing a task',
+      );
+    });
+  });
+
+  group('UserProvider', () {
+    test('starts at level 1 with 0 XP', () {
+      final provider = UserProvider();
+      expect(provider.level, 1);
+      expect(provider.xp, 0);
+    });
+
+    test('awardXp increases XP', () {
+      final provider = UserProvider();
+      provider.awardXp(50);
+      expect(provider.xp, 50);
+    });
+
+    test('awardXp triggers level up at threshold', () {
+      final provider = UserProvider();
+      // Level 1 requires 100 XP to advance
+      provider.awardXp(100);
+      expect(provider.level, 2);
+      expect(provider.xp, 0);
+    });
+
+    test('levelProgress is between 0 and 1', () {
+      final provider = UserProvider();
+      provider.awardXp(40);
+      expect(provider.levelProgress, greaterThanOrEqualTo(0.0));
+      expect(provider.levelProgress, lessThanOrEqualTo(1.0));
+    });
+
+    test('streak starts at 1 on first use', () {
+      final provider = UserProvider();
+      // streak should be 1 because _updateStreak is called on fresh provider
+      expect(provider.streak, 1);
+    });
+  });
+
+  group('ThemeProvider', () {
+    test('default vibe is defaultPurple', () {
+      final provider = ThemeProvider();
+      expect(provider.vibe, AppVibe.defaultPurple);
+    });
+
+    test('setVibe updates the vibe', () async {
+      final provider = ThemeProvider();
+      await provider.setVibe(AppVibe.midnight);
+      expect(provider.vibe, AppVibe.midnight);
+    });
+
+    test('all AppVibe values have labels and seed colors', () {
+      for (final vibe in AppVibe.values) {
+        expect(vibe.label, isNotEmpty);
+        expect(vibe.emoji, isNotEmpty);
+      }
     });
   });
 

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
 
 /// Pomodoro-style focus timer with circular progress and expressive animations.
 class TimerScreen extends StatefulWidget {
@@ -86,6 +88,10 @@ class _TimerScreenState extends State<TimerScreen>
             _showSuccess = true;
             if (_mode == _TimerMode.work) {
               _completedSessions++;
+              // Award XP for completing a focus session
+              if (mounted) {
+                context.read<UserProvider>().awardXp(15);
+              }
             }
           });
           _successController.forward(from: 0);
