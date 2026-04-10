@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import 'home_screen.dart';
 import 'subjects_screen.dart';
@@ -81,7 +82,8 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
-  Widget _userHubButton(ColorScheme colorScheme, UserProvider user) {
+  Widget _userHubButton(ColorScheme colorScheme, UserProvider user, AuthProvider auth) {
+    final displayName = _resolveDisplayName(auth, user);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -91,7 +93,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           radius: 20,
           backgroundColor: colorScheme.primaryContainer,
           child: Text(
-            user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+            displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -103,10 +105,21 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
+  /// Resolves the best display name from auth state, falling back to UserProvider.
+  static String _resolveDisplayName(AuthProvider auth, UserProvider user) {
+    final username = auth.username;
+    if (username != null && username.isNotEmpty) return '@$username';
+    final displayName = auth.currentUser?.displayName;
+    if (displayName != null && displayName.isNotEmpty) return displayName;
+    if (user.name.isNotEmpty && user.name != 'Student') return user.name;
+    return user.name;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final user = context.watch<UserProvider>();
+    final auth = context.watch<AuthProvider>();
 
     if (_useRail) {
       // ── Wide screen: NavigationRail layout ─────────────────────────
@@ -124,7 +137,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                   alignment: Alignment.bottomCenter,
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: _userHubButton(colorScheme, user),
+                    child: _userHubButton(colorScheme, user, auth),
                   ),
                 ),
               ),
@@ -157,7 +170,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             right: 16,
-            child: _userHubButton(colorScheme, user),
+            child: _userHubButton(colorScheme, user, auth),
           ),
         ],
       ),
@@ -208,6 +221,8 @@ class _UserHubSheet extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final user = context.watch<UserProvider>();
+    final auth = context.watch<AuthProvider>();
+    final displayName = _MainScaffoldState._resolveDisplayName(auth, user);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -237,7 +252,7 @@ class _UserHubSheet extends StatelessWidget {
             radius: 36,
             backgroundColor: colorScheme.primaryContainer,
             child: Text(
-              user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+              displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.w700,
@@ -246,7 +261,7 @@ class _UserHubSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Text(user.name, style: textTheme.titleLarge),
+          Text(displayName, style: textTheme.titleLarge),
           Text(
             'Level ${user.level} Scholar · ${user.streak} 🔥 day streak',
             style: textTheme.bodySmall?.copyWith(

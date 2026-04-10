@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import '../providers/chat_provider.dart';
@@ -97,6 +98,77 @@ class _ChatScreenState extends State<ChatScreen>
     _speech.cancel();
     _tts.stop();
     super.dispose();
+  }
+
+  Future<void> _pickAndSendImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+    final bytes = await picked.readAsBytes();
+    final provider = context.read<ChatProvider>();
+    await provider.sendImageMessage(
+      bytes,
+      prompt: 'Please explain this homework problem step by step.',
+    );
+    _scrollToBottom();
+  }
+
+  void _showImageSourceSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(28),
+          border:
+              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurfaceVariant
+                      .withAlpha(80),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: const Text('Take a Photo'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndSendImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: const Text('Choose from Gallery'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndSendImage(ImageSource.gallery);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _sendMessage(String text) async {
@@ -288,6 +360,7 @@ class _ChatScreenState extends State<ChatScreen>
             onMicTap: _voiceState == _VoiceState.listening
                 ? _stopListening
                 : _startListening,
+            onCameraTab: _showImageSourceSheet,
           ),
         ],
       ),
@@ -771,6 +844,7 @@ class _ChatInputBar extends StatelessWidget {
   final _VoiceState voiceState;
   final bool speechEnabled;
   final VoidCallback onMicTap;
+  final VoidCallback onCameraTab;
 
   const _ChatInputBar({
     required this.controller,
@@ -780,6 +854,7 @@ class _ChatInputBar extends StatelessWidget {
     required this.voiceState,
     required this.speechEnabled,
     required this.onMicTap,
+    required this.onCameraTab,
   });
 
   @override
@@ -824,6 +899,22 @@ class _ChatInputBar extends StatelessWidget {
                 ),
                 onSubmitted:
                     isLoading || voiceState != _VoiceState.idle ? null : onSend,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Camera / AI Lens button
+            FloatingActionButton.small(
+              heroTag: 'camera_fab',
+              onPressed: isLoading || voiceState != _VoiceState.idle
+                  ? null
+                  : onCameraTab,
+              elevation: 0,
+              backgroundColor: colorScheme.surfaceContainerHighest,
+              child: Icon(
+                Icons.camera_alt_rounded,
+                color: isLoading || voiceState != _VoiceState.idle
+                    ? colorScheme.onSurfaceVariant.withAlpha(100)
+                    : colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(width: 8),
