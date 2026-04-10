@@ -2,6 +2,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/social_provider.dart';
 import 'nfc_bump_screen.dart';
 
@@ -61,6 +62,8 @@ class _SocialScreenState extends State<SocialScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final social = context.watch<SocialProvider>();
+    final auth = context.watch<AuthProvider>();
+    final myHandle = auth.username;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -94,6 +97,45 @@ class _SocialScreenState extends State<SocialScreen> {
                 ),
               ),
             ),
+            // ── Own @handle chip ──────────────────────────────────────
+            if (myHandle != null && myHandle.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              FadeInDown(
+                delay: const Duration(milliseconds: 90),
+                duration: const Duration(milliseconds: 400),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.alternate_email_rounded,
+                            size: 14,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            myHandle,
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             // ── NFC Buddy Bump Button ─────────────────────────────────
@@ -367,12 +409,12 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Prefer @username, then display name, then email prefix.
+    // Prefer @username, then display name, then "Unknown user".
     final displayHandle = request.fromUsername.isNotEmpty
         ? '@${request.fromUsername}'
         : (request.fromName.isNotEmpty
             ? request.fromName
-            : request.fromEmail.split('@').first);
+            : 'Unknown user');
     final initial = displayHandle.isNotEmpty ? displayHandle[0] : '?';
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -490,7 +532,7 @@ class _FriendCard extends StatelessWidget {
                 Text(
                   friend.username.isNotEmpty
                       ? '@${friend.username}'
-                      : (friend.name.isNotEmpty ? friend.name : friend.email),
+                      : (friend.name.isNotEmpty ? friend.name : 'Unknown user'),
                   style: const TextStyle(fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -545,7 +587,7 @@ class _FriendCard extends StatelessWidget {
   void _showRemoveDialog(BuildContext context) {
     final displayName = friend.username.isNotEmpty
         ? '@${friend.username}'
-        : (friend.name.isNotEmpty ? friend.name : friend.email);
+        : (friend.name.isNotEmpty ? friend.name : 'this user');
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(

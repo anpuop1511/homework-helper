@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/social_provider.dart';
 import '../providers/theme_provider.dart';
+import 'username_screen.dart';
 
 /// Settings screen – Android 16 / Material 3 Expressive style.
 ///
@@ -88,6 +89,32 @@ class SettingsScreen extends StatelessWidget {
                     colorScheme: colorScheme,
                   );
                 }).toList(),
+              ),
+            ),
+            const SizedBox(height: 28),
+
+            // ── Identity ──────────────────────────────────────────────
+            _SectionLabel(label: '🏷️  Identity', colorScheme: colorScheme),
+            const SizedBox(height: 10),
+            _SquircleCard(
+              colorScheme: colorScheme,
+              child: _SecurityTile(
+                icon: Icons.alternate_email_rounded,
+                title: auth.username != null && auth.username!.isNotEmpty
+                    ? 'Change Username  (@${auth.username})'
+                    : 'Set your @username',
+                subtitle: auth.username != null && auth.username!.isNotEmpty
+                    ? 'Update your unique @handle.'
+                    : 'Pick a unique handle so friends can find you.',
+                colorScheme: colorScheme,
+                onTap: auth.isSignedIn
+                    ? () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const UsernameScreen(allowSkip: true),
+                          ),
+                        )
+                    : null,
               ),
             ),
             const SizedBox(height: 28),

@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/database_service.dart';
-import 'main_scaffold.dart';
 
 /// Shown once after account creation so the user can pick their unique @handle.
 class UsernameScreen extends StatefulWidget {
@@ -66,11 +65,9 @@ class _UsernameScreenState extends State<UsernameScreen> {
 
     if (widget.allowSkip) {
       Navigator.of(context).pop();
-    } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainScaffold()),
-      );
     }
+    // When launched from _AuthGate (allowSkip == false), the gate will rebuild
+    // automatically now that AuthProvider.username is set – no manual push needed.
   }
 
   @override

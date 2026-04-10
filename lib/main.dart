@@ -14,6 +14,7 @@ import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_scaffold.dart';
+import 'screens/username_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -93,10 +94,24 @@ class _AuthGateState extends State<_AuthGate> {
       }
     }
 
-    if (auth.isSignedIn) {
-      return const MainScaffold();
+    if (!auth.isSignedIn) {
+      return const LoginScreen();
     }
-    return const LoginScreen();
+
+    // Show a minimal splash while the username is still being fetched from
+    // Firestore so we don't flash the wrong screen.
+    if (!auth.usernameLoaded) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // Force existing (and new) users to pick a handle if they don't have one.
+    if (auth.username == null || auth.username!.isEmpty) {
+      return const UsernameScreen();
+    }
+
+    return const MainScaffold();
   }
 }
 

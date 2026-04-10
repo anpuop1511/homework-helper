@@ -17,6 +17,7 @@ class AuthProvider extends ChangeNotifier {
 
   User? _user;
   String? _username;
+  bool _usernameLoaded = false;
 
   User? get currentUser => _user;
   bool get isSignedIn => _user != null;
@@ -27,15 +28,21 @@ class AuthProvider extends ChangeNotifier {
   /// The user's @handle, or null if not yet chosen.
   String? get username => _username;
 
+  /// True once the username lookup from Firestore has completed (or failed).
+  /// Use this to distinguish "still loading" from "user has no handle yet".
+  bool get usernameLoaded => _usernameLoaded;
+
   AuthProvider({bool firebaseReady = true}) : _firebaseReady = firebaseReady {
     if (_firebaseReady) {
       // Keep _user in sync with Firebase's auth state stream.
       FirebaseAuth.instance.authStateChanges().listen((user) {
         _user = user;
         if (user != null) {
+          _usernameLoaded = false;
           _loadUsername(user.uid);
         } else {
           _username = null;
+          _usernameLoaded = false;
         }
         notifyListeners();
       });
@@ -43,18 +50,24 @@ class AuthProvider extends ChangeNotifier {
       _user = FirebaseAuth.instance.currentUser;
       if (_user != null) {
         _loadUsername(_user!.uid);
+      } else {
+        _usernameLoaded = true;
       }
+    } else {
+      _usernameLoaded = true;
     }
   }
 
   /// Loads the @handle from Firestore (non-blocking; notifies when done).
   void _loadUsername(String uid) {
     DatabaseService.instance.getUsernameForUid(uid).then((handle) {
-      if (_username != handle) {
-        _username = handle;
-        notifyListeners();
-      }
-    }).catchError((_) {});
+      _username = handle;
+      _usernameLoaded = true;
+      notifyListeners();
+    }).catchError((_) {
+      _usernameLoaded = true;
+      notifyListeners();
+    });
   }
 
   /// Refreshes the in-memory username from Firestore.  Call after the user
@@ -64,6 +77,7 @@ class AuthProvider extends ChangeNotifier {
     if (uid == null) return;
     try {
       _username = await DatabaseService.instance.getUsernameForUid(uid);
+      _usernameLoaded = true;
       notifyListeners();
     } catch (_) {}
   }

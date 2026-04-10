@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart' as app_auth;
 import '../providers/user_provider.dart';
 import 'main_scaffold.dart';
-import 'username_screen.dart';
 
 /// A modern Material 3 Expressive login screen with Sign In / Sign Up modes.
 class LoginScreen extends StatefulWidget {
@@ -81,13 +80,8 @@ class _LoginScreenState extends State<LoginScreen>
         context.read<UserProvider>().setName(name);
       }
       context.read<UserProvider>().recordActivity();
-      // After sign-up, direct new users to the username picker.
-      // _AuthGate in main.dart handles navigation for sign-in automatically.
-      if (!_isSignIn && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const UsernameScreen()),
-        );
-      }
+      // _AuthGate in main.dart now handles routing to UsernameScreen for any
+      // signed-in user without a handle (new sign-up or existing account).
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       _showError(app_auth.AuthProvider.friendlyError(e));

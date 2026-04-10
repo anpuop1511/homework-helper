@@ -25,8 +25,9 @@ class Friend {
   String get initials => name.isNotEmpty ? name[0].toUpperCase() : '?';
 
   /// Display name shown in the Social Quad – @handle if available, otherwise name.
+  /// Email is intentionally not exposed in public social views.
   String get displayHandle =>
-      username.isNotEmpty ? '@$username' : (name.isNotEmpty ? name : email);
+      username.isNotEmpty ? '@$username' : (name.isNotEmpty ? name : 'Unknown user');
 
   Map<String, dynamic> toJson() => {
         'id': id,
