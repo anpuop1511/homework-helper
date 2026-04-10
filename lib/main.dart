@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/assignments_provider.dart';
 import 'providers/chat_provider.dart';
+import 'providers/social_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/notification_service.dart';
@@ -18,6 +19,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => SocialProvider()),
         ChangeNotifierProxyProvider<UserProvider, AssignmentsProvider>(
           create: (_) => AssignmentsProvider(),
           update: (_, userProvider, prev) =>
