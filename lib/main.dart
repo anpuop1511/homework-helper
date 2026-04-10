@@ -52,6 +52,23 @@ Future<void> main() async {
   );
 }
 
+/// Routes to [LoginScreen] or [MainScaffold] based on [AuthProvider] state.
+class _AuthGate extends StatefulWidget {
+  @override
+  State<_AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<_AuthGate> {
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    if (auth.isSignedIn) {
+      return const MainScaffold();
+    }
+    return const LoginScreen();
+  }
+}
+
 /// Root widget for the Homework Helper application.
 /// Configures Material 3 theming with light and dark mode support.
 /// Uses [DynamicColorBuilder] to adopt the device's system accent color
@@ -70,7 +87,7 @@ class HomeworkHelperApp extends StatelessWidget {
           theme: AppTheme.lightTheme(vibe, lightDynamic),
           darkTheme: AppTheme.darkTheme(vibe, darkDynamic),
           themeMode: ThemeMode.system,
-          home: const _AuthGate(),
+          home: _AuthGate(),
         );
       },
     );
