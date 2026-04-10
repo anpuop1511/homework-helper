@@ -26,13 +26,23 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Back',
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: SafeArea(
+        top: false,
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           children: [
             // ── Large Bold Header ─────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.only(top: 16, bottom: 4),
+              padding: const EdgeInsets.only(top: 8, bottom: 4),
               child: Text(
                 'Settings',
                 style: GoogleFonts.lexend(
