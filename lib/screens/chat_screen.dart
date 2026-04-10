@@ -1,10 +1,17 @@
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 import '../providers/chat_provider.dart';
 
+// Electric Blue — same as the NFC bump screen glow.
+const Color _kElectricBlue = Color(0xFF007FFF);
+
 /// AI Study Buddy chat screen backed by the real Gemini API.
+/// V2.4: Voice-to-Voice mode with animated waveform UI.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -12,9 +19,27 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+/// Voice interaction state machine.
+enum _VoiceState {
+  idle,      // normal text chat
+  listening, // microphone active, user speaking
+  speaking,  // TTS reading the AI response
+}
+
+class _ChatScreenState extends State<ChatScreen>
+    with TickerProviderStateMixin {
   final _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  // ── Voice ──────────────────────────────────────────────────────────
+  final SpeechToText _speech = SpeechToText();
+  final FlutterTts _tts = FlutterTts();
+  bool _speechEnabled = false;
+  _VoiceState _voiceState = _VoiceState.idle;
+  String _partialWords = '';
+
+  // ── Waveform animation ─────────────────────────────────────────────
+  late final AnimationController _waveController;
 
   static const List<String> _quickPrompts = [
     'Explain photosynthesis',
@@ -24,9 +49,53 @@ class _ChatScreenState extends State<ChatScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _waveController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+    _initSpeech();
+    _initTts();
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      _speechEnabled = await _speech.initialize(
+        onError: (_) {
+          if (mounted) setState(() => _voiceState = _VoiceState.idle);
+        },
+      );
+    } catch (_) {
+      _speechEnabled = false;
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _initTts() async {
+    await _tts.setLanguage('en-US');
+    await _tts.setSpeechRate(0.9);
+    _tts.setStartHandler(() {
+      if (mounted) setState(() => _voiceState = _VoiceState.speaking);
+    });
+    _tts.setCompletionHandler(() {
+      if (mounted) setState(() => _voiceState = _VoiceState.idle);
+    });
+    _tts.setCancelHandler(() {
+      if (mounted) setState(() => _voiceState = _VoiceState.idle);
+    });
+    _tts.setErrorHandler((_) {
+      if (mounted) setState(() => _voiceState = _VoiceState.idle);
+    });
+  }
+
+  @override
   void dispose() {
+    _waveController.dispose();
     _inputController.dispose();
     _scrollController.dispose();
+    _speech.cancel();
+    _tts.stop();
     super.dispose();
   }
 
@@ -34,8 +103,69 @@ class _ChatScreenState extends State<ChatScreen> {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
     _inputController.clear();
-    await context.read<ChatProvider>().sendMessage(trimmed);
+    final provider = context.read<ChatProvider>();
+    await provider.sendMessage(trimmed);
     _scrollToBottom();
+  }
+
+  /// Send a voice-transcribed message and speak the AI response when done.
+  Future<void> _sendVoiceMessage(String text) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      setState(() => _voiceState = _VoiceState.idle);
+      return;
+    }
+    final provider = context.read<ChatProvider>();
+    await provider.sendMessage(trimmed);
+    _scrollToBottom();
+    // Read aloud the AI's final response.
+    final messages = provider.messages;
+    if (messages.isNotEmpty && !messages.last.isUser) {
+      final aiText = messages.last.text;
+      if (aiText.isNotEmpty && mounted) {
+        await _tts.speak(aiText);
+        return; // TTS handlers will update _voiceState
+      }
+    }
+    if (mounted) setState(() => _voiceState = _VoiceState.idle);
+  }
+
+  Future<void> _startListening() async {
+    if (!_speechEnabled) return;
+    await _tts.stop();
+    setState(() {
+      _voiceState = _VoiceState.listening;
+      _partialWords = '';
+    });
+    await _speech.listen(
+      onResult: (result) {
+        if (!mounted) return;
+        setState(() => _partialWords = result.recognizedWords);
+        if (result.finalResult) {
+          _speech.stop();
+          final words = result.recognizedWords;
+          setState(() {
+            _voiceState = _VoiceState.idle;
+            _partialWords = '';
+          });
+          _sendVoiceMessage(words);
+        }
+      },
+      listenFor: const Duration(seconds: 30),
+      pauseFor: const Duration(seconds: 3),
+    );
+  }
+
+  Future<void> _stopListening() async {
+    final words = _partialWords;
+    await _speech.stop();
+    setState(() {
+      _voiceState = _VoiceState.idle;
+      _partialWords = '';
+    });
+    if (words.isNotEmpty) {
+      await _sendVoiceMessage(words);
+    }
   }
 
   void _scrollToBottom() {
@@ -101,6 +231,21 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             Divider(height: 1, color: colorScheme.outlineVariant),
           ],
+          // ── Voice overlay (listening / speaking) ────────────────────
+          if (_voiceState != _VoiceState.idle)
+            _VoiceOverlay(
+              voiceState: _voiceState,
+              partialWords: _partialWords,
+              waveController: _waveController,
+              colorScheme: colorScheme,
+              textTheme: textTheme,
+              onStop: _voiceState == _VoiceState.listening
+                  ? _stopListening
+                  : () async {
+                      await _tts.stop();
+                      setState(() => _voiceState = _VoiceState.idle);
+                    },
+            ),
           // Message list
           Expanded(
             child: ListView.builder(
@@ -116,7 +261,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     msg.text.isEmpty &&
                     chat.isStreaming) {
                   return RepaintBoundary(
-                    child: _TypingIndicator(colorScheme: colorScheme),
+                    child: _voiceState != _VoiceState.idle
+                        ? _InlineWaveform(
+                            waveController: _waveController,
+                            colorScheme: colorScheme,
+                          )
+                        : _TypingIndicator(colorScheme: colorScheme),
                   );
                 }
                 return _MessageBubble(
@@ -133,8 +283,211 @@ class _ChatScreenState extends State<ChatScreen> {
             onSend: _sendMessage,
             isLoading: chat.isStreaming,
             colorScheme: colorScheme,
+            voiceState: _voiceState,
+            speechEnabled: _speechEnabled,
+            onMicTap: _voiceState == _VoiceState.listening
+                ? _stopListening
+                : _startListening,
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Voice Overlay ─────────────────────────────────────────────────────────────
+
+/// Full-width banner shown at the top of the chat when in listening or
+/// speaking state.  Features the animated Electric Blue waveform with glow.
+class _VoiceOverlay extends StatelessWidget {
+  final _VoiceState voiceState;
+  final String partialWords;
+  final AnimationController waveController;
+  final ColorScheme colorScheme;
+  final TextTheme textTheme;
+  final VoidCallback onStop;
+
+  const _VoiceOverlay({
+    required this.voiceState,
+    required this.partialWords,
+    required this.waveController,
+    required this.colorScheme,
+    required this.textTheme,
+    required this.onStop,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isListening = voiceState == _VoiceState.listening;
+    final label = isListening ? 'Listening…' : 'Speaking…';
+    final subLabel = isListening && partialWords.isNotEmpty
+        ? '"$partialWords"'
+        : isListening
+            ? 'Tap the mic to stop'
+            : 'Tap to stop';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        border: Border(
+          bottom: BorderSide(color: colorScheme.outlineVariant),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Waveform with Electric Blue glow
+          _WaveformBars(controller: waveController, barCount: 9),
+          const SizedBox(width: 16),
+          // Status text
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: _kElectricBlue,
+                  ),
+                ),
+                Text(
+                  subLabel,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          // Stop button
+          IconButton(
+            icon: Icon(
+              isListening ? Icons.mic_off_rounded : Icons.stop_rounded,
+              color: _kElectricBlue,
+            ),
+            onPressed: onStop,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Waveform Bars (Electric Blue, glow) ──────────────────────────────────────
+
+/// Animated audio waveform bars with Electric Blue glow — matches the NFC
+/// bump screen's visual identity.
+class _WaveformBars extends StatelessWidget {
+  final AnimationController controller;
+  final int barCount;
+
+  const _WaveformBars({required this.controller, this.barCount = 7});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (_, __) {
+        return SizedBox(
+          width: barCount * 10.0,
+          height: 40,
+          child: CustomPaint(
+            painter: _WaveformPainter(
+              progress: controller.value,
+              barCount: barCount,
+              color: _kElectricBlue,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _WaveformPainter extends CustomPainter {
+  final double progress;
+  final int barCount;
+  final Color color;
+
+  const _WaveformPainter({
+    required this.progress,
+    required this.barCount,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final barWidth = size.width / (barCount * 2 - 1);
+    final maxH = size.height * 0.9;
+    final minH = size.height * 0.15;
+
+    for (int i = 0; i < barCount; i++) {
+      final phase = (progress + i * (1.0 / barCount)) % 1.0;
+      final h = minH + (math.sin(phase * 2 * math.pi) * 0.5 + 0.5) * (maxH - minH);
+      final x = i * barWidth * 2;
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          x,
+          (size.height - h) / 2,
+          barWidth,
+          h,
+        ),
+        const Radius.circular(4),
+      );
+
+      // Glow layer
+      canvas.drawRRect(
+        rect,
+        Paint()
+          ..color = color.withAlpha(60)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+      );
+      // Solid layer
+      canvas.drawRRect(
+        rect,
+        Paint()..color = color,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WaveformPainter old) =>
+      old.progress != progress || old.color != color;
+}
+
+// ── Inline waveform (replaces typing dots in voice mode) ─────────────────────
+
+class _InlineWaveform extends StatelessWidget {
+  final AnimationController waveController;
+  final ColorScheme colorScheme;
+
+  const _InlineWaveform({
+    required this.waveController,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(top: 4, bottom: 4),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: colorScheme.secondaryContainer,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+            bottomRight: Radius.circular(20),
+            bottomLeft: Radius.circular(4),
+          ),
+        ),
+        child: _WaveformBars(controller: waveController, barCount: 7),
       ),
     );
   }
@@ -415,16 +768,24 @@ class _ChatInputBar extends StatelessWidget {
   final void Function(String) onSend;
   final bool isLoading;
   final ColorScheme colorScheme;
+  final _VoiceState voiceState;
+  final bool speechEnabled;
+  final VoidCallback onMicTap;
 
   const _ChatInputBar({
     required this.controller,
     required this.onSend,
     required this.isLoading,
     required this.colorScheme,
+    required this.voiceState,
+    required this.speechEnabled,
+    required this.onMicTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isListening = voiceState == _VoiceState.listening;
+
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -442,11 +803,13 @@ class _ChatInputBar extends StatelessWidget {
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 4,
                 minLines: 1,
-                enabled: !isLoading,
+                enabled: !isLoading && voiceState == _VoiceState.idle,
                 decoration: InputDecoration(
                   hintText: isLoading
                       ? 'Gemini is thinking…'
-                      : 'Ask anything…',
+                      : isListening
+                          ? 'Listening…'
+                          : 'Ask anything…',
                   hintStyle: GoogleFonts.lexend(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -459,15 +822,44 @@ class _ChatInputBar extends StatelessWidget {
                   filled: true,
                   fillColor: colorScheme.surfaceContainerHighest,
                 ),
-                onSubmitted: isLoading ? null : onSend,
+                onSubmitted:
+                    isLoading || voiceState != _VoiceState.idle ? null : onSend,
               ),
             ),
             const SizedBox(width: 8),
+            // Microphone button (shown when speech is supported)
+            if (speechEnabled) ...[
+              FloatingActionButton.small(
+                heroTag: 'mic_fab',
+                onPressed:
+                    isLoading || voiceState == _VoiceState.speaking
+                        ? null
+                        : onMicTap,
+                elevation: 0,
+                backgroundColor: isListening
+                    ? _kElectricBlue
+                    : colorScheme.surfaceContainerHighest,
+                child: Icon(
+                  isListening
+                      ? Icons.mic_rounded
+                      : Icons.mic_none_rounded,
+                  color: isListening
+                      ? Colors.white
+                      : colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            // Send button
             FloatingActionButton.small(
-              onPressed: isLoading ? null : () => onSend(controller.text),
+              heroTag: 'send_fab',
+              onPressed: isLoading || voiceState != _VoiceState.idle
+                  ? null
+                  : () => onSend(controller.text),
               elevation: 0,
-              backgroundColor:
-                  isLoading ? colorScheme.surfaceContainerHighest : colorScheme.primary,
+              backgroundColor: isLoading || voiceState != _VoiceState.idle
+                  ? colorScheme.surfaceContainerHighest
+                  : colorScheme.primary,
               child: isLoading
                   ? SizedBox(
                       width: 18,
@@ -485,4 +877,5 @@ class _ChatInputBar extends StatelessWidget {
     );
   }
 }
+
 

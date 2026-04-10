@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
@@ -9,9 +10,17 @@ import 'social_screen.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 
-/// The root scaffold of the app with a bottom navigation bar.
-/// Contains four core tabs: Home, Subjects, Timer, AI Chat.
-/// Profile and Settings are accessible via the top-right [CircleAvatar] User Hub.
+/// The root scaffold of the app with adaptive navigation.
+///
+/// On **mobile (Android/iOS, portrait)**: shows a [NavigationBar] at the
+/// bottom (thumb-friendly).
+///
+/// On **web / desktop / tablet (landscape, width ≥ 600 px)**: shows a
+/// [NavigationRail] on the left side so the layout feels like a dashboard
+/// rather than a stretched phone.
+///
+/// Profile and Settings are accessible via the top-right [CircleAvatar]
+/// User Hub button.
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
 
@@ -30,6 +39,39 @@ class _MainScaffoldState extends State<MainScaffold> {
     SocialScreen(),
   ];
 
+  /// Use a NavigationRail instead of a BottomNavigationBar on wide screens
+  /// (web, desktop, or any screen wider than 600 logical pixels).
+  bool get _useRail =>
+      kIsWeb || MediaQuery.of(context).size.width >= 600;
+
+  static const List<NavigationRailDestination> _railDestinations = [
+    NavigationRailDestination(
+      icon: Icon(Icons.home_outlined),
+      selectedIcon: Icon(Icons.home_rounded),
+      label: Text('Home'),
+    ),
+    NavigationRailDestination(
+      icon: Icon(Icons.folder_outlined),
+      selectedIcon: Icon(Icons.folder_rounded),
+      label: Text('Subjects'),
+    ),
+    NavigationRailDestination(
+      icon: Icon(Icons.timer_outlined),
+      selectedIcon: Icon(Icons.timer_rounded),
+      label: Text('Timer'),
+    ),
+    NavigationRailDestination(
+      icon: Icon(Icons.smart_toy_outlined),
+      selectedIcon: Icon(Icons.smart_toy_rounded),
+      label: Text('AI Chat'),
+    ),
+    NavigationRailDestination(
+      icon: Icon(Icons.people_outline_rounded),
+      selectedIcon: Icon(Icons.people_rounded),
+      label: Text('Social'),
+    ),
+  ];
+
   void _openUserHub() {
     showModalBottomSheet<void>(
       context: context,
@@ -39,11 +81,71 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
+  Widget _userHubButton(ColorScheme colorScheme, UserProvider user) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _openUserHub,
+        borderRadius: BorderRadius.circular(20),
+        child: CircleAvatar(
+          radius: 20,
+          backgroundColor: colorScheme.primaryContainer,
+          child: Text(
+            user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onPrimaryContainer,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final user = context.watch<UserProvider>();
 
+    if (_useRail) {
+      // ── Wide screen: NavigationRail layout ─────────────────────────
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: _currentIndex,
+              onDestinationSelected: (index) =>
+                  setState(() => _currentIndex = index),
+              labelType: NavigationRailLabelType.all,
+              destinations: _railDestinations,
+              trailing: Expanded(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _userHubButton(colorScheme, user),
+                  ),
+                ),
+              ),
+            ),
+            VerticalDivider(
+              thickness: 1,
+              width: 1,
+              color: colorScheme.outlineVariant,
+            ),
+            Expanded(
+              child: IndexedStack(
+                index: _currentIndex,
+                children: _screens,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ── Mobile: BottomNavigationBar layout ───────────────────────────
     return Scaffold(
       body: Stack(
         children: [
@@ -55,25 +157,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             right: 16,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _openUserHub,
-                borderRadius: BorderRadius.circular(20),
-                child: CircleAvatar(
-                  radius: 20,
-                  backgroundColor: colorScheme.primaryContainer,
-                  child: Text(
-                    user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            child: _userHubButton(colorScheme, user),
           ),
         ],
       ),
@@ -112,6 +196,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 }
+
 
 /// Bottom sheet that serves as the User Hub.
 /// Shows profile stats and quick links to Profile and Settings screens.
