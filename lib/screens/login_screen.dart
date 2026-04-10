@@ -1,7 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart' as app_auth;
 import '../providers/user_provider.dart';
 import 'main_scaffold.dart';
 
@@ -22,7 +23,6 @@ class _LoginScreenState extends State<LoginScreen>
   final _nameController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
-  bool _isGoogleLoading = false;
 
   late final AnimationController _animController;
   late final Animation<double> _fadeAnim;
@@ -60,49 +60,78 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _isLoading = true);
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    final name = _nameController.text.trim();
-    if (!_isSignIn && name.isNotEmpty) {
-      context.read<UserProvider>().setName(name);
+    try {
+      final auth = context.read<app_auth.AuthProvider>();
+      if (_isSignIn) {
+        await auth.signIn(
+          _emailController.text,
+          _passwordController.text,
+        );
+      } else {
+        await auth.signUp(
+          _emailController.text,
+          _passwordController.text,
+          displayName: _nameController.text.trim(),
+        );
+      }
+      if (!mounted) return;
+      final name = _nameController.text.trim();
+      if (!_isSignIn && name.isNotEmpty) {
+        context.read<UserProvider>().setName(name);
+      }
+      context.read<UserProvider>().recordActivity();
+      // _AuthGate in main.dart navigates to MainScaffold automatically when
+      // AuthProvider.isSignedIn becomes true.
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      _showError(app_auth.AuthProvider.friendlyError(e));
+    } catch (e) {
+      if (!mounted) return;
+      _showError('Something went wrong. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-    _navigateToMain();
   }
 
-  Future<void> _signInWithGoogle() async {
-    setState(() => _isGoogleLoading = true);
+  Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      _showError('Please enter your email above first.');
+      return;
+    }
     try {
-      final googleSignIn = GoogleSignIn();
-      final account = await googleSignIn.signIn();
-      if (!mounted) return;
-      if (account != null) {
-        final displayName = account.displayName ?? account.email;
-        context.read<UserProvider>().setName(displayName);
-      }
-      // Proceed even if the user cancels – they can re-try.
-      _navigateToMain();
-    } catch (e) {
+      await context
+          .read<app_auth.AuthProvider>()
+          .sendPasswordResetEmail(email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Google Sign-In failed. Please try again.\n$e',
-            style: const TextStyle(fontSize: 13),
-          ),
+          content: Text('Password reset email sent to $email.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _isGoogleLoading = false);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      _showError(app_auth.AuthProvider.friendlyError(e));
+    } catch (_) {
+      if (!mounted) return;
+      _showError('Could not send reset email. Please try again.');
     }
   }
 
-  void _navigateToMain() {
+  void _navigateAsGuest() {
     context.read<UserProvider>().recordActivity();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const MainScaffold()),
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontSize: 13)),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -155,29 +184,6 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ),
               const SizedBox(height: 28),
-              // Sign in with Google button
-              _GoogleSignInButton(
-                isLoading: _isGoogleLoading,
-                onPressed: _signInWithGoogle,
-              ),
-              const SizedBox(height: 20),
-              // Divider with "or" label
-              Row(
-                children: [
-                  Expanded(child: Divider(color: colorScheme.outlineVariant)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'or continue with email',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  Expanded(child: Divider(color: colorScheme.outlineVariant)),
-                ],
-              ),
-              const SizedBox(height: 20),
               // Sign In / Sign Up toggle
               Container(
                 decoration: BoxDecoration(
@@ -278,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen>
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: () {},
+                            onPressed: _forgotPassword,
                             child: Text(
                               'Forgot password?',
                               style: GoogleFonts.outfit(
@@ -323,7 +329,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ),
               const SizedBox(height: 16),
-              // Second divider
+              // Divider
               Row(
                 children: [
                   Expanded(child: Divider(color: colorScheme.outlineVariant)),
@@ -345,7 +351,7 @@ class _LoginScreenState extends State<LoginScreen>
                 width: double.infinity,
                 height: 54,
                 child: OutlinedButton.icon(
-                  onPressed: _navigateToMain,
+                  onPressed: _navigateAsGuest,
                   icon: const Icon(Icons.person_outline),
                   label: Text(
                     'Continue as Guest',
@@ -368,121 +374,6 @@ class _LoginScreenState extends State<LoginScreen>
       ),
     );
   }
-}
-
-/// The official "Sign in with Google" branded button following Google's
-/// branding guidelines. Triggers the real [GoogleSignIn] flow when tapped.
-class _GoogleSignInButton extends StatelessWidget {
-  final bool isLoading;
-  final VoidCallback onPressed;
-
-  const _GoogleSignInButton({
-    required this.isLoading,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: OutlinedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: OutlinedButton.styleFrom(
-          backgroundColor: colorScheme.surface,
-          side: BorderSide(color: colorScheme.outline),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: isLoading
-            ? SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: colorScheme.primary,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Google "G" logo rendered with coloured quadrants
-                  _GoogleLogo(size: 22),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Sign in with Google',
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-}
-
-/// A simple canvas-drawn Google "G" logo that requires no image assets.
-class _GoogleLogo extends StatelessWidget {
-  final double size;
-  const _GoogleLogo({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(size, size),
-      painter: _GoogleLogoPainter(),
-    );
-  }
-}
-
-class _GoogleLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double r = size.width / 2;
-    final Offset center = Offset(r, r);
-
-    // Draw the four colour arcs of the Google logo
-    const double strokeW = 3.0;
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeW
-      ..strokeCap = StrokeCap.round;
-
-    final rect = Rect.fromCircle(center: center, radius: r - strokeW / 2);
-
-    // Blue  (top-right → bottom-right, roughly 315° → 45°)
-    paint.color = const Color(0xFF4285F4);
-    canvas.drawArc(rect, -0.52, 1.57, false, paint);
-
-    // Green (bottom-right → bottom-left, roughly 45° → 135°)
-    paint.color = const Color(0xFF34A853);
-    canvas.drawArc(rect, 1.05, 1.57, false, paint);
-
-    // Yellow (bottom-left → top-left, roughly 135° → 225°)
-    paint.color = const Color(0xFFFBBC05);
-    canvas.drawArc(rect, 2.62, 1.05, false, paint);
-
-    // Red   (top-left → top-right, roughly 225° → 315°)
-    paint.color = const Color(0xFFEA4335);
-    canvas.drawArc(rect, 3.67, 1.15, false, paint);
-
-    // White filled horizontal bar for the "G" cutout
-    final barPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    canvas.drawRect(
-      Rect.fromLTWH(r - strokeW / 2, r - strokeW * 1.1, r, strokeW * 2.2),
-      barPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// A tab button used inside the Sign In / Sign Up toggle strip.
@@ -508,7 +399,9 @@ class _ModeTab extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? colorScheme.primaryContainer : Colors.transparent,
+            color: isSelected
+                ? colorScheme.primaryContainer
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Center(
