@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import '../services/database_service.dart';
 
 /// Manages Firebase Email/Password authentication state.
 ///
@@ -15,6 +16,7 @@ class AuthProvider extends ChangeNotifier {
       _firebaseReady ? FirebaseAuth.instance : null;
 
   User? _user;
+  String? _username;
 
   User? get currentUser => _user;
   bool get isSignedIn => _user != null;
@@ -22,16 +24,48 @@ class AuthProvider extends ChangeNotifier {
   String? get email => _user?.email;
   bool get isEmailVerified => _user?.emailVerified ?? false;
 
+  /// The user's @handle, or null if not yet chosen.
+  String? get username => _username;
+
   AuthProvider({bool firebaseReady = true}) : _firebaseReady = firebaseReady {
     if (_firebaseReady) {
       // Keep _user in sync with Firebase's auth state stream.
       FirebaseAuth.instance.authStateChanges().listen((user) {
         _user = user;
+        if (user != null) {
+          _loadUsername(user.uid);
+        } else {
+          _username = null;
+        }
         notifyListeners();
       });
       // Initialise synchronously so the first build has the correct value.
       _user = FirebaseAuth.instance.currentUser;
+      if (_user != null) {
+        _loadUsername(_user!.uid);
+      }
     }
+  }
+
+  /// Loads the @handle from Firestore (non-blocking; notifies when done).
+  void _loadUsername(String uid) {
+    DatabaseService.instance.getUsernameForUid(uid).then((handle) {
+      if (_username != handle) {
+        _username = handle;
+        notifyListeners();
+      }
+    }).catchError((_) {});
+  }
+
+  /// Refreshes the in-memory username from Firestore.  Call after the user
+  /// successfully claims a new handle.
+  Future<void> refreshUsername() async {
+    final uid = _user?.uid;
+    if (uid == null) return;
+    try {
+      _username = await DatabaseService.instance.getUsernameForUid(uid);
+      notifyListeners();
+    } catch (_) {}
   }
 
   /// Signs in with [email] and [password].

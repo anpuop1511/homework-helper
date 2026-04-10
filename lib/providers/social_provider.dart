@@ -71,6 +71,7 @@ class SocialProvider extends ChangeNotifier {
   String? _uid;
   String? _userEmail;
   String? _userName;
+  String? _userUsername;
 
   final List<Friend> _friends = [];
   final List<FriendRequest> _pendingRequests = [];
@@ -102,11 +103,13 @@ class SocialProvider extends ChangeNotifier {
     String? uid, {
     String? email,
     String? name,
+    String? username,
   }) async {
     if (_uid == uid) return;
     _uid = uid;
     _userEmail = email;
     _userName = name;
+    _userUsername = username;
 
     // Cancel existing Firestore subscriptions.
     await _friendsSub?.cancel();
@@ -188,11 +191,88 @@ class SocialProvider extends ChangeNotifier {
 
   // ── Friend requests ──────────────────────────────────────────────────────
 
-  /// Sends a friend request to the user with [email].
+  /// Sends a friend request to the user with [@handle].
   ///
-  /// When a Firebase UID is available, looks up the target user by email in
+  /// When a Firebase UID is available, looks up the target user by username in
   /// Firestore and writes a `friend_requests` document.  In guest/offline
   /// mode, falls back to a local placeholder entry.
+  ///
+  /// Returns an error string on failure, or null on success.
+  Future<String?> sendFriendRequestByUsername(String handle) async {
+    // Strip leading @ if user typed it.
+    final trimmed = handle.trim().replaceFirst(RegExp(r'^@'), '').toLowerCase();
+    if (trimmed.isEmpty) return 'Please enter a @username.';
+
+    if (_uid != null) {
+      // Check not adding yourself.
+      if (_userUsername?.toLowerCase() == trimmed) {
+        return 'You cannot add yourself as a friend.';
+      }
+      if (_friends.any((f) => f.username.toLowerCase() == trimmed)) {
+        return 'You are already friends with this person.';
+      }
+
+      _isLoading = true;
+      notifyListeners();
+
+      try {
+        final toUid =
+            await DatabaseService.instance.lookupUidByUsername(trimmed);
+        if (toUid == null) {
+          _isLoading = false;
+          notifyListeners();
+          return 'No user found with @$trimmed.';
+        }
+        if (toUid == _uid) {
+          _isLoading = false;
+          notifyListeners();
+          return 'You cannot add yourself as a friend.';
+        }
+        // Fetch the target user's email for the request document.
+        final userData =
+            await DatabaseService.instance.getUserData(toUid);
+        final toEmail = userData?['email'] as String? ?? '';
+
+        await DatabaseService.instance.sendFriendRequest(
+          fromUid: _uid!,
+          toUid: toUid,
+          fromEmail: _userEmail ?? '',
+          toEmail: toEmail,
+          fromUsername: _userUsername ?? '',
+          fromName: _userName ?? '',
+        );
+        _isLoading = false;
+        notifyListeners();
+        return null; // success
+      } catch (_) {
+        _isLoading = false;
+        notifyListeners();
+        return 'Could not send request. Please check your connection.';
+      }
+    }
+
+    // Offline / guest fallback: add a local placeholder.
+    _isLoading = true;
+    notifyListeners();
+    await Future.delayed(const Duration(milliseconds: 500));
+    final newFriend = Friend(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: trimmed,
+      email: '',
+      username: trimmed,
+      level: 1,
+      totalXp: 0,
+      streak: 0,
+    );
+    _friends.add(newFriend);
+    _isLoading = false;
+    notifyListeners();
+    await _save();
+    return null;
+  }
+
+  /// Sends a friend request to the user with [email].
+  /// Kept for backward compatibility; prefer [sendFriendRequestByUsername].
   ///
   /// Returns an error string on failure, or null on success.
   Future<String?> sendFriendRequest(String email) async {
@@ -233,6 +313,8 @@ class SocialProvider extends ChangeNotifier {
           toUid: toUid,
           fromEmail: _userEmail ?? '',
           toEmail: trimmed,
+          fromUsername: _userUsername ?? '',
+          fromName: _userName ?? '',
         );
         _isLoading = false;
         notifyListeners();
@@ -271,6 +353,7 @@ class SocialProvider extends ChangeNotifier {
           'uid': _uid!,
           'name': _userName ?? _userEmail?.split('@').first ?? 'Student',
           'email': _userEmail ?? '',
+          'username': _userUsername ?? '',
           'level': 1,
           'totalXp': 0,
           'streak': 0,
