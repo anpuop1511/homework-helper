@@ -1,20 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/chat_provider.dart';
 
-/// A chat message data class.
-class _ChatMessage {
-  final String text;
-  final bool isUser;
-  final DateTime time;
-
-  const _ChatMessage({
-    required this.text,
-    required this.isUser,
-    required this.time,
-  });
-}
-
-/// AI Study Buddy chat screen with expressive message bubbles.
+/// AI Study Buddy chat screen backed by the real Gemini API.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -23,18 +13,8 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final List<_ChatMessage> _messages = [
-    _ChatMessage(
-      text:
-          'Hi! I\'m your AI Study Buddy 🤖📚. Ask me anything about your homework, '
-          'and I\'ll do my best to help you understand it!',
-      isUser: false,
-      time: DateTime.now().subtract(const Duration(minutes: 1)),
-    ),
-  ];
   final _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isTyping = false;
 
   static const List<String> _quickPrompts = [
     'Explain photosynthesis',
@@ -43,86 +23,18 @@ class _ChatScreenState extends State<ChatScreen> {
     'Study schedule advice',
   ];
 
-  // Mock AI response map – returns a relevant reply based on keywords.
-  String _generateReply(String userMessage) {
-    final lower = userMessage.toLowerCase();
-    if (lower.contains('photosynthesis') || lower.contains('science')) {
-      return 'Photosynthesis is the process plants use to convert light energy into '
-          'chemical energy (glucose) 🌿. The equation is:\n\n'
-          '6CO₂ + 6H₂O + light → C₆H₁₂O₆ + 6O₂\n\n'
-          'The two stages are the light-dependent reactions (in the thylakoid) and '
-          'the Calvin cycle (in the stroma). Would you like me to explain either stage in more detail?';
-    } else if (lower.contains('algebra') || lower.contains('math') ||
-        lower.contains('equation')) {
-      return 'Great question! 🔢 When solving algebraic equations, remember PEMDAS '
-          '(Parentheses, Exponents, Multiplication/Division, Addition/Subtraction).\n\n'
-          'For linear equations like 2x + 5 = 11:\n'
-          '1. Subtract 5 from both sides → 2x = 6\n'
-          '2. Divide both sides by 2 → x = 3\n\n'
-          'Always perform the same operation on both sides! Would you like to practice a problem together?';
-    } else if (lower.contains('essay') || lower.contains('writing') ||
-        lower.contains('english')) {
-      return 'Writing a strong essay starts with a clear thesis statement 📝. '
-          'Here\'s a simple structure to follow:\n\n'
-          '1. **Introduction** – Hook, background, thesis\n'
-          '2. **Body Paragraphs** – Topic sentence, evidence, analysis\n'
-          '3. **Conclusion** – Restate thesis, summarise, final thought\n\n'
-          'Aim for 5 paragraphs in a standard essay. Do you want help crafting a thesis for a specific topic?';
-    } else if (lower.contains('study') || lower.contains('schedule') ||
-        lower.contains('plan')) {
-      return 'Great study habits make a huge difference! ⏰ Try the Pomodoro Technique:\n\n'
-          '• Study for 25 minutes\n'
-          '• Take a 5-minute break\n'
-          '• Repeat 4 times\n'
-          '• Take a longer 15-20 min break\n\n'
-          'You can use the Focus Timer tab in this app to track your sessions! Also, '
-          'reviewing material right before sleep can improve retention by up to 20%.';
-    } else if (lower.contains('history') || lower.contains('war')) {
-      return 'History is about understanding cause and effect! 🏛️ When studying historical events, '
-          'try to identify:\n\n'
-          '• **Who** were the key figures?\n'
-          '• **What** happened (events and timeline)?\n'
-          '• **Why** did it happen (causes)?\n'
-          '• **What were the effects** (short-term and long-term)?\n\n'
-          'Using mind maps can be a great way to visualise these connections. '
-          'Which historical period are you studying?';
-    } else {
-      return 'That\'s a great question! 🌟 To give you the best help, could you provide '
-          'a bit more detail? For example:\n\n'
-          '• What subject is this for?\n'
-          '• What have you already tried or understood so far?\n'
-          '• Is there a specific part that\'s confusing you?\n\n'
-          'The more context you share, the better I can tailor my explanation!';
-    }
+  @override
+  void dispose() {
+    _inputController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _sendMessage(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-
     _inputController.clear();
-    setState(() {
-      _messages.add(_ChatMessage(
-        text: trimmed,
-        isUser: true,
-        time: DateTime.now(),
-      ));
-      _isTyping = true;
-    });
-    _scrollToBottom();
-
-    // Simulate AI thinking delay
-    await Future.delayed(const Duration(milliseconds: 1200));
-    if (!mounted) return;
-
-    setState(() {
-      _isTyping = false;
-      _messages.add(_ChatMessage(
-        text: _generateReply(trimmed),
-        isUser: false,
-        time: DateTime.now(),
-      ));
-    });
+    await context.read<ChatProvider>().sendMessage(trimmed);
     _scrollToBottom();
   }
 
@@ -139,60 +51,30 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   @override
-  void dispose() {
-    _inputController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final chat = context.watch<ChatProvider>();
+
+    // Auto-scroll when new messages arrive
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: colorScheme.primaryContainer,
-              child: Icon(
-                Icons.smart_toy_outlined,
-                size: 20,
-                color: colorScheme.onPrimaryContainer,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'AI Study Buddy',
-                  style: textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  'Always ready to help',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        automaticallyImplyLeading: false,
+      appBar: _GlassAppBar(
+        colorScheme: colorScheme,
+        textTheme: textTheme,
+        onClear: chat.messages.length > 1
+            ? () => context.read<ChatProvider>().clearChat()
+            : null,
       ),
       body: Column(
         children: [
-          // Quick-prompt chips
-          if (_messages.length <= 1) ...[
+          // Quick-prompt chips – only shown before the first user message
+          if (chat.messages.length <= 1) ...[
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -224,12 +106,19 @@ class _ChatScreenState extends State<ChatScreen> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              itemCount: _messages.length + (_isTyping ? 1 : 0),
+              itemCount:
+                  chat.messages.length + (chat.isStreaming ? 0 : 0),
               itemBuilder: (context, index) {
-                if (_isTyping && index == _messages.length) {
-                  return _TypingIndicator(colorScheme: colorScheme);
+                final msg = chat.messages[index];
+                // Show streaming indicator on the last AI message if empty
+                if (!msg.isUser &&
+                    index == chat.messages.length - 1 &&
+                    msg.text.isEmpty &&
+                    chat.isStreaming) {
+                  return RepaintBoundary(
+                    child: _TypingIndicator(colorScheme: colorScheme),
+                  );
                 }
-                final msg = _messages[index];
                 return _MessageBubble(
                   message: msg,
                   colorScheme: colorScheme,
@@ -242,6 +131,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _ChatInputBar(
             controller: _inputController,
             onSend: _sendMessage,
+            isLoading: chat.isStreaming,
             colorScheme: colorScheme,
           ),
         ],
@@ -250,9 +140,81 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-/// An individual chat message bubble, styled differently for user vs AI.
+// ── Glass AppBar ─────────────────────────────────────────────────────────────
+
+class _GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final ColorScheme colorScheme;
+  final TextTheme textTheme;
+  final VoidCallback? onClear;
+
+  const _GlassAppBar({
+    required this.colorScheme,
+    required this.textTheme,
+    this.onClear,
+  });
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: AppBar(
+          backgroundColor: colorScheme.surface.withAlpha(200),
+          automaticallyImplyLeading: false,
+          title: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: colorScheme.primaryContainer,
+                child: Icon(
+                  Icons.smart_toy_rounded,
+                  size: 20,
+                  color: colorScheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Gemini Study Buddy',
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    'Powered by Gemini AI',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            if (onClear != null)
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                tooltip: 'Clear chat',
+                onPressed: onClear,
+              ),
+            const SizedBox(width: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Message Bubble ─────────────────────────────────────────────────────────
+
 class _MessageBubble extends StatelessWidget {
-  final _ChatMessage message;
+  final ChatMessage message;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
 
@@ -279,7 +241,8 @@ class _MessageBubble extends StatelessWidget {
             left: isUser ? 48 : 0,
             right: isUser ? 0 : 48,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: isUser
                 ? colorScheme.primaryContainer
@@ -292,22 +255,23 @@ class _MessageBubble extends StatelessWidget {
             ),
           ),
           child: Column(
-            crossAxisAlignment:
-                isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            crossAxisAlignment: isUser
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
             children: [
               if (!isUser) ...[
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.smart_toy_outlined,
+                      Icons.smart_toy_rounded,
                       size: 14,
                       color: colorScheme.onSecondaryContainer,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       'Study Buddy',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.lexend(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: colorScheme.onSecondaryContainer,
@@ -330,7 +294,7 @@ class _MessageBubble extends StatelessWidget {
               Text(
                 '${message.time.hour.toString().padLeft(2, '0')}:'
                 '${message.time.minute.toString().padLeft(2, '0')}',
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.lexend(
                   fontSize: 10,
                   color: isUser
                       ? colorScheme.onPrimaryContainer.withAlpha(153)
@@ -345,7 +309,8 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-/// Animated typing indicator shown while the AI is generating a response.
+// ── Typing Indicator (optimised CustomPainter) ────────────────────────────
+
 class _TypingIndicator extends StatefulWidget {
   final ColorScheme colorScheme;
 
@@ -356,40 +321,21 @@ class _TypingIndicator extends StatefulWidget {
 }
 
 class _TypingIndicatorState extends State<_TypingIndicator>
-    with TickerProviderStateMixin {
-  late final List<AnimationController> _controllers;
-  late final List<Animation<double>> _anims;
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controllers = List.generate(
-      3,
-      (i) => AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 600),
-      ),
-    );
-    _anims = _controllers
-        .map((c) => Tween(begin: 0.0, end: 1.0).animate(
-              CurvedAnimation(parent: c, curve: Curves.easeInOut),
-            ))
-        .toList();
-
-    for (int i = 0; i < 3; i++) {
-      Future.delayed(Duration(milliseconds: i * 200), () {
-        if (mounted) {
-          _controllers[i].repeat(reverse: true);
-        }
-      });
-    }
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
   }
 
   @override
   void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
+    _controller.dispose();
     super.dispose();
   }
 
@@ -399,7 +345,8 @@ class _TypingIndicatorState extends State<_TypingIndicator>
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(top: 4, bottom: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: widget.colorScheme.secondaryContainer,
           borderRadius: const BorderRadius.only(
@@ -409,39 +356,70 @@ class _TypingIndicatorState extends State<_TypingIndicator>
             bottomLeft: Radius.circular(4),
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(3, (i) {
-            return AnimatedBuilder(
-              animation: _anims[i],
-              builder: (_, __) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: 8,
-                height: 8 + _anims[i].value * 4,
-                decoration: BoxDecoration(
-                  color: widget.colorScheme.onSecondaryContainer
-                      .withAlpha(
-                          (153 + (_anims[i].value * 102)).clamp(0, 255).toInt()),
-                  borderRadius: BorderRadius.circular(4),
-                ),
+        child: SizedBox(
+          width: 48,
+          height: 16,
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (_, __) => CustomPaint(
+              painter: _DotsPainter(
+                progress: _controller.value,
+                color: widget.colorScheme.onSecondaryContainer,
               ),
-            );
-          }),
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-/// The text input bar at the bottom of the chat screen.
+/// Efficient single-controller dots painter – avoids 3 separate controllers.
+class _DotsPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  const _DotsPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..style = PaintingStyle.fill;
+    const dotCount = 3;
+    final dotSpacing = size.width / dotCount;
+    const baseRadius = 4.0;
+    const bounceHeight = 4.0;
+
+    for (int i = 0; i < dotCount; i++) {
+      final phase = (progress - i * 0.25) % 1.0;
+      final bounce = phase < 0.5
+          ? phase * 2
+          : 1.0 - (phase - 0.5) * 2;
+      final radius = baseRadius + bounce * 1.5;
+      final alpha = (153 + bounce * 102).clamp(0, 255).toInt();
+      paint.color = color.withAlpha(alpha);
+      final cx = dotSpacing * i + dotSpacing / 2;
+      final cy = size.height / 2 - bounce * bounceHeight;
+      canvas.drawCircle(Offset(cx, cy), radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DotsPainter old) =>
+      old.progress != progress || old.color != color;
+}
+
+// ── Input Bar ────────────────────────────────────────────────────────────────
+
 class _ChatInputBar extends StatelessWidget {
   final TextEditingController controller;
   final void Function(String) onSend;
+  final bool isLoading;
   final ColorScheme colorScheme;
 
   const _ChatInputBar({
     required this.controller,
     required this.onSend,
+    required this.isLoading,
     required this.colorScheme,
   });
 
@@ -464,9 +442,12 @@ class _ChatInputBar extends StatelessWidget {
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 4,
                 minLines: 1,
+                enabled: !isLoading,
                 decoration: InputDecoration(
-                  hintText: 'Ask anything…',
-                  hintStyle: GoogleFonts.outfit(
+                  hintText: isLoading
+                      ? 'Gemini is thinking…'
+                      : 'Ask anything…',
+                  hintStyle: GoogleFonts.lexend(
                     color: colorScheme.onSurfaceVariant,
                   ),
                   contentPadding: const EdgeInsets.symmetric(
@@ -478,15 +459,25 @@ class _ChatInputBar extends StatelessWidget {
                   filled: true,
                   fillColor: colorScheme.surfaceContainerHighest,
                 ),
-                onSubmitted: onSend,
+                onSubmitted: isLoading ? null : onSend,
               ),
             ),
             const SizedBox(width: 8),
             FloatingActionButton.small(
-              onPressed: () => onSend(controller.text),
+              onPressed: isLoading ? null : () => onSend(controller.text),
               elevation: 0,
-              backgroundColor: colorScheme.primary,
-              child: Icon(Icons.send_rounded, color: colorScheme.onPrimary),
+              backgroundColor:
+                  isLoading ? colorScheme.surfaceContainerHighest : colorScheme.primary,
+              child: isLoading
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colorScheme.primary,
+                      ),
+                    )
+                  : Icon(Icons.send_rounded, color: colorScheme.onPrimary),
             ),
           ],
         ),
@@ -494,3 +485,4 @@ class _ChatInputBar extends StatelessWidget {
     );
   }
 }
+

@@ -4,25 +4,37 @@ import '../providers/theme_provider.dart';
 
 /// Centralized theme configuration for the Homework Helper app.
 /// Uses Material 3 Expressive design with vibrant colors and modern typography.
-/// Supports multiple color "Vibes" via [AppVibe].
+/// Supports multiple color "Vibes" via [AppVibe] and Material You dynamic colour.
 class AppTheme {
   AppTheme._();
 
   /// Returns a light [ThemeData] for the given [vibe].
-  static ThemeData lightTheme([AppVibe vibe = AppVibe.defaultPurple]) {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: vibe.seedColor,
-      brightness: Brightness.light,
-    );
+  /// When [dynamicScheme] is provided (Android 12+ / Material You), it is
+  /// used instead of the seed-generated scheme.
+  static ThemeData lightTheme([
+    AppVibe vibe = AppVibe.defaultPurple,
+    ColorScheme? dynamicScheme,
+  ]) {
+    final colorScheme = dynamicScheme ??
+        ColorScheme.fromSeed(
+          seedColor: vibe.seedColor,
+          brightness: Brightness.light,
+        );
     return _buildTheme(colorScheme);
   }
 
   /// Returns a dark [ThemeData] for the given [vibe].
-  static ThemeData darkTheme([AppVibe vibe = AppVibe.defaultPurple]) {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: vibe.seedColor,
-      brightness: Brightness.dark,
-    );
+  /// When [dynamicScheme] is provided (Android 12+ / Material You), it is
+  /// used instead of the seed-generated scheme.
+  static ThemeData darkTheme([
+    AppVibe vibe = AppVibe.defaultPurple,
+    ColorScheme? dynamicScheme,
+  ]) {
+    final colorScheme = dynamicScheme ??
+        ColorScheme.fromSeed(
+          seedColor: vibe.seedColor,
+          brightness: Brightness.dark,
+        );
     return _buildTheme(colorScheme);
   }
 
@@ -36,14 +48,15 @@ class AppTheme {
         backgroundColor: colorScheme.primaryContainer,
         foregroundColor: colorScheme.onPrimaryContainer,
         elevation: 0,
+        // Squircle-ish shape via continuous rectangle
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
+          borderRadius: BorderRadius.all(Radius.circular(20)),
         ),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: colorScheme.surfaceContainerHighest,
         selectedColor: colorScheme.primaryContainer,
-        labelStyle: GoogleFonts.outfit(
+        labelStyle: GoogleFonts.lexend(
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
@@ -51,109 +64,124 @@ class AppTheme {
         shape: const StadiumBorder(),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: colorScheme.surface,
+        // Glassmorphism-style: slightly transparent surface with blur handled
+        // per-screen via BackdropFilter where desired.
+        backgroundColor: colorScheme.surface.withAlpha(230),
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
-        scrolledUnderElevation: 1,
-        titleTextStyle: GoogleFonts.outfit(
+        scrolledUnderElevation: 2,
+        surfaceTintColor: colorScheme.primary,
+        titleTextStyle: GoogleFonts.lexend(
           fontSize: 22,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: colorScheme.onSurface,
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: colorScheme.surface.withAlpha(230),
+        indicatorColor: colorScheme.primaryContainer,
+        labelTextStyle: WidgetStateProperty.all(
+          GoogleFonts.lexend(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: colorScheme.surfaceContainerHighest,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          // Squircle-friendly radius
+          borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide(color: colorScheme.primary, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       ),
     );
   }
 
   static TextTheme _buildTextTheme(ColorScheme colorScheme) {
     return TextTheme(
-      displayLarge: GoogleFonts.outfit(
+      displayLarge: GoogleFonts.lexend(
         fontSize: 57,
         fontWeight: FontWeight.w400,
         color: colorScheme.onSurface,
       ),
-      displayMedium: GoogleFonts.outfit(
+      displayMedium: GoogleFonts.lexend(
         fontSize: 45,
         fontWeight: FontWeight.w400,
         color: colorScheme.onSurface,
       ),
-      displaySmall: GoogleFonts.outfit(
+      displaySmall: GoogleFonts.lexend(
         fontSize: 36,
         fontWeight: FontWeight.w400,
         color: colorScheme.onSurface,
       ),
-      headlineLarge: GoogleFonts.outfit(
+      headlineLarge: GoogleFonts.lexend(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         color: colorScheme.onSurface,
       ),
-      headlineMedium: GoogleFonts.outfit(
+      headlineMedium: GoogleFonts.lexend(
         fontSize: 28,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w700,
         color: colorScheme.onSurface,
       ),
-      headlineSmall: GoogleFonts.outfit(
+      headlineSmall: GoogleFonts.lexend(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         color: colorScheme.onSurface,
       ),
-      titleLarge: GoogleFonts.outfit(
+      titleLarge: GoogleFonts.lexend(
         fontSize: 22,
         fontWeight: FontWeight.w600,
         color: colorScheme.onSurface,
       ),
-      titleMedium: GoogleFonts.outfit(
+      titleMedium: GoogleFonts.lexend(
         fontSize: 16,
         fontWeight: FontWeight.w500,
         color: colorScheme.onSurface,
       ),
-      titleSmall: GoogleFonts.outfit(
+      titleSmall: GoogleFonts.lexend(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         color: colorScheme.onSurface,
       ),
-      bodyLarge: GoogleFonts.outfit(
+      bodyLarge: GoogleFonts.lexend(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         color: colorScheme.onSurface,
       ),
-      bodyMedium: GoogleFonts.outfit(
+      bodyMedium: GoogleFonts.lexend(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: colorScheme.onSurface,
       ),
-      bodySmall: GoogleFonts.outfit(
+      bodySmall: GoogleFonts.lexend(
         fontSize: 12,
         fontWeight: FontWeight.w400,
         color: colorScheme.onSurfaceVariant,
       ),
-      labelLarge: GoogleFonts.outfit(
+      labelLarge: GoogleFonts.lexend(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         color: colorScheme.onSurface,
       ),
-      labelMedium: GoogleFonts.outfit(
+      labelMedium: GoogleFonts.lexend(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         color: colorScheme.onSurface,
       ),
-      labelSmall: GoogleFonts.outfit(
+      labelSmall: GoogleFonts.lexend(
         fontSize: 11,
         fontWeight: FontWeight.w500,
         color: colorScheme.onSurfaceVariant,
@@ -165,7 +193,8 @@ class AppTheme {
     return CardThemeData(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        // Squircle-inspired radius
+        borderRadius: BorderRadius.circular(24),
         side: BorderSide(
           color: colorScheme.outlineVariant,
           width: 1,

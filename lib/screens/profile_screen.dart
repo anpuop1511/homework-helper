@@ -102,18 +102,20 @@ class ProfileScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: user.levelProgress),
-                    duration: const Duration(milliseconds: 700),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, value, _) => LinearProgressIndicator(
-                      value: value,
-                      minHeight: 14,
-                      backgroundColor: colorScheme.surfaceContainerHighest,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                RepaintBoundary(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: user.levelProgress),
+                      duration: const Duration(milliseconds: 700),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, _) => LinearProgressIndicator(
+                        value: value,
+                        minHeight: 14,
+                        backgroundColor: colorScheme.surfaceContainerHighest,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                      ),
                     ),
                   ),
                 ),
