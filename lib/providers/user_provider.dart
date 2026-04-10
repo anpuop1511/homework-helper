@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_service.dart';
+import '../services/widget_service.dart';
 
 /// Manages the user's gamification state: XP, level, and study streak.
 ///
@@ -147,6 +148,7 @@ class UserProvider extends ChangeNotifier {
       _lastActiveDate = DateTime.fromMillisecondsSinceEpoch(lastMs);
     }
     notifyListeners();
+    updateStudyWidget(streak: _streak, level: _level);
   }
 
   Future<void> _syncToCloud() async {
@@ -200,6 +202,7 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
     _saveLocal();
     _syncToCloud();
+    updateStudyWidget(streak: _streak, level: _level);
   }
 
   /// Records activity for the day (call when user opens the app or completes a task).
@@ -208,6 +211,7 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
     _saveLocal();
     _syncToCloud();
+    updateStudyWidget(streak: _streak, level: _level);
   }
 
   Future<void> setName(String name) async {
