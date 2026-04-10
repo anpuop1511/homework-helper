@@ -20,6 +20,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isSignedIn => _user != null;
   String? get uid => _user?.uid;
   String? get email => _user?.email;
+  bool get isEmailVerified => _user?.emailVerified ?? false;
 
   AuthProvider({bool firebaseReady = true}) : _firebaseReady = firebaseReady {
     if (_firebaseReady) {
@@ -67,6 +68,11 @@ class AuthProvider extends ChangeNotifier {
   /// Sends a password-reset email to [email].
   Future<void> sendPasswordResetEmail(String email) async {
     await _auth?.sendPasswordResetEmail(email: email.trim());
+  }
+
+  /// Sends a verification email to the current user.
+  Future<void> sendEmailVerification() async {
+    await _auth?.currentUser?.sendEmailVerification();
   }
 
   /// Signs the current user out.

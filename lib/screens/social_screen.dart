@@ -1,0 +1,547 @@
+import 'package:animate_do/animate_do.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/social_provider.dart';
+
+/// The "Social Quad" tab – search for friends by email, view pending
+/// requests, and browse your accepted friends list.
+class SocialScreen extends StatefulWidget {
+  const SocialScreen({super.key});
+
+  @override
+  State<SocialScreen> createState() => _SocialScreenState();
+}
+
+class _SocialScreenState extends State<SocialScreen> {
+  final _emailController = TextEditingController();
+  bool _searching = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendRequest(BuildContext context) async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return;
+
+    setState(() => _searching = true);
+    final social = context.read<SocialProvider>();
+    final error = await social.sendFriendRequest(email);
+    if (!mounted) return;
+    setState(() => _searching = false);
+
+    if (error == null) {
+      _emailController.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Friend request sent! 🎉'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final social = context.watch<SocialProvider>();
+
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          children: [
+            // ── Header ────────────────────────────────────────────────
+            FadeInDown(
+              duration: const Duration(milliseconds: 400),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 16, bottom: 8),
+                child: Text(
+                  'Social Quad',
+                  style: GoogleFonts.lexend(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ),
+            FadeInDown(
+              delay: const Duration(milliseconds: 60),
+              duration: const Duration(milliseconds: 400),
+              child: Text(
+                'Study together, grow together.',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // ── Add Friend Card ───────────────────────────────────────
+            FadeInUp(
+              delay: const Duration(milliseconds: 100),
+              duration: const Duration(milliseconds: 400),
+              child: _SectionCard(
+                colorScheme: colorScheme,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.person_add_rounded,
+                            color: colorScheme.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Add a Friend',
+                          style: GoogleFonts.lexend(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: InputDecoration(
+                              hintText: 'Friend\'s email address',
+                              prefixIcon: const Icon(Icons.email_outlined),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onSubmitted: (_) => _sendRequest(context),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: _searching
+                              ? const SizedBox(
+                                  width: 48,
+                                  height: 48,
+                                  child: Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  ),
+                                )
+                              : FilledButton(
+                                  onPressed: () => _sendRequest(context),
+                                  style: FilledButton.styleFrom(
+                                    minimumSize: const Size(48, 48),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: const Icon(Icons.send_rounded),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // ── Pending Requests ──────────────────────────────────────
+            if (social.pendingRequests.isNotEmpty) ...[
+              FadeInUp(
+                delay: const Duration(milliseconds: 160),
+                duration: const Duration(milliseconds: 400),
+                child: _SectionHeader(
+                  icon: Icons.notifications_rounded,
+                  label: 'Friend Requests',
+                  badge: social.pendingRequests.length,
+                  colorScheme: colorScheme,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ...social.pendingRequests.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final req = entry.value;
+                return FadeInLeft(
+                  delay: Duration(milliseconds: 200 + idx * 60),
+                  duration: const Duration(milliseconds: 350),
+                  child: _RequestCard(
+                    request: req,
+                    colorScheme: colorScheme,
+                    onAccept: () =>
+                        context.read<SocialProvider>().acceptRequest(req),
+                    onDecline: () =>
+                        context.read<SocialProvider>().declineRequest(req),
+                  ),
+                );
+              }),
+              const SizedBox(height: 20),
+            ],
+
+            // ── Friends List ──────────────────────────────────────────
+            FadeInUp(
+              delay: const Duration(milliseconds: 220),
+              duration: const Duration(milliseconds: 400),
+              child: _SectionHeader(
+                icon: Icons.group_rounded,
+                label: 'Friends',
+                badge: social.friends.length,
+                colorScheme: colorScheme,
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (social.friends.isEmpty)
+              FadeInUp(
+                delay: const Duration(milliseconds: 280),
+                duration: const Duration(milliseconds: 400),
+                child: _EmptyFriendsCard(colorScheme: colorScheme),
+              )
+            else
+              ...social.friends.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final friend = entry.value;
+                return FadeInLeft(
+                  delay: Duration(milliseconds: 280 + idx * 60),
+                  duration: const Duration(milliseconds: 350),
+                  child: _FriendCard(
+                    friend: friend,
+                    colorScheme: colorScheme,
+                    onRemove: () =>
+                        context.read<SocialProvider>().removeFriend(friend.id),
+                  ),
+                );
+              }),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Sub-widgets ──────────────────────────────────────────────────────────────
+
+class _SectionCard extends StatelessWidget {
+  final ColorScheme colorScheme;
+  final Widget child;
+
+  const _SectionCard({required this.colorScheme, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int badge;
+  final ColorScheme colorScheme;
+
+  const _SectionHeader({
+    required this.icon,
+    required this.label,
+    required this.badge,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: colorScheme.primary, size: 20),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: GoogleFonts.lexend(
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (badge > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '$badge',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _RequestCard extends StatelessWidget {
+  final FriendRequest request;
+  final ColorScheme colorScheme;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+
+  const _RequestCard({
+    required this.request,
+    required this.colorScheme,
+    required this.onAccept,
+    required this.onDecline,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final displayName = request.fromName.isNotEmpty
+        ? request.fromName
+        : request.fromEmail.split('@').first;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer.withAlpha(120),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: colorScheme.secondaryContainer,
+            child: Text(
+              displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSecondaryContainer,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  request.fromEmail,
+                  style: TextStyle(
+                      fontSize: 12, color: colorScheme.onSurfaceVariant),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton.filledTonal(
+            icon: const Icon(Icons.check_rounded),
+            tooltip: 'Accept',
+            onPressed: onAccept,
+            style: IconButton.styleFrom(
+              backgroundColor: colorScheme.primaryContainer,
+              foregroundColor: colorScheme.onPrimaryContainer,
+            ),
+          ),
+          const SizedBox(width: 4),
+          IconButton.filledTonal(
+            icon: const Icon(Icons.close_rounded),
+            tooltip: 'Decline',
+            onPressed: onDecline,
+            style: IconButton.styleFrom(
+              backgroundColor: colorScheme.errorContainer,
+              foregroundColor: colorScheme.onErrorContainer,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FriendCard extends StatelessWidget {
+  final Friend friend;
+  final ColorScheme colorScheme;
+  final VoidCallback onRemove;
+
+  const _FriendCard({
+    required this.friend,
+    required this.colorScheme,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: colorScheme.primaryContainer,
+            child: Text(
+              friend.initials,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  friend.name.isNotEmpty ? friend.name : friend.email,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'Level ${friend.level} · ${friend.totalXp} XP',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Level badge
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: colorScheme.tertiaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Lvl ${friend.level}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onTertiaryContainer,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          IconButton(
+            icon: Icon(Icons.more_vert_rounded,
+                color: colorScheme.onSurfaceVariant, size: 20),
+            onPressed: () => _showRemoveDialog(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRemoveDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Remove Friend'),
+        content: Text(
+            'Remove ${friend.name.isNotEmpty ? friend.name : friend.email} from your friends?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onRemove();
+            },
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyFriendsCard extends StatelessWidget {
+  final ColorScheme colorScheme;
+
+  const _EmptyFriendsCard({required this.colorScheme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.group_outlined,
+            size: 48,
+            color: colorScheme.onSurfaceVariant.withAlpha(140),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No friends yet',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Search by email above to add friends\nand see their progress!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

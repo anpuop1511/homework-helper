@@ -5,6 +5,7 @@ import 'home_screen.dart';
 import 'subjects_screen.dart';
 import 'timer_screen.dart';
 import 'chat_screen.dart';
+import 'social_screen.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 
@@ -26,6 +27,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     SubjectsScreen(),
     TimerScreen(),
     ChatScreen(),
+    SocialScreen(),
   ];
 
   void _openUserHub() {
@@ -99,6 +101,11 @@ class _MainScaffoldState extends State<MainScaffold> {
             icon: Icon(Icons.smart_toy_outlined),
             selectedIcon: Icon(Icons.smart_toy_rounded),
             label: 'AI Chat',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.people_outline_rounded),
+            selectedIcon: Icon(Icons.people_rounded),
+            label: 'Social',
           ),
         ],
       ),

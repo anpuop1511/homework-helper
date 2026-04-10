@@ -1,45 +1,12 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import '../models/social_models.dart';
+import '../services/database_service.dart';
 
-/// Represents a friend in the user's social network.
-class Friend {
-  final String id;
-  final String name;
-  final String email;
-  final int level;
-  final int totalXp;
-  final int streak;
-
-  const Friend({
-    required this.id,
-    required this.name,
-    required this.email,
-    required this.level,
-    required this.totalXp,
-    required this.streak,
-  });
-
-  String get initials => name.isNotEmpty ? name[0].toUpperCase() : '?';
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'email': email,
-        'level': level,
-        'totalXp': totalXp,
-        'streak': streak,
-      };
-
-  factory Friend.fromJson(Map<String, dynamic> json) => Friend(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        email: json['email'] as String,
-        level: json['level'] as int? ?? 1,
-        totalXp: json['totalXp'] as int? ?? 0,
-        streak: json['streak'] as int? ?? 0,
-      );
-}
+// Re-export models so existing import sites still work.
+export '../models/social_models.dart';
 
 /// Represents an item in the live activity feed.
 class ActivityItem {
@@ -91,30 +58,104 @@ extension ActivityTypeExtension on ActivityType {
   }
 }
 
-/// Manages the social features: friends list and activity feed.
-/// Data is persisted locally via [SharedPreferences].
-/// In a production app this would sync with Firestore.
+/// Manages the social features: friends list, pending requests, and activity feed.
+///
+/// When a Firebase UID is set (via [setUid]) the provider subscribes to
+/// real-time Firestore streams for friends and incoming friend requests.
+/// Without a UID it falls back to locally persisted data.
 class SocialProvider extends ChangeNotifier {
   static const _prefFriends = 'social_friends';
   static const _prefActivity = 'social_activity';
+  static const _prefShowActivity = 'social_show_activity';
+
+  String? _uid;
+  String? _userEmail;
+  String? _userName;
 
   final List<Friend> _friends = [];
+  final List<FriendRequest> _pendingRequests = [];
   final List<ActivityItem> _activity = [];
   bool _isLoading = false;
-  String? _pendingRequest;
+  bool _showStudyActivity = true;
+
+  StreamSubscription<List<Friend>>? _friendsSub;
+  StreamSubscription<List<FriendRequest>>? _requestsSub;
 
   List<Friend> get friends => List.unmodifiable(_friends);
+  List<FriendRequest> get pendingRequests =>
+      List.unmodifiable(_pendingRequests);
   List<ActivityItem> get activity => List.unmodifiable(_activity);
   bool get isLoading => _isLoading;
-  String? get pendingRequest => _pendingRequest;
+  bool get showStudyActivity => _showStudyActivity;
 
   SocialProvider() {
-    _load();
+    _loadLocal();
   }
 
-  Future<void> _load() async {
+  // ── UID wiring ───────────────────────────────────────────────────────────
+
+  /// Called when the user signs in or out.
+  ///
+  /// On sign-in ([uid] != null) the provider subscribes to real-time
+  /// Firestore streams for friends and incoming requests.
+  Future<void> setUid(
+    String? uid, {
+    String? email,
+    String? name,
+  }) async {
+    if (_uid == uid) return;
+    _uid = uid;
+    _userEmail = email;
+    _userName = name;
+
+    // Cancel existing Firestore subscriptions.
+    await _friendsSub?.cancel();
+    _friendsSub = null;
+    await _requestsSub?.cancel();
+    _requestsSub = null;
+
+    if (uid == null) {
+      _friends.clear();
+      _pendingRequests.clear();
+      await _loadLocal();
+      return;
+    }
+
+    try {
+      // Subscribe to friends stream.
+      _friendsSub = DatabaseService.instance.friendsStream(uid).listen(
+        (list) {
+          _friends
+            ..clear()
+            ..addAll(list);
+          notifyListeners();
+        },
+        onError: (_) {/* keep existing list */},
+      );
+
+      // Subscribe to incoming requests stream.
+      _requestsSub =
+          DatabaseService.instance.pendingRequestsStream(uid).listen(
+        (list) {
+          _pendingRequests
+            ..clear()
+            ..addAll(list);
+          notifyListeners();
+        },
+        onError: (_) {/* keep existing list */},
+      );
+    } catch (_) {
+      // Firestore unavailable – stay in local mode.
+    }
+  }
+
+  // ── Local persistence ────────────────────────────────────────────────────
+
+  Future<void> _loadLocal() async {
     final prefs = await SharedPreferences.getInstance();
-    // Load friends
+    _showStudyActivity = prefs.getBool(_prefShowActivity) ?? true;
+
+    // Load friends from local cache (used in offline / guest mode).
     final friendsJson = prefs.getStringList(_prefFriends) ?? [];
     for (final raw in friendsJson) {
       try {
@@ -122,7 +163,7 @@ class SocialProvider extends ChangeNotifier {
         _friends.add(Friend.fromJson(map));
       } catch (_) {}
     }
-    // Load activity
+    // Load activity.
     final activityJson = prefs.getStringList(_prefActivity) ?? [];
     for (final raw in activityJson) {
       try {
@@ -145,8 +186,15 @@ class SocialProvider extends ChangeNotifier {
     );
   }
 
+  // ── Friend requests ──────────────────────────────────────────────────────
+
   /// Sends a friend request to the user with [email].
-  /// In production this would look up the user in Firestore.
+  ///
+  /// When a Firebase UID is available, looks up the target user by email in
+  /// Firestore and writes a `friend_requests` document.  In guest/offline
+  /// mode, falls back to a local placeholder entry.
+  ///
+  /// Returns an error string on failure, or null on success.
   Future<String?> sendFriendRequest(String email) async {
     final trimmed = email.trim().toLowerCase();
     if (trimmed.isEmpty) return 'Please enter an email address.';
@@ -154,11 +202,50 @@ class SocialProvider extends ChangeNotifier {
     if (_friends.any((f) => f.email.toLowerCase() == trimmed)) {
       return 'You are already friends with this person.';
     }
+    if (_uid != null && _userEmail?.toLowerCase() == trimmed) {
+      return 'You cannot add yourself as a friend.';
+    }
+    if (_pendingRequests.any((r) => r.fromEmail.toLowerCase() == trimmed)) {
+      return 'You already have a pending request from this person.';
+    }
+
     _isLoading = true;
     notifyListeners();
-    // Simulate network request
-    await Future.delayed(const Duration(milliseconds: 900));
-    // Create a placeholder friend entry (in production, loaded from Firestore)
+
+    if (_uid != null) {
+      // Firestore mode: look up the target user by email.
+      try {
+        final userData =
+            await DatabaseService.instance.lookupUserByEmail(trimmed);
+        if (userData == null) {
+          _isLoading = false;
+          notifyListeners();
+          return 'No user found with that email address.';
+        }
+        final toUid = userData['uid'] as String;
+        if (toUid == _uid) {
+          _isLoading = false;
+          notifyListeners();
+          return 'You cannot add yourself as a friend.';
+        }
+        await DatabaseService.instance.sendFriendRequest(
+          fromUid: _uid!,
+          toUid: toUid,
+          fromEmail: _userEmail ?? '',
+          toEmail: trimmed,
+        );
+        _isLoading = false;
+        notifyListeners();
+        return null; // success
+      } catch (e) {
+        _isLoading = false;
+        notifyListeners();
+        return 'Could not send request. Please check your connection.';
+      }
+    }
+
+    // Offline / guest fallback: add a local placeholder.
+    await Future.delayed(const Duration(milliseconds: 500));
     final newFriend = Friend(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: trimmed.split('@').first,
@@ -168,19 +255,65 @@ class SocialProvider extends ChangeNotifier {
       streak: 0,
     );
     _friends.add(newFriend);
-    _pendingRequest = null;
     _isLoading = false;
     notifyListeners();
     await _save();
-    return null; // success
+    return null;
+  }
+
+  /// Accepts an incoming friend request.
+  Future<void> acceptRequest(FriendRequest request) async {
+    if (_uid == null) return;
+    try {
+      await DatabaseService.instance.acceptFriendRequest(
+        request,
+        currentUserData: {
+          'uid': _uid!,
+          'name': _userName ?? _userEmail?.split('@').first ?? 'Student',
+          'email': _userEmail ?? '',
+          'level': 1,
+          'totalXp': 0,
+          'streak': 0,
+        },
+      );
+    } catch (_) {
+      // Silently ignore Firestore errors.
+    }
+  }
+
+  /// Declines an incoming friend request.
+  Future<void> declineRequest(FriendRequest request) async {
+    if (_uid == null) return;
+    try {
+      await DatabaseService.instance.declineFriendRequest(request.id);
+    } catch (_) {}
   }
 
   /// Removes [friend] from the friends list.
   Future<void> removeFriend(String id) async {
-    _friends.removeWhere((f) => f.id == id);
-    notifyListeners();
-    await _save();
+    if (_uid != null) {
+      try {
+        await DatabaseService.instance.removeFriend(_uid!, id);
+      } catch (_) {}
+    } else {
+      _friends.removeWhere((f) => f.id == id);
+      notifyListeners();
+      await _save();
+    }
   }
+
+  // ── Privacy preference ───────────────────────────────────────────────────
+
+  /// Updates the "Show Study Activity to Friends" preference.
+  Future<void> setShowStudyActivity(bool value) async {
+    if (_showStudyActivity == value) return;
+    _showStudyActivity = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefShowActivity, value);
+  }
+
+  // ── Activity feed (demo / future) ────────────────────────────────────────
 
   /// Adds a sample activity item (used for demo purposes).
   void addSampleActivity() {
@@ -201,5 +334,12 @@ class SocialProvider extends ChangeNotifier {
     );
     notifyListeners();
     _save();
+  }
+
+  @override
+  void dispose() {
+    _friendsSub?.cancel();
+    _requestsSub?.cancel();
+    super.dispose();
   }
 }
