@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -77,6 +78,23 @@ class _AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<_AuthGate> {
   String? _prevUid;
+  Timer? _loadTimer;
+  bool _showRetry = false;
+
+  @override
+  void dispose() {
+    _loadTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Starts a one-shot timer that surfaces a Retry button if Firestore
+  /// hasn't finished loading the username within 8 seconds.
+  void _scheduleRetryIfNeeded() {
+    if (_loadTimer != null) return; // already running
+    _loadTimer = Timer(const Duration(seconds: 8), () {
+      if (mounted) setState(() => _showRetry = true);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +105,10 @@ class _AuthGateState extends State<_AuthGate> {
     // Firestore so friends can look the user up by email.
     if (uid != _prevUid) {
       _prevUid = uid;
+      // Reset retry state whenever the account changes.
+      _loadTimer?.cancel();
+      _loadTimer = null;
+      _showRetry = false;
       if (uid != null && auth.email != null) {
         DatabaseService.instance
             .saveUserEmail(uid, auth.email!)
@@ -101,10 +123,39 @@ class _AuthGateState extends State<_AuthGate> {
     // Show a minimal splash while the username is still being fetched from
     // Firestore so we don't flash the wrong screen.
     if (!auth.usernameLoaded) {
+      _scheduleRetryIfNeeded();
+      if (_showRetry) {
+        return Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Taking a while to connect…'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _showRetry = false;
+                      _loadTimer?.cancel();
+                      _loadTimer = null;
+                    });
+                    auth.refreshUsername();
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
+
+    // Loading finished – cancel any pending retry timer.
+    _loadTimer?.cancel();
+    _loadTimer = null;
 
     // Force existing (and new) users to pick a handle if they don't have one.
     if (auth.username == null || auth.username!.isEmpty) {
