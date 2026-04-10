@@ -86,22 +86,19 @@ class _AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<_AuthGate> {
-  @override
-  void initState() {
-    super.initState();
-    // Trigger an initial sync on first build.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncUid());
-  }
+  String? _lastSyncedUid;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _syncUid();
+    final uid = context.watch<AuthProvider>().uid;
+    if (uid != _lastSyncedUid) {
+      _lastSyncedUid = uid;
+      _syncUid(uid);
+    }
   }
 
-  void _syncUid() {
-    final auth = context.read<AuthProvider>();
-    final uid = auth.uid;
+  void _syncUid(String? uid) {
     context.read<UserProvider>().setUid(uid);
     context.read<AssignmentsProvider>().setUid(uid);
     context.read<ThemeProvider>().setUid(uid);

@@ -90,22 +90,31 @@ class AssignmentsProvider extends ChangeNotifier {
     // Cloud mode: if there are no docs yet, seed with the local sample data.
     final stream = DatabaseService.instance.assignmentsStream(uid);
     bool firstEvent = true;
-    _sub = stream.listen((cloudAssignments) async {
-      if (firstEvent && cloudAssignments.isEmpty) {
-        // Migrate the in-memory sample data to the cloud on first login.
-        await DatabaseService.instance.bulkSaveAssignments(
-          uid,
-          List.of(_assignments),
-        );
+    _sub = stream.listen(
+      (cloudAssignments) async {
+        if (firstEvent && cloudAssignments.isEmpty) {
+          // Migrate the in-memory sample data to the cloud on first login.
+          try {
+            await DatabaseService.instance.bulkSaveAssignments(
+              uid,
+              List.of(_assignments),
+            );
+          } catch (_) {
+            // Migration failed — keep local sample data.
+          }
+          firstEvent = false;
+          return; // The migration triggers another stream event with real data.
+        }
         firstEvent = false;
-        return; // The migration triggers another stream event with real data.
-      }
-      firstEvent = false;
-      _assignments
-        ..clear()
-        ..addAll(cloudAssignments);
-      notifyListeners();
-    });
+        _assignments
+          ..clear()
+          ..addAll(cloudAssignments);
+        notifyListeners();
+      },
+      onError: (_) {
+        // Firestore unavailable — keep the current in-memory list.
+      },
+    );
   }
 
   /// Adds a new assignment and notifies listeners.
