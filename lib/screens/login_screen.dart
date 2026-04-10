@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
 import 'main_scaffold.dart';
 
 /// A modern Material 3 Expressive login screen with Sign In / Sign Up modes.
@@ -19,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen>
   final _nameController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
 
   late final AnimationController _animController;
   late final Animation<double> _fadeAnim;
@@ -60,10 +63,26 @@ class _LoginScreenState extends State<LoginScreen>
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
     setState(() => _isLoading = false);
+    final name = _nameController.text.trim();
+    if (!_isSignIn && name.isNotEmpty) {
+      context.read<UserProvider>().setName(name);
+    }
+    _navigateToMain();
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isGoogleLoading = true);
+    // Simulated Google Sign-In flow — replace with real google_sign_in when
+    // Firebase is configured.
+    await Future.delayed(const Duration(milliseconds: 1000));
+    if (!mounted) return;
+    setState(() => _isGoogleLoading = false);
+    context.read<UserProvider>().setName('Google User');
     _navigateToMain();
   }
 
   void _navigateToMain() {
+    context.read<UserProvider>().recordActivity();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const MainScaffold()),
     );
@@ -117,7 +136,30 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                 ),
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: 28),
+              // Sign in with Google button
+              _GoogleSignInButton(
+                isLoading: _isGoogleLoading,
+                onPressed: _signInWithGoogle,
+              ),
+              const SizedBox(height: 20),
+              // Divider with "or" label
+              Row(
+                children: [
+                  Expanded(child: Divider(color: colorScheme.outlineVariant)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'or continue with email',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: colorScheme.outlineVariant)),
+                ],
+              ),
+              const SizedBox(height: 20),
               // Sign In / Sign Up toggle
               Container(
                 decoration: BoxDecoration(
@@ -263,12 +305,10 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ),
               const SizedBox(height: 16),
-              // Divider with "or" label
+              // Second divider
               Row(
                 children: [
-                  Expanded(
-                    child: Divider(color: colorScheme.outlineVariant),
-                  ),
+                  Expanded(child: Divider(color: colorScheme.outlineVariant)),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
@@ -278,9 +318,7 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                   ),
-                  Expanded(
-                    child: Divider(color: colorScheme.outlineVariant),
-                  ),
+                  Expanded(child: Divider(color: colorScheme.outlineVariant)),
                 ],
               ),
               const SizedBox(height: 16),
@@ -312,6 +350,121 @@ class _LoginScreenState extends State<LoginScreen>
       ),
     );
   }
+}
+
+/// The official "Sign in with Google" branded button following Google's
+/// branding guidelines. Uses a mock sign-in flow until Firebase is configured.
+class _GoogleSignInButton extends StatelessWidget {
+  final bool isLoading;
+  final VoidCallback onPressed;
+
+  const _GoogleSignInButton({
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: OutlinedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: colorScheme.surface,
+          side: BorderSide(color: colorScheme.outline),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: isLoading
+            ? SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: colorScheme.primary,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Google "G" logo rendered with coloured quadrants
+                  _GoogleLogo(size: 22),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Sign in with Google',
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+/// A simple canvas-drawn Google "G" logo that requires no image assets.
+class _GoogleLogo extends StatelessWidget {
+  final double size;
+  const _GoogleLogo({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _GoogleLogoPainter(),
+    );
+  }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double r = size.width / 2;
+    final Offset center = Offset(r, r);
+
+    // Draw the four colour arcs of the Google logo
+    const double strokeW = 3.0;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeW
+      ..strokeCap = StrokeCap.round;
+
+    final rect = Rect.fromCircle(center: center, radius: r - strokeW / 2);
+
+    // Blue  (top-right → bottom-right, roughly 315° → 45°)
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawArc(rect, -0.52, 1.57, false, paint);
+
+    // Green (bottom-right → bottom-left, roughly 45° → 135°)
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(rect, 1.05, 1.57, false, paint);
+
+    // Yellow (bottom-left → top-left, roughly 135° → 225°)
+    paint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(rect, 2.62, 1.05, false, paint);
+
+    // Red   (top-left → top-right, roughly 225° → 315°)
+    paint.color = const Color(0xFFEA4335);
+    canvas.drawArc(rect, 3.67, 1.15, false, paint);
+
+    // White filled horizontal bar for the "G" cutout
+    final barPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(
+      Rect.fromLTWH(r - strokeW / 2, r - strokeW * 1.1, r, strokeW * 2.2),
+      barPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// A tab button used inside the Sign In / Sign Up toggle strip.
@@ -357,3 +510,4 @@ class _ModeTab extends StatelessWidget {
     );
   }
 }
+

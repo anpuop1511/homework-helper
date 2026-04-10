@@ -1,8 +1,14 @@
 import 'package:flutter/foundation.dart';
 import '../models/assignment.dart';
+import 'user_provider.dart';
+
+/// XP awarded when an assignment is marked complete.
+const int _xpPerAssignment = 25;
 
 /// Manages the list of assignments and notifies listeners on changes.
 class AssignmentsProvider extends ChangeNotifier {
+  UserProvider? _userProvider;
+
   final List<Assignment> _assignments = [
     Assignment(
       id: '1',
@@ -47,6 +53,11 @@ class AssignmentsProvider extends ChangeNotifier {
 
   int get pendingCount => _assignments.where((a) => !a.isCompleted).length;
 
+  /// Called by [ChangeNotifierProxyProvider] to inject [UserProvider].
+  void updateUserProvider(UserProvider userProvider) {
+    _userProvider = userProvider;
+  }
+
   /// Adds a new assignment and notifies listeners.
   void add(Assignment assignment) {
     _assignments.add(assignment);
@@ -54,10 +65,16 @@ class AssignmentsProvider extends ChangeNotifier {
   }
 
   /// Toggles the completion state of an assignment by [id].
+  /// Awards XP when an assignment is marked complete.
   void toggleComplete(String id) {
     final idx = _assignments.indexWhere((a) => a.id == id);
     if (idx != -1) {
-      _assignments[idx].isCompleted = !_assignments[idx].isCompleted;
+      final wasCompleted = _assignments[idx].isCompleted;
+      _assignments[idx].isCompleted = !wasCompleted;
+      if (!wasCompleted) {
+        // Just completed — award XP
+        _userProvider?.awardXp(_xpPerAssignment);
+      }
       notifyListeners();
     }
   }
