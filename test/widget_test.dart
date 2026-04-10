@@ -174,9 +174,9 @@ void main() {
   });
 
   group('AssignmentsProvider', () {
-    test('starts with sample assignments', () {
+    test('starts with empty assignments', () {
       final provider = AssignmentsProvider();
-      expect(provider.assignments.isNotEmpty, true);
+      expect(provider.assignments.isEmpty, true);
     });
 
     test('add increases count', () {
@@ -193,6 +193,12 @@ void main() {
 
     test('toggleComplete flips isCompleted', () {
       final provider = AssignmentsProvider();
+      provider.add(Assignment(
+        id: 'toggle-1',
+        title: 'Toggle Task',
+        subject: Subject.science,
+        dueDate: DateTime.now().add(const Duration(days: 2)),
+      ));
       final id = provider.assignments.first.id;
       final before = provider.assignments.first.isCompleted;
       provider.toggleComplete(id);
@@ -201,6 +207,12 @@ void main() {
 
     test('delete removes assignment', () {
       final provider = AssignmentsProvider();
+      provider.add(Assignment(
+        id: 'delete-1',
+        title: 'Delete Me',
+        subject: Subject.history,
+        dueDate: DateTime.now().add(const Duration(days: 3)),
+      ));
       final id = provider.assignments.first.id;
       final initial = provider.assignments.length;
       provider.delete(id);
@@ -212,6 +224,13 @@ void main() {
       final userProvider = UserProvider();
       final assignmentsProvider = AssignmentsProvider()
         ..updateUserProvider(userProvider);
+
+      assignmentsProvider.add(Assignment(
+        id: 'xp-1',
+        title: 'XP Task',
+        subject: Subject.math,
+        dueDate: DateTime.now().add(const Duration(days: 1)),
+      ));
 
       // Find first incomplete assignment
       final incompleteId = assignmentsProvider.assignments

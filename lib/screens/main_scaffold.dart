@@ -11,6 +11,13 @@ import 'social_screen.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 
+/// Returns the single character to use as a profile avatar initial.
+/// Skips any leading '@' symbol (e.g. '@anpu' → 'A').
+String _avatarInitialFor(String displayName) {
+  final name = displayName.startsWith('@') ? displayName.substring(1) : displayName;
+  return name.isNotEmpty ? name[0].toUpperCase() : '?';
+}
+
 /// The root scaffold of the app with adaptive navigation.
 ///
 /// On **mobile (Android/iOS, portrait)**: shows a [NavigationBar] at the
@@ -93,7 +100,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           radius: 20,
           backgroundColor: colorScheme.primaryContainer,
           child: Text(
-            displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+            _avatarInitialFor(displayName),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -252,7 +259,7 @@ class _UserHubSheet extends StatelessWidget {
             radius: 36,
             backgroundColor: colorScheme.primaryContainer,
             child: Text(
-              displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+              _avatarInitialFor(displayName),
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.w700,
