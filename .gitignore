@@ -42,5 +42,3 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# App secrets – keep out of version control
-lib/config/secrets.dart
