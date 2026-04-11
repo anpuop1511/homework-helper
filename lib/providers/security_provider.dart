@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show ChangeNotifier, kIsWeb;
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -63,7 +63,9 @@ class SecurityProvider extends ChangeNotifier {
   }
 
   /// Returns true when biometrics are available on this device.
+  /// Always returns false on Web where local_auth is not supported.
   Future<bool> canAuthenticate() async {
+    if (kIsWeb) return false;
     try {
       final canCheck = await _auth.canCheckBiometrics;
       final isDeviceSupported = await _auth.isDeviceSupported();
@@ -75,8 +77,10 @@ class SecurityProvider extends ChangeNotifier {
 
   /// Triggers the native biometric / device-credential prompt.
   ///
-  /// Returns `true` on success, `false` on failure or cancellation.
+  /// Returns `true` on success, `false` on failure, cancellation, or when
+  /// running on the Web platform where local_auth is not supported.
   Future<bool> authenticate({String reason = 'Verify your identity'}) async {
+    if (kIsWeb) return false;
     try {
       return await _auth.authenticate(
         localizedReason: reason,
