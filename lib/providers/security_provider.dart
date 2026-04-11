@@ -2,19 +2,22 @@ import 'package:flutter/foundation.dart' show ChangeNotifier, kIsWeb;
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Manages app security settings: App Lock, Biometric-for-NFC, and Passkey.
+/// Manages app security settings: App Lock, Biometric-for-NFC, Passkey,
+/// and AI permissions.
 ///
 /// State is persisted to [SharedPreferences] so it survives app restarts.
 class SecurityProvider extends ChangeNotifier {
   static const _kAppLock = 'security_app_lock';
   static const _kBioNfc = 'security_bio_nfc';
   static const _kPasskeySet = 'security_passkey_set';
+  static const _kAiEnabled = 'security_ai_enabled';
 
   final LocalAuthentication _auth = LocalAuthentication();
 
   bool _isAppLockEnabled = false;
   bool _isBioNfcEnabled = false;
   bool _isPasskeySet = false;
+  bool _isAiEnabled = true;
 
   /// Timestamp of the last time the app was in the foreground.
   DateTime _lastActive = DateTime.now();
@@ -22,6 +25,11 @@ class SecurityProvider extends ChangeNotifier {
   bool get isAppLockEnabled => _isAppLockEnabled;
   bool get isBioNfcEnabled => _isBioNfcEnabled;
   bool get isPasskeySet => _isPasskeySet;
+
+  /// When `false` the user has revoked AI permissions and AI features are
+  /// disabled.
+  bool get isAiEnabled => _isAiEnabled;
+
   DateTime get lastActive => _lastActive;
 
   SecurityProvider() {
@@ -33,6 +41,7 @@ class SecurityProvider extends ChangeNotifier {
     _isAppLockEnabled = prefs.getBool(_kAppLock) ?? false;
     _isBioNfcEnabled = prefs.getBool(_kBioNfc) ?? false;
     _isPasskeySet = prefs.getBool(_kPasskeySet) ?? false;
+    _isAiEnabled = prefs.getBool(_kAiEnabled) ?? true;
     notifyListeners();
   }
 
@@ -55,6 +64,14 @@ class SecurityProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kPasskeySet, value);
+  }
+
+  /// Enables or disables AI features app-wide.
+  Future<void> setAiEnabled(bool value) async {
+    _isAiEnabled = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kAiEnabled, value);
   }
 
   /// Records the current time as the last active timestamp (call on resume).
