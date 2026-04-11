@@ -243,13 +243,22 @@ class _AppShieldGateState extends State<_AppShieldGate>
     if (kIsWeb) return;
     final security = context.read<SecurityProvider>();
     if (state == AppLifecycleState.resumed) {
-      if (security.isAppLockEnabled && !_authenticating) {
+      // Only trigger the App Lock if the app was genuinely backgrounded for
+      // longer than the grace period. This prevents the biometric prompt's
+      // own pause/resume cycle (which lasts only 1–3 s) from re-locking the
+      // app, eliminating the infinite-loop bug and the NFC double-prompt.
+      final elapsed = DateTime.now().difference(security.lastActive);
+      if (security.isAppLockEnabled &&
+          !_authenticating &&
+          elapsed > const Duration(seconds: 10)) {
         setState(() => _locked = true);
         _unlock();
       } else {
         security.recordActive();
       }
     } else if (state == AppLifecycleState.paused) {
+      // Record the time the app entered the background so the elapsed
+      // duration is accurate when it returns to the foreground.
       security.recordActive();
     }
   }
