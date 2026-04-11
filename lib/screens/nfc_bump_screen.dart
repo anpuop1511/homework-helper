@@ -7,6 +7,7 @@ import 'package:nfc_manager/nfc_manager.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../providers/auth_provider.dart';
+import '../providers/security_provider.dart';
 import '../providers/social_provider.dart';
 
 /// The "Bump to Study" NFC screen.
@@ -70,6 +71,24 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
   }
 
   Future<void> _startBumping() async {
+    // ── Biometric gate (if enabled in Security settings) ─────────────
+    final security = context.read<SecurityProvider>();
+    if (security.isBioNfcEnabled) {
+      final ok = await security.authenticate(
+          reason: 'Verify your identity to start NFC Bump');
+      if (!mounted) return;
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Biometric verification failed.'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() {
       _bumping = true;
       _statusMessage = 'Hold phones back-to-back…';

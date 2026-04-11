@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/security_provider.dart';
 import '../providers/social_provider.dart';
 import '../providers/theme_provider.dart';
 import 'username_screen.dart';
@@ -12,6 +13,7 @@ import 'username_screen.dart';
 ///   - App Vibe (theme picker)
 ///   - Privacy  (show study activity toggle)
 ///   - Security (change password, email verification)
+///   - Biometrics (app lock, biometric NFC, passkey)
 ///   - About
 ///   - Sign Out
 class SettingsScreen extends StatelessWidget {
@@ -176,6 +178,14 @@ class SettingsScreen extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 28),
+
+            // ── Biometrics & Passkey ──────────────────────────────────
+            _SectionLabel(
+                label: '🔐  Biometrics & Passkey',
+                colorScheme: colorScheme),
+            const SizedBox(height: 10),
+            _BiometricsSection(colorScheme: colorScheme),
             const SizedBox(height: 28),
 
             // ── About ─────────────────────────────────────────────────
@@ -476,6 +486,254 @@ class _SecurityTile extends StatelessWidget {
           ? Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant)
           : null,
       onTap: onTap,
+    );
+  }
+}
+
+/// Biometrics & Passkey section — stateful because it triggers async flows.
+class _BiometricsSection extends StatefulWidget {
+  final ColorScheme colorScheme;
+  const _BiometricsSection({required this.colorScheme});
+
+  @override
+  State<_BiometricsSection> createState() => _BiometricsSectionState();
+}
+
+class _BiometricsSectionState extends State<_BiometricsSection> {
+  bool _setupLoading = false;
+  bool _deleteLoading = false;
+
+  ColorScheme get cs => widget.colorScheme;
+
+  Future<void> _setupPasskey(SecurityProvider security) async {
+    setState(() => _setupLoading = true);
+    final ok = await security.authenticate(
+        reason: 'Register your biometric as a Passkey');
+    if (!mounted) return;
+    setState(() => _setupLoading = false);
+    if (ok) {
+      await security.setPasskeySet(true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Passkey set up successfully! 🔑'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: cs.primaryContainer,
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Biometric verification failed.'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: cs.errorContainer,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deletePasskey(SecurityProvider security) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        title: const Text('Delete Passkey?'),
+        content: const Text(
+            'This will remove your saved Passkey. You can set it up again at any time.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: cs.error,
+              foregroundColor: cs.onError,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _deleteLoading = true);
+    await security.setPasskeySet(false);
+    if (!mounted) return;
+    setState(() => _deleteLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Passkey deleted.'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: cs.surfaceContainerHighest,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final security = context.watch<SecurityProvider>();
+    return _SquircleCard(
+      colorScheme: cs,
+      child: Column(
+        children: [
+          // App Lock toggle
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            secondary: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: cs.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.lock_rounded,
+                  color: cs.onPrimaryContainer, size: 20),
+            ),
+            title: Text(
+              'App Lock',
+              style: GoogleFonts.lexend(
+                  fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            subtitle: Text(
+              'Require biometrics when returning to the app.',
+              style:
+                  TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+            ),
+            value: security.isAppLockEnabled,
+            onChanged: (v) => security.setAppLock(v),
+          ),
+          Divider(height: 1, color: cs.outlineVariant.withAlpha(100)),
+          // Biometric for NFC toggle
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            secondary: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: cs.secondaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.nfc_rounded,
+                  color: cs.onSecondaryContainer, size: 20),
+            ),
+            title: Text(
+              'Biometric for NFC Bump',
+              style: GoogleFonts.lexend(
+                  fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            subtitle: Text(
+              'Verify your identity before starting a Bump.',
+              style:
+                  TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+            ),
+            value: security.isBioNfcEnabled,
+            onChanged: (v) => security.setBioNfc(v),
+          ),
+          Divider(height: 1, color: cs.outlineVariant.withAlpha(100)),
+          // Passkey setup / delete
+          if (!security.isPasskeySet)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: cs.tertiaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.passkey_rounded,
+                    color: cs.onTertiaryContainer, size: 20),
+              ),
+              title: Text(
+                'Set up Passkey',
+                style: GoogleFonts.lexend(
+                    fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              subtitle: Text(
+                'Register your biometric as a secure Passkey.',
+                style: TextStyle(
+                    fontSize: 12, color: cs.onSurfaceVariant),
+              ),
+              trailing: _setupLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(Icons.chevron_right,
+                      color: cs.onSurfaceVariant),
+              onTap:
+                  _setupLoading ? null : () => _setupPasskey(security),
+            )
+          else ...[
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: cs.tertiaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.passkey_rounded,
+                    color: cs.onTertiaryContainer, size: 20),
+              ),
+              title: Text(
+                'Passkey Active ✅',
+                style: GoogleFonts.lexend(
+                    fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              subtitle: Text(
+                'Your biometric Passkey is registered.',
+                style: TextStyle(
+                    fontSize: 12, color: cs.onSurfaceVariant),
+              ),
+            ),
+            Divider(
+                height: 1, color: cs.outlineVariant.withAlpha(100)),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: cs.errorContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.delete_rounded,
+                    color: cs.onErrorContainer, size: 20),
+              ),
+              title: Text(
+                'Delete Passkey',
+                style: GoogleFonts.lexend(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: cs.error),
+              ),
+              subtitle: Text(
+                'Remove your saved biometric Passkey.',
+                style: TextStyle(
+                    fontSize: 12, color: cs.onSurfaceVariant),
+              ),
+              trailing: _deleteLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(Icons.chevron_right,
+                      color: cs.onSurfaceVariant),
+              onTap: _deleteLoading
+                  ? null
+                  : () => _deletePasskey(security),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
