@@ -41,5 +41,8 @@ flutter {
 }
 
 dependencies {
+    // Explicitly provide the Flutter embedding so the Kotlin compiler can
+    // resolve io.flutter.embedding.android.FlutterFragmentActivity.
+    implementation("io.flutter:flutter_embedding_debug:1.0.0-+")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
