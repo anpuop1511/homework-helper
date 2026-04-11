@@ -38,7 +38,7 @@ Future<void> main() async {
   } catch (e) {
     // .env not available as a bundled asset — populate from dart-define only.
     debugPrint('[dotenv] .env not bundled; falling back to --dart-define: $e');
-    dotenv.loadFromString('GEMINI_API_KEY=$geminiApiKeyFromDefine');
+    await dotenv.testLoad(fileInput: 'GEMINI_API_KEY=$geminiApiKeyFromDefine');
   }
 
   await NotificationService.instance.init();

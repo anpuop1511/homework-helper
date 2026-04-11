@@ -647,7 +647,7 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
                   color: cs.tertiaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.passkey_rounded,
+                child: Icon(Icons.fingerprint_rounded,
                     color: cs.onTertiaryContainer, size: 20),
               ),
               title: Text(
@@ -680,7 +680,7 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
                   color: cs.tertiaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.passkey_rounded,
+                child: Icon(Icons.fingerprint_rounded,
                     color: cs.onTertiaryContainer, size: 20),
               ),
               title: Text(
