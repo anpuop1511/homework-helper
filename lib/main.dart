@@ -194,11 +194,14 @@ class HomeworkHelperApp extends StatelessWidget {
     final vibe = context.watch<ThemeProvider>().vibe;
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        // Only use Material You dynamic colours when the user has selected
+        // the "Device Colors" vibe; otherwise let the custom palette shine.
+        final useDynamic = vibe == AppVibe.systemDynamic;
         return MaterialApp(
           title: 'Homework Helper',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme(vibe, lightDynamic),
-          darkTheme: AppTheme.darkTheme(vibe, darkDynamic),
+          theme: AppTheme.lightTheme(vibe, useDynamic ? lightDynamic : null),
+          darkTheme: AppTheme.darkTheme(vibe, useDynamic ? darkDynamic : null),
           themeMode: ThemeMode.system,
           home: _AppShieldGate(child: _AuthGate()),
         );
