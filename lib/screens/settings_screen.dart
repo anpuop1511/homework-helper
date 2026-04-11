@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/chat_provider.dart';
 import '../providers/security_provider.dart';
 import '../providers/social_provider.dart';
 import '../providers/theme_provider.dart';
@@ -10,11 +12,12 @@ import 'username_screen.dart';
 /// Settings screen – Android 16 / Material 3 Expressive style.
 ///
 /// Sections:
-///   - App Vibe (theme picker)
-///   - Privacy  (show study activity toggle)
-///   - Security (change password, email verification)
-///   - Biometrics (app lock, biometric NFC, passkey)
-///   - About
+///   - 🎨 Personalization  (App Vibe)
+///   - 🏷️ Identity         (username)
+///   - 🔒 Privacy & Security (study activity, chat history, AI permissions,
+///                            data export, biometric lock, NFC biometric,
+///                            passkey, change password, email verification)
+///   - ℹ️  About            (version, device type)
 ///   - Sign Out
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -25,6 +28,7 @@ class SettingsScreen extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final themeProvider = context.watch<ThemeProvider>();
     final socialProvider = context.watch<SocialProvider>();
+    final security = context.watch<SecurityProvider>();
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
@@ -63,8 +67,9 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 28),
 
-            // ── App Vibe ──────────────────────────────────────────────
-            _SectionLabel(label: '🎨  App Vibe', colorScheme: colorScheme),
+            // ── 🎨 Personalization ────────────────────────────────────
+            _SectionLabel(
+                label: '🎨  Personalization', colorScheme: colorScheme),
             const SizedBox(height: 4),
             Text(
               'Choose a color palette that matches your mood.',
@@ -95,7 +100,7 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 28),
 
-            // ── Identity ──────────────────────────────────────────────
+            // ── 🏷️ Identity ───────────────────────────────────────────
             _SectionLabel(label: '🏷️  Identity', colorScheme: colorScheme),
             const SizedBox(height: 10),
             _SquircleCard(
@@ -121,33 +126,124 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 28),
 
-            // ── Privacy ───────────────────────────────────────────────
-            _SectionLabel(label: '🔒  Privacy', colorScheme: colorScheme),
+            // ── 🔒 Privacy & Security ─────────────────────────────────
+            _SectionLabel(
+                label: '🔒  Privacy & Security',
+                colorScheme: colorScheme),
             const SizedBox(height: 10),
+
+            // Privacy sub-card
             _SquircleCard(
               colorScheme: colorScheme,
-              child: SwitchListTile(
-                value: socialProvider.showStudyActivity,
-                onChanged: (v) =>
-                    context.read<SocialProvider>().setShowStudyActivity(v),
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  'Show Study Activity to Friends',
-                  style: textTheme.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(
-                  'Let friends see when you are in a focus session.',
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
-                ),
+              child: Column(
+                children: [
+                  // Show Study Activity
+                  SwitchListTile(
+                    value: socialProvider.showStudyActivity,
+                    onChanged: (v) =>
+                        context
+                            .read<SocialProvider>()
+                            .setShowStudyActivity(v),
+                    contentPadding: EdgeInsets.zero,
+                    secondary: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.people_rounded,
+                          color: colorScheme.onSecondaryContainer,
+                          size: 20),
+                    ),
+                    title: Text(
+                      'Show Study Activity to Friends',
+                      style: textTheme.bodyLarge
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      'Let friends see when you are in a focus session.',
+                      style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                  Divider(
+                      height: 1,
+                      color: colorScheme.outlineVariant.withAlpha(100)),
+
+                  // Revoke AI Permissions
+                  SwitchListTile(
+                    value: security.isAiEnabled,
+                    onChanged: (v) =>
+                        context.read<SecurityProvider>().setAiEnabled(v),
+                    contentPadding: EdgeInsets.zero,
+                    secondary: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: security.isAiEnabled
+                            ? colorScheme.primaryContainer
+                            : colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.smart_toy_rounded,
+                        color: security.isAiEnabled
+                            ? colorScheme.onPrimaryContainer
+                            : colorScheme.onErrorContainer,
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(
+                      'AI Features',
+                      style: textTheme.bodyLarge
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      security.isAiEnabled
+                          ? 'AI Study Buddy is active.'
+                          : 'AI features have been revoked.',
+                      style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                  Divider(
+                      height: 1,
+                      color: colorScheme.outlineVariant.withAlpha(100)),
+
+                  // Clear Chat History
+                  _SecurityTile(
+                    icon: Icons.delete_sweep_rounded,
+                    title: 'Clear Chat History',
+                    subtitle: 'Erase all AI Study Buddy messages.',
+                    colorScheme: colorScheme,
+                    onTap: () => _confirmClearChat(context),
+                  ),
+                  Divider(
+                      height: 1,
+                      color: colorScheme.outlineVariant.withAlpha(100)),
+
+                  // Data Export
+                  _SecurityTile(
+                    icon: Icons.file_download_rounded,
+                    title: 'Export My Data',
+                    subtitle: 'Download a copy of your data.',
+                    colorScheme: colorScheme,
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Data export coming soon.'),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor:
+                            colorScheme.surfaceContainerHighest,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 16),
 
-            // ── Security ──────────────────────────────────────────────
-            _SectionLabel(label: '🛡️  Security', colorScheme: colorScheme),
-            const SizedBox(height: 10),
+            // Account Security sub-card
             _SquircleCard(
               colorScheme: colorScheme,
               child: Column(
@@ -178,41 +274,65 @@ class SettingsScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 16),
 
-            // ── Biometrics & Passkey ──────────────────────────────────
-            _SectionLabel(
-                label: '🔐  Biometrics & Passkey',
-                colorScheme: colorScheme),
-            const SizedBox(height: 10),
+            // Biometrics & Passkey sub-card
             _BiometricsSection(colorScheme: colorScheme),
             const SizedBox(height: 28),
 
-            // ── About ─────────────────────────────────────────────────
+            // ── ℹ️  About ─────────────────────────────────────────────
             _SectionLabel(label: 'ℹ️  About', colorScheme: colorScheme),
             const SizedBox(height: 10),
             _SquircleCard(
               colorScheme: colorScheme,
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(14),
+              child: Column(
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        Icons.menu_book_rounded,
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                    title: Text(
+                      'Homework Helper',
+                      style: textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: const Text('Version 2.4.0'),
                   ),
-                  child: Icon(
-                    Icons.menu_book_rounded,
-                    color: colorScheme.onPrimaryContainer,
+                  Divider(
+                      height: 1,
+                      color: colorScheme.outlineVariant.withAlpha(100)),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        Icons.phone_android_rounded,
+                        color: colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                    title: Text(
+                      'Device',
+                      style: textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(_deviceLabel()),
                   ),
-                ),
-                title: Text(
-                  'Homework Helper',
-                  style: textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                subtitle: const Text('Version 2.2.0'),
+                ],
               ),
             ),
             const SizedBox(height: 32),
@@ -247,6 +367,26 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
+
+  /// Returns a short human-readable device / platform label.
+  String _deviceLabel() {
+    if (kIsWeb) return 'Web Browser';
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'Android';
+      case TargetPlatform.iOS:
+        return 'iPhone / iPad';
+      case TargetPlatform.macOS:
+        return 'macOS';
+      case TargetPlatform.windows:
+        return 'Windows';
+      case TargetPlatform.linux:
+        return 'Linux';
+      default:
+        return 'Unknown';
+    }
+  }
+
 
   Future<void> _sendPasswordReset(BuildContext context, String email) async {
     try {
@@ -287,6 +427,47 @@ class SettingsScreen extends StatelessWidget {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  Future<void> _confirmClearChat(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        title: const Text('Clear Chat History?'),
+        content: const Text(
+            'This will erase all AI Study Buddy messages and start a fresh session.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      context.read<ChatProvider>().clearChat();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Chat history cleared.'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor:
+                Theme.of(context).colorScheme.surfaceContainerHighest,
+          ),
+        );
+      }
     }
   }
 

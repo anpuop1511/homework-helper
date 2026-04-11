@@ -16,10 +16,7 @@ class AppTheme {
     ColorScheme? dynamicScheme,
   ]) {
     final colorScheme = dynamicScheme ??
-        ColorScheme.fromSeed(
-          seedColor: vibe.seedColor,
-          brightness: Brightness.light,
-        );
+        _colorSchemeForVibe(vibe, Brightness.light);
     return _buildTheme(colorScheme);
   }
 
@@ -31,11 +28,90 @@ class AppTheme {
     ColorScheme? dynamicScheme,
   ]) {
     final colorScheme = dynamicScheme ??
-        ColorScheme.fromSeed(
-          seedColor: vibe.seedColor,
-          brightness: Brightness.dark,
-        );
+        _colorSchemeForVibe(vibe, Brightness.dark);
     return _buildTheme(colorScheme);
+  }
+
+  /// Returns a [ColorScheme] for the given [vibe] and [brightness].
+  ///
+  /// Special vibes (Cyberpunk, Sakura, Midnight) blend a custom hand-crafted
+  /// palette on top of a seed-generated base; all others use [ColorScheme.fromSeed]
+  /// directly.
+  static ColorScheme _colorSchemeForVibe(AppVibe vibe, Brightness brightness) {
+    switch (vibe) {
+      // ── Cyberpunk: OLED-friendly black + neon pink/cyan ──────────────
+      case AppVibe.cyberpunk:
+        final base = ColorScheme.fromSeed(
+          seedColor: const Color(0xFFFF0080),
+          brightness: Brightness.dark, // always dark for cyberpunk
+        );
+        return base.copyWith(
+          brightness: brightness,
+          primary: const Color(0xFFFF0080),           // neon pink
+          onPrimary: Colors.black,
+          primaryContainer: const Color(0xFF7A003D),
+          onPrimaryContainer: const Color(0xFFFFB3D1),
+          secondary: const Color(0xFF00E5FF),          // neon cyan
+          onSecondary: Colors.black,
+          secondaryContainer: const Color(0xFF006070),
+          onSecondaryContainer: const Color(0xFFB3F0FF),
+          tertiary: const Color(0xFFCCFF00),            // acid green
+          onTertiary: Colors.black,
+          tertiaryContainer: const Color(0xFF3D4F00),
+          onTertiaryContainer: const Color(0xFFEEFF99),
+          surface: brightness == Brightness.dark
+              ? const Color(0xFF050505)    // true OLED black
+              : const Color(0xFF1A0020),
+          onSurface: const Color(0xFFF0F0F0),
+          onSurfaceVariant: const Color(0xFFBBAACC),
+          outline: const Color(0xFF66004D),
+          outlineVariant: const Color(0xFF330028),
+        );
+
+      // ── Sakura: soft pink & white pastel ─────────────────────────────
+      case AppVibe.sakura:
+        final base = ColorScheme.fromSeed(
+          seedColor: const Color(0xFFFF8FAB),
+          brightness: brightness,
+        );
+        return base.copyWith(
+          primary: brightness == Brightness.dark
+              ? const Color(0xFFFFB0CE)
+              : const Color(0xFFB5006E),
+          onPrimary: brightness == Brightness.dark ? Colors.black : Colors.white,
+          primaryContainer: brightness == Brightness.dark
+              ? const Color(0xFF880050)
+              : const Color(0xFFFFD8EA),
+          onPrimaryContainer: brightness == Brightness.dark
+              ? const Color(0xFFFFD8EA)
+              : const Color(0xFF3E001F),
+          surface: brightness == Brightness.dark
+              ? const Color(0xFF1F1118)
+              : const Color(0xFFFFF8F9),
+          onSurface: brightness == Brightness.dark
+              ? const Color(0xFFFFECF1)
+              : const Color(0xFF22001A),
+        );
+
+      // ── Midnight: true black for OLED screens ────────────────────────
+      case AppVibe.midnight:
+        final base = ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1A237E),
+          brightness: brightness,
+        );
+        return base.copyWith(
+          surface: brightness == Brightness.dark
+              ? Colors.black          // true OLED black
+              : const Color(0xFFF5F5FF),
+        );
+
+      // ── All other vibes: standard Material 3 seed scheme ─────────────
+      default:
+        return ColorScheme.fromSeed(
+          seedColor: vibe.seedColor,
+          brightness: brightness,
+        );
+    }
   }
 
   static ThemeData _buildTheme(ColorScheme colorScheme) {
