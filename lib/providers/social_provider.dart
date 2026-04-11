@@ -8,6 +8,9 @@ import '../services/database_service.dart';
 // Re-export models so existing import sites still work.
 export '../models/social_models.dart';
 
+enum ProfileVisibility { public, friendsOnly, private }
+enum FriendRequestsPrivacy { everyone, nobody }
+
 /// Represents an item in the live activity feed.
 class ActivityItem {
   final String friendName;
@@ -67,6 +70,8 @@ class SocialProvider extends ChangeNotifier {
   static const _prefFriends = 'social_friends';
   static const _prefActivity = 'social_activity';
   static const _prefShowActivity = 'social_show_activity';
+  static const _prefProfileVisibility = 'social_profile_visibility';
+  static const _prefFriendRequestsPrivacy = 'social_friend_requests_privacy';
 
   String? _uid;
   String? _userEmail;
@@ -78,6 +83,8 @@ class SocialProvider extends ChangeNotifier {
   final List<ActivityItem> _activity = [];
   bool _isLoading = false;
   bool _showStudyActivity = true;
+  ProfileVisibility _profileVisibility = ProfileVisibility.public;
+  FriendRequestsPrivacy _friendRequestsPrivacy = FriendRequestsPrivacy.everyone;
 
   StreamSubscription<List<Friend>>? _friendsSub;
   StreamSubscription<List<FriendRequest>>? _requestsSub;
@@ -88,6 +95,8 @@ class SocialProvider extends ChangeNotifier {
   List<ActivityItem> get activity => List.unmodifiable(_activity);
   bool get isLoading => _isLoading;
   bool get showStudyActivity => _showStudyActivity;
+  ProfileVisibility get profileVisibility => _profileVisibility;
+  FriendRequestsPrivacy get friendRequestsPrivacy => _friendRequestsPrivacy;
 
   SocialProvider() {
     _loadLocal();
@@ -147,6 +156,20 @@ class SocialProvider extends ChangeNotifier {
         },
         onError: (_) {/* keep existing list */},
       );
+
+      // Load privacy settings from cloud.
+      try {
+        final data = await DatabaseService.instance.getUserData(uid);
+        final pvIndex = data?['profileVisibility'] as int?;
+        if (pvIndex != null && pvIndex >= 0 && pvIndex < ProfileVisibility.values.length) {
+          _profileVisibility = ProfileVisibility.values[pvIndex];
+        }
+        final frpIndex = data?['friendRequestsPrivacy'] as int?;
+        if (frpIndex != null && frpIndex >= 0 && frpIndex < FriendRequestsPrivacy.values.length) {
+          _friendRequestsPrivacy = FriendRequestsPrivacy.values[frpIndex];
+        }
+        notifyListeners();
+      } catch (_) {}
     } catch (_) {
       // Firestore unavailable – stay in local mode.
     }
@@ -174,6 +197,10 @@ class SocialProvider extends ChangeNotifier {
         _activity.add(ActivityItem.fromJson(map));
       } catch (_) {}
     }
+    final pvIndex = prefs.getInt(_prefProfileVisibility) ?? 0;
+    _profileVisibility = ProfileVisibility.values[pvIndex.clamp(0, ProfileVisibility.values.length - 1)];
+    final frpIndex = prefs.getInt(_prefFriendRequestsPrivacy) ?? 0;
+    _friendRequestsPrivacy = FriendRequestsPrivacy.values[frpIndex.clamp(0, FriendRequestsPrivacy.values.length - 1)];
     notifyListeners();
   }
 
@@ -368,7 +395,7 @@ class SocialProvider extends ChangeNotifier {
   Future<void> declineRequest(FriendRequest request) async {
     if (_uid == null) return;
     try {
-      await DatabaseService.instance.declineFriendRequest(request.id);
+      await DatabaseService.instance.declineFriendRequest(request.id, targetUid: _uid);
     } catch (_) {}
   }
 
@@ -394,6 +421,34 @@ class SocialProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefShowActivity, value);
+  }
+
+  Future<void> setProfileVisibility(ProfileVisibility v) async {
+    if (_profileVisibility == v) return;
+    _profileVisibility = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_prefProfileVisibility, v.index);
+    if (_uid != null) {
+      try {
+        await DatabaseService.instance.savePrivacySettings(
+          _uid!, profileVisibility: v.index, friendRequestsPrivacy: _friendRequestsPrivacy.index);
+      } catch (_) {}
+    }
+  }
+
+  Future<void> setFriendRequestsPrivacy(FriendRequestsPrivacy v) async {
+    if (_friendRequestsPrivacy == v) return;
+    _friendRequestsPrivacy = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_prefFriendRequestsPrivacy, v.index);
+    if (_uid != null) {
+      try {
+        await DatabaseService.instance.savePrivacySettings(
+          _uid!, profileVisibility: _profileVisibility.index, friendRequestsPrivacy: v.index);
+      } catch (_) {}
+    }
   }
 
   // ── Activity feed (demo / future) ────────────────────────────────────────

@@ -12,6 +12,10 @@ enum AppVibe {
   ocean,
   cyberpunk,
   sakura,
+  springMint,
+  cherryBlossom,
+  skyBloom,
+  daffodil,
 }
 
 extension AppVibeExtension on AppVibe {
@@ -33,6 +37,14 @@ extension AppVibeExtension on AppVibe {
         return 'Cyberpunk';
       case AppVibe.sakura:
         return 'Sakura';
+      case AppVibe.springMint:
+        return 'Spring Mint';
+      case AppVibe.cherryBlossom:
+        return 'Cherry Blossom';
+      case AppVibe.skyBloom:
+        return 'Sky Bloom';
+      case AppVibe.daffodil:
+        return 'Daffodil';
     }
   }
 
@@ -54,6 +66,14 @@ extension AppVibeExtension on AppVibe {
         return '🤖';
       case AppVibe.sakura:
         return '🌸';
+      case AppVibe.springMint:
+        return '🌿';
+      case AppVibe.cherryBlossom:
+        return '🌸';
+      case AppVibe.skyBloom:
+        return '🩵';
+      case AppVibe.daffodil:
+        return '🌼';
     }
   }
 
@@ -75,6 +95,14 @@ extension AppVibeExtension on AppVibe {
         return const Color(0xFFFF0080); // neon pink
       case AppVibe.sakura:
         return const Color(0xFFFF8FAB); // sakura pink
+      case AppVibe.springMint:
+        return const Color(0xFF26A69A);
+      case AppVibe.cherryBlossom:
+        return const Color(0xFFE91E8C);
+      case AppVibe.skyBloom:
+        return const Color(0xFF0288D1);
+      case AppVibe.daffodil:
+        return const Color(0xFFF9A825);
     }
   }
 }

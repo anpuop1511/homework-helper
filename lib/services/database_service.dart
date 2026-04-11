@@ -67,6 +67,31 @@ class DatabaseService {
     );
   }
 
+  /// Writes / merges profile visibility and friend request privacy settings.
+  Future<void> savePrivacySettings(
+    String uid, {
+    required int profileVisibility,
+    required int friendRequestsPrivacy,
+  }) async {
+    await _userDoc(uid).set(
+      {
+        'profileVisibility': profileVisibility,
+        'friendRequestsPrivacy': friendRequestsPrivacy,
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Fetches a public profile for a given @handle.
+  /// Returns null if the user doesn't exist.
+  Future<Map<String, dynamic>?> getPublicProfile(String handle) async {
+    final uid = await lookupUidByUsername(handle.toLowerCase());
+    if (uid == null) return null;
+    final data = await getUserData(uid);
+    if (data == null) return null;
+    return {'uid': uid, ...data};
+  }
+
   // ── Username (@handle) ────────────────────────────────────────────────────
 
   DocumentReference<Map<String, dynamic>> _usernameDoc(String handle) =>
@@ -225,6 +250,9 @@ class DatabaseService {
   CollectionReference<Map<String, dynamic>> _friendsCol(String uid) =>
       _userDoc(uid).collection('friends');
 
+  CollectionReference<Map<String, dynamic>> _friendRequestsCol(String uid) =>
+      _userDoc(uid).collection('friendRequests');
+
   CollectionReference<Map<String, dynamic>> get _requestsCol =>
       _db.collection('friend_requests');
 
@@ -260,6 +288,13 @@ class DatabaseService {
       'fromName': fromName,
       'status': 'pending',
       'timestamp': FieldValue.serverTimestamp(),
+    });
+    // Also write to the target user's friendRequests subcollection (new model).
+    await _friendRequestsCol(toUid).doc(ref.id).set({
+      'fromUid': fromUid,
+      'fromHandle': fromUsername,
+      'createdAt': FieldValue.serverTimestamp(),
+      'requestId': ref.id,
     });
     return ref.id;
   }
@@ -324,11 +359,18 @@ class DatabaseService {
     );
 
     await batch.commit();
+    // Clean up the subcollection entry.
+    try {
+      await _friendRequestsCol(request.toUid).doc(request.id).delete();
+    } catch (_) {}
   }
-
-  /// Declines (deletes) a friend request.
-  Future<void> declineFriendRequest(String requestId) async {
+  Future<void> declineFriendRequest(String requestId, {String? targetUid}) async {
     await _requestsCol.doc(requestId).delete();
+    if (targetUid != null) {
+      try {
+        await _friendRequestsCol(targetUid).doc(requestId).delete();
+      } catch (_) {}
+    }
   }
 
   /// Removes a friend from both users' friends sub-collections.
@@ -337,5 +379,45 @@ class DatabaseService {
     batch.delete(_friendsCol(currentUid).doc(friendUid));
     batch.delete(_friendsCol(friendUid).doc(currentUid));
     await batch.commit();
+  }
+
+  /// Returns the relationship status between [currentUid] and [targetUid].
+  /// Possible values: 'friends', 'request_sent', 'request_received', 'none'.
+  Future<String> checkRelationshipStatus(String currentUid, String targetUid) async {
+    // Check if already friends.
+    final friendDoc = await _friendsCol(currentUid).doc(targetUid).get();
+    if (friendDoc.exists) return 'friends';
+    // Check for pending request sent by current user.
+    final sentSnap = await _requestsCol
+        .where('from', isEqualTo: currentUid)
+        .where('to', isEqualTo: targetUid)
+        .where('status', isEqualTo: 'pending')
+        .limit(1)
+        .get();
+    if (sentSnap.docs.isNotEmpty) return 'request_sent';
+    // Check for incoming request from target user.
+    final receivedSnap = await _requestsCol
+        .where('from', isEqualTo: targetUid)
+        .where('to', isEqualTo: currentUid)
+        .where('status', isEqualTo: 'pending')
+        .limit(1)
+        .get();
+    if (receivedSnap.docs.isNotEmpty) return 'request_received';
+    return 'none';
+  }
+
+  /// Returns the ID of a pending request from [fromUid] to [toUid], or null.
+  Future<String?> getPendingRequestFromUser({
+    required String fromUid,
+    required String toUid,
+  }) async {
+    final snap = await _requestsCol
+        .where('from', isEqualTo: fromUid)
+        .where('to', isEqualTo: toUid)
+        .where('status', isEqualTo: 'pending')
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return null;
+    return snap.docs.first.id;
   }
 }

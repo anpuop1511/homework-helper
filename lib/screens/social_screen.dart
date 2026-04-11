@@ -2,9 +2,12 @@ import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../providers/auth_provider.dart';
 import '../providers/social_provider.dart';
 import 'nfc_bump_screen.dart';
+import 'public_profile_screen.dart';
+import 'qr_scan_screen.dart';
 
 /// Electric Blue — used for the "Add Friend" action to match the V2.3 design.
 const _kElectricBlue = Color(0xFF007FFF);
@@ -26,6 +29,66 @@ class _SocialScreenState extends State<SocialScreen> {
   void dispose() {
     _handleController.dispose();
     super.dispose();
+  }
+
+  void _showMyQr(BuildContext context, String handle) {
+    final colorScheme = Theme.of(context).colorScheme;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'My QR Code',
+              style: GoogleFonts.lexend(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '@$handle',
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 24),
+            QrImageView(
+              data: 'homeworkhelper://profile/@$handle',
+              version: QrVersions.auto,
+              size: 240,
+              backgroundColor: Colors.white,
+              padding: const EdgeInsets.all(12),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Friends can scan this to add you.',
+              style: TextStyle(
+                fontSize: 13,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _sendRequest(BuildContext context) async {
@@ -184,7 +247,63 @@ class _SocialScreenState extends State<SocialScreen> {
             ),
             const SizedBox(height: 20),
 
-            // ── Add Friend Card ───────────────────────────────────────
+            // ── Scan QR Button ────────────────────────────────────
+            const SizedBox(height: 12),
+            FadeInUp(
+              delay: const Duration(milliseconds: 100),
+              duration: const Duration(milliseconds: 400),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const QrScanScreen()),
+                  ),
+                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
+                  label: Text(
+                    'Scan Friend\'s QR',
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // ── Show My QR Button ─────────────────────────────────
+            FadeInUp(
+              delay: const Duration(milliseconds: 120),
+              duration: const Duration(milliseconds: 400),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: OutlinedButton.icon(
+                  onPressed: myHandle != null && myHandle.isNotEmpty
+                      ? () => _showMyQr(context, myHandle)
+                      : null,
+                  icon: const Icon(Icons.qr_code_rounded, size: 20),
+                  label: Text(
+                    'Show My QR Code',
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
             FadeInUp(
               delay: const Duration(milliseconds: 100),
               duration: const Duration(milliseconds: 400),
@@ -512,7 +631,16 @@ class _FriendCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: friend.username.isNotEmpty
+          ? () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      PublicProfileScreen(handle: friend.username),
+                ),
+              )
+          : null,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -595,6 +723,7 @@ class _FriendCard extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 
