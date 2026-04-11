@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "911283793659",
+    "project_id": "hwhelp-9390f",
+    "storage_bucket": "hwhelp-9390f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:911283793659:android:aa8131111c319b0a270a5e",
+        "android_client_info": {
+          "package_name": "com.example.homework_helper"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjVhfshSG_4-XzGhI51i3jccU7StSFcJ4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
