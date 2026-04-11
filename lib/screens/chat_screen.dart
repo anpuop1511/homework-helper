@@ -353,6 +353,45 @@ class _ChatScreenState extends State<ChatScreen>
                 ),
               ),
             ),
+          // ── Ghost Mode banner ─────────────────────────────────────────
+          if (!chat.isHistoryEnabled)
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: colorScheme.secondaryContainer.withAlpha(180),
+                border: Border(
+                  bottom: BorderSide(
+                    color: colorScheme.secondary.withAlpha(80),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Text('👻', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Ghost Mode — chats are not saved to history',
+                      style: textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSecondaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => context
+                        .read<ChatProvider>()
+                        .setHistoryEnabled(true),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           // Message list
           Expanded(
             child: ListView.builder(
@@ -376,10 +415,65 @@ class _ChatScreenState extends State<ChatScreen>
                         : _TypingIndicator(colorScheme: colorScheme),
                   );
                 }
-                return _MessageBubble(
-                  message: msg,
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
+                // Welcome message (index 0) cannot be deleted.
+                if (index == 0 || !chat.isHistoryEnabled) {
+                  return _MessageBubble(
+                    message: msg,
+                    colorScheme: colorScheme,
+                    textTheme: textTheme,
+                  );
+                }
+                return Dismissible(
+                  key: ValueKey('msg_${index}_${msg.time.millisecondsSinceEpoch}'),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      color: colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      Icons.delete_rounded,
+                      color: colorScheme.onErrorContainer,
+                    ),
+                  ),
+                  confirmDismiss: (_) async {
+                    return await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        title: const Text('Delete message?'),
+                        content: const Text(
+                            'This will remove the message from your chat history.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: colorScheme.error,
+                              foregroundColor: colorScheme.onError,
+                            ),
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    ) ?? false;
+                  },
+                  onDismissed: (_) {
+                    context.read<ChatProvider>().deleteMessage(index);
+                  },
+                  child: _MessageBubble(
+                    message: msg,
+                    colorScheme: colorScheme,
+                    textTheme: textTheme,
+                  ),
                 );
               },
             ),
