@@ -59,7 +59,7 @@ class ChatProvider extends ChangeNotifier {
 
   ChatProvider() {
     _model = GenerativeModel(
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       apiKey: AppSecrets.geminiApiKey,
       systemInstruction: Content.system(_systemPrompt),
     );
@@ -147,9 +147,9 @@ class ChatProvider extends ChangeNotifier {
     final aiIndex = _messages.length - 1;
 
     try {
-      // Vision model — use gemini-2.5-flash which supports multimodal input.
+      // Vision model — use gemini-1.5-flash which supports multimodal input.
       final visionModel = GenerativeModel(
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',
         apiKey: AppSecrets.geminiApiKey,
         systemInstruction: Content.system(_systemPrompt),
       );
@@ -200,7 +200,7 @@ class ChatProvider extends ChangeNotifier {
   Future<String?> extractTaskFromImage(Uint8List imageBytes) async {
     try {
       final visionModel = GenerativeModel(
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',
         apiKey: AppSecrets.geminiApiKey,
       );
       final response = await visionModel.generateContent([
