@@ -4,6 +4,7 @@ import '../services/database_service.dart';
 
 /// Represents an app color "Vibe" — a named theme variant.
 enum AppVibe {
+  systemDynamic,
   defaultPurple,
   midnight,
   sunset,
@@ -16,6 +17,8 @@ enum AppVibe {
 extension AppVibeExtension on AppVibe {
   String get label {
     switch (this) {
+      case AppVibe.systemDynamic:
+        return 'Device Colors';
       case AppVibe.defaultPurple:
         return 'Default';
       case AppVibe.midnight:
@@ -35,6 +38,8 @@ extension AppVibeExtension on AppVibe {
 
   String get emoji {
     switch (this) {
+      case AppVibe.systemDynamic:
+        return '📱';
       case AppVibe.defaultPurple:
         return '💜';
       case AppVibe.midnight:
@@ -54,6 +59,8 @@ extension AppVibeExtension on AppVibe {
 
   Color get seedColor {
     switch (this) {
+      case AppVibe.systemDynamic:
+        return Colors.blue;
       case AppVibe.defaultPurple:
         return const Color(0xFF6750A4);
       case AppVibe.midnight:
@@ -78,7 +85,7 @@ extension AppVibeExtension on AppVibe {
 class ThemeProvider extends ChangeNotifier {
   static const _prefKey = 'app_vibe';
 
-  AppVibe _vibe = AppVibe.defaultPurple;
+  AppVibe _vibe = AppVibe.systemDynamic;
   String? _uid;
 
   AppVibe get vibe => _vibe;
