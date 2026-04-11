@@ -92,19 +92,26 @@ class AppTheme {
         fillColor: colorScheme.surfaceContainerHighest,
         border: OutlineInputBorder(
           // Squircle-friendly radius
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(24),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(24),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(24),
           borderSide: BorderSide(color: colorScheme.primary, width: 2),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: colorScheme.surface,
+        surfaceTintColor: colorScheme.primary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
       ),
     );
   }
@@ -113,17 +120,17 @@ class AppTheme {
     return TextTheme(
       displayLarge: GoogleFonts.lexend(
         fontSize: 57,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w700,
         color: colorScheme.onSurface,
       ),
       displayMedium: GoogleFonts.lexend(
         fontSize: 45,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w700,
         color: colorScheme.onSurface,
       ),
       displaySmall: GoogleFonts.lexend(
         fontSize: 36,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w700,
         color: colorScheme.onSurface,
       ),
       headlineLarge: GoogleFonts.lexend(
