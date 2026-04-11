@@ -30,8 +30,8 @@ Future<void> main() async {
   //   2. A .env file bundled as a Flutter asset (add to pubspec.yaml assets locally).
   const geminiKey = String.fromEnvironment('GEMINI_API_KEY');
   if (geminiKey.isNotEmpty) {
-    dotenv.clean();
-    dotenv.loadFromMap({'GEMINI_API_KEY': geminiKey});
+    // Directly inject into the underlying map to bypass API version issues.
+    dotenv.env['GEMINI_API_KEY'] = geminiKey;
   } else {
     // Fallback to standard .env file if it exists.
     await dotenv.load(fileName: '.env').catchError((_) => {});
