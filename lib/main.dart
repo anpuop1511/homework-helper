@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'providers/assignments_provider.dart';
@@ -19,6 +20,25 @@ import 'screens/username_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables. Supports two mechanisms:
+  //   1. A .env file bundled as a Flutter asset (add to pubspec.yaml assets locally).
+  //   2. --dart-define=GEMINI_API_KEY=xxx at build/run/test time (CI-friendly).
+  const geminiApiKeyFromDefine =
+      String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+  try {
+    await dotenv.load(
+      fileName: '.env',
+      mergeWith: {'GEMINI_API_KEY': geminiApiKeyFromDefine},
+    );
+  } catch (e) {
+    // .env not available as a bundled asset — populate from dart-define only.
+    debugPrint('[dotenv] .env not bundled; falling back to --dart-define: $e');
+    dotenv.loadFromString(
+      fileInput: 'GEMINI_API_KEY=$geminiApiKeyFromDefine',
+    );
+  }
+
   await NotificationService.instance.init();
 
   // Initialise Firebase.  If the placeholder firebase_options.dart has not
