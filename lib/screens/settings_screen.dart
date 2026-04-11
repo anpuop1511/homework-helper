@@ -907,7 +907,7 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
                   fontWeight: FontWeight.w600, fontSize: 14),
             ),
             subtitle: Text(
-              'Require biometrics when returning to the app.',
+              'Require biometrics once when the app is launched.',
               style:
                   TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
             ),

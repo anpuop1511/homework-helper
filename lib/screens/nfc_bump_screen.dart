@@ -34,6 +34,11 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
   String? _statusMessage;
   bool _success = false;
 
+  /// True once biometric verification has passed for the current bump flow.
+  /// Resets when the bump flow ends (success, error, or user stops) so that
+  /// the next bump requires a fresh verification. Not persisted to disk.
+  bool _bumpVerifiedThisSession = false;
+
   // Electric Blue for the glow effect.
   static const _electricBlue = Color(0xFF007FFF);
 
@@ -76,21 +81,24 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
   }
 
   Future<void> _startBumping() async {
-    // ── Biometric gate (if enabled in Security settings) ─────────────
-    final security = context.read<SecurityProvider>();
-    if (security.isBioNfcEnabled) {
-      final ok = await security.authenticate(
-          reason: 'Verify your identity to start NFC Bump');
-      if (!mounted) return;
-      if (!ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Biometric verification failed.'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Theme.of(context).colorScheme.errorContainer,
-          ),
-        );
-        return;
+    // ── Biometric gate (if enabled and not yet verified this bump flow) ──
+    if (!_bumpVerifiedThisSession) {
+      final security = context.read<SecurityProvider>();
+      if (security.isBioNfcEnabled) {
+        final ok = await security.authenticate(
+            reason: 'Verify your identity to start NFC Bump');
+        if (!mounted) return;
+        if (!ok) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Biometric verification failed.'),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Theme.of(context).colorScheme.errorContainer,
+            ),
+          );
+          return;
+        }
+        _bumpVerifiedThisSession = true;
       }
     }
 
@@ -181,6 +189,7 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
       _bumping = false;
       _success = true;
       _statusMessage = message;
+      _bumpVerifiedThisSession = false; // Reset for next bump flow.
     });
   }
 
@@ -191,6 +200,7 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
       _bumping = false;
       _success = false;
       _statusMessage = message;
+      _bumpVerifiedThisSession = false; // Reset for next bump flow.
     });
   }
 
@@ -201,6 +211,7 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
     setState(() {
       _bumping = false;
       _statusMessage = null;
+      _bumpVerifiedThisSession = false; // Reset for next bump flow.
     });
   }
 

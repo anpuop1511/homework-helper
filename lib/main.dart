@@ -210,8 +210,13 @@ class HomeworkHelperApp extends StatelessWidget {
   }
 }
 
-/// Wraps the entire app and shows a biometric lock screen whenever the app
-/// returns from the background while [SecurityProvider.isAppLockEnabled] is on.
+/// Wraps the entire app and shows a biometric lock screen once per cold start
+/// when [SecurityProvider.isAppLockEnabled] is on.
+///
+/// The lock is enforced exactly once per app process lifetime. After a
+/// successful unlock, the app stays unlocked for the rest of the session
+/// (even if the user backgrounds and foregrounds the app). Only killing and
+/// relaunching the process will trigger the prompt again.
 class _AppShieldGate extends StatefulWidget {
   final Widget child;
   const _AppShieldGate({required this.child});
@@ -225,10 +230,17 @@ class _AppShieldGateState extends State<_AppShieldGate>
   bool _locked = false;
   bool _authenticating = false;
 
+  /// True once the user has successfully unlocked during this app process.
+  /// Not persisted to disk — resets only on cold start (process kill + relaunch).
+  bool _unlockedThisSession = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Schedule the cold-start lock check after the first frame so all
+    // providers (including SecurityProvider) are fully initialised.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkColdStartLock());
   }
 
   @override
@@ -237,30 +249,24 @@ class _AppShieldGateState extends State<_AppShieldGate>
     super.dispose();
   }
 
+  /// Locks the app on cold start if App Lock is enabled. Calling this more
+  /// than once is safe — the guards prevent double-locking.
+  void _checkColdStartLock() {
+    if (!mounted || kIsWeb || _locked || _authenticating || _unlockedThisSession) {
+      return;
+    }
+    final security = context.read<SecurityProvider>();
+    if (security.isAppLockEnabled) {
+      setState(() => _locked = true);
+      _unlock();
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // App lock via biometrics is not supported on Web.
-    if (kIsWeb) return;
-    final security = context.read<SecurityProvider>();
-    if (state == AppLifecycleState.resumed) {
-      // Only trigger the App Lock if the app was genuinely backgrounded for
-      // longer than the grace period. This prevents the biometric prompt's
-      // own pause/resume cycle (which lasts only 1–3 s) from re-locking the
-      // app, eliminating the infinite-loop bug and the NFC double-prompt.
-      final elapsed = DateTime.now().difference(security.lastActive);
-      if (security.isAppLockEnabled &&
-          !_authenticating &&
-          elapsed > const Duration(seconds: 10)) {
-        setState(() => _locked = true);
-        _unlock();
-      } else {
-        security.recordActive();
-      }
-    } else if (state == AppLifecycleState.paused) {
-      // Record the time the app entered the background so the elapsed
-      // duration is accurate when it returns to the foreground.
-      security.recordActive();
-    }
+    // App Lock is enforced only once per cold start (process launch).
+    // Ignoring pause/resume transitions prevents the biometric prompt's own
+    // lifecycle events from re-triggering the lock and creating prompt loops.
   }
 
   Future<void> _unlock() async {
@@ -269,6 +275,7 @@ class _AppShieldGateState extends State<_AppShieldGate>
     final security = context.read<SecurityProvider>();
     final ok = await security.authenticate(reason: 'Unlock Homework Helper');
     if (!mounted) return;
+    if (ok) _unlockedThisSession = true;
     setState(() {
       _authenticating = false;
       _locked = !ok;
@@ -277,6 +284,18 @@ class _AppShieldGateState extends State<_AppShieldGate>
 
   @override
   Widget build(BuildContext context) {
+    // Watch SecurityProvider so that if its initial async load completes after
+    // the first frame, we still catch App Lock being enabled and trigger the
+    // cold-start check.
+    final security = context.watch<SecurityProvider>();
+    if (!kIsWeb &&
+        security.isAppLockEnabled &&
+        !_unlockedThisSession &&
+        !_locked &&
+        !_authenticating) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkColdStartLock());
+    }
+
     if (_locked) {
       return _AppShieldOverlay(onUnlock: _unlock);
     }
