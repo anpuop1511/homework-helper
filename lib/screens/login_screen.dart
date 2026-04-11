@@ -101,11 +101,13 @@ class _LoginScreenState extends State<LoginScreen>
       // _AuthGate in main.dart now handles routing to UsernameScreen for any
       // signed-in user without a handle (new sign-up or existing account).
     } on FirebaseAuthException catch (e) {
+      debugPrint('[LoginScreen] FirebaseAuthException: ${e.code} - ${e.message}');
       if (!mounted) return;
       _showError(app_auth.AuthProvider.friendlyError(e));
     } catch (e) {
+      debugPrint('[LoginScreen] Unexpected login error: $e');
       if (!mounted) return;
-      _showError('Something went wrong. Please try again.');
+      _showError(app_auth.AuthProvider.friendlyErrorFromObject(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -131,9 +133,11 @@ class _LoginScreenState extends State<LoginScreen>
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       _showError(app_auth.AuthProvider.friendlyError(e));
+      debugPrint('[LoginScreen] Password reset error: ${e.code} - ${e.message}');
     } catch (_) {
       if (!mounted) return;
       _showError('Could not send reset email. Please try again.');
+      debugPrint('[LoginScreen] Unexpected error during password reset.');
     }
   }
 

@@ -90,10 +90,19 @@ class AuthProvider extends ChangeNotifier {
   /// Throws a user-friendly [String] message on error so callers can show it
   /// directly in a [SnackBar] without parsing [FirebaseAuthException] codes.
   Future<void> signIn(String email, String password) async {
-    await _auth?.signInWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
+    final auth = _auth;
+    if (auth == null) {
+      throw StateError('Firebase auth is not available.');
+    }
+    try {
+      await auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      debugPrint('[AuthProvider] signIn failed: ${e.code} - ${e.message}');
+      rethrow;
+    }
   }
 
   /// Creates a new account with [email] and [password], then updates the
@@ -103,22 +112,40 @@ class AuthProvider extends ChangeNotifier {
     String password, {
     String? displayName,
   }) async {
-    final credential = await _auth?.createUserWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
-    if (displayName != null && displayName.isNotEmpty) {
-      await credential?.user?.updateDisplayName(displayName);
-      // Reload so currentUser.displayName is up-to-date immediately.
-      await _auth?.currentUser?.reload();
-      _user = _auth?.currentUser;
-      notifyListeners();
+    final auth = _auth;
+    if (auth == null) {
+      throw StateError('Firebase auth is not available.');
+    }
+    try {
+      final credential = await auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      if (displayName != null && displayName.isNotEmpty) {
+        await credential?.user?.updateDisplayName(displayName);
+        // Reload so currentUser.displayName is up-to-date immediately.
+        await auth.currentUser?.reload();
+        _user = auth.currentUser;
+        notifyListeners();
+      }
+    } on FirebaseAuthException catch (e) {
+      debugPrint('[AuthProvider] signUp failed: ${e.code} - ${e.message}');
+      rethrow;
     }
   }
 
   /// Sends a password-reset email to [email].
   Future<void> sendPasswordResetEmail(String email) async {
-    await _auth?.sendPasswordResetEmail(email: email.trim());
+    final auth = _auth;
+    if (auth == null) {
+      throw StateError('Firebase auth is not available.');
+    }
+    try {
+      await auth.sendPasswordResetEmail(email: email.trim());
+    } on FirebaseAuthException catch (e) {
+      debugPrint('[AuthProvider] password reset failed: ${e.code} - ${e.message}');
+      rethrow;
+    }
   }
 
   /// Sends a verification email to the current user.
@@ -133,6 +160,7 @@ class AuthProvider extends ChangeNotifier {
 
   /// Converts a [FirebaseAuthException] code into a human-readable message.
   static String friendlyError(FirebaseAuthException e) {
+    final message = e.message?.toLowerCase() ?? '';
     switch (e.code) {
       case 'user-not-found':
         return 'No account found for that email.';
@@ -150,8 +178,28 @@ class AuthProvider extends ChangeNotifier {
         return 'Too many attempts. Please wait a moment and try again.';
       case 'network-request-failed':
         return 'No internet connection. Please check your network.';
+      case 'operation-not-allowed':
+        return 'Email/password sign-in is not enabled for this Firebase project.';
+      case 'internal-error':
+        if (message.contains('identitytoolkit') || message.contains('blocked')) {
+          return 'Firebase is blocking password sign-in requests. Enable Email/Password sign-in and check your Google Cloud API key restrictions.';
+        }
+        return e.message ?? 'An unexpected error occurred.';
       default:
+        if (message.contains('identitytoolkit') || message.contains('blocked')) {
+          return 'Firebase is blocking password sign-in requests. Enable Email/Password sign-in and check your Google Cloud API key restrictions.';
+        }
         return e.message ?? 'An unexpected error occurred.';
     }
+  }
+
+  static String friendlyErrorFromObject(Object error) {
+    if (error is FirebaseAuthException) {
+      return friendlyError(error);
+    }
+    if (error is StateError && error.message.contains('Firebase auth is not available')) {
+      return 'Firebase is not ready on this device. Check Firebase initialization and your Firebase config files.';
+    }
+    return 'Something went wrong. Please try again.';
   }
 }

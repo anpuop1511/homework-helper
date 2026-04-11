@@ -1,5 +1,4 @@
 import 'dart:convert' show utf8;
-import 'dart:typed_data' show Uint8List;
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -67,8 +66,10 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
 
   Future<void> _checkNfc() async {
     try {
-      final available = await NfcManager.instance.isAvailable();
-      if (mounted) setState(() => _nfcAvailable = available);
+      final availability = await NfcManager.instance.checkAvailability();
+      if (mounted) {
+        setState(() => _nfcAvailable = availability == NfcAvailability.enabled);
+      }
     } catch (_) {
       if (mounted) setState(() => _nfcAvailable = false);
     }
@@ -105,6 +106,11 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
 
     try {
       await NfcManager.instance.startSession(
+        pollingOptions: const {
+          NfcPollingOption.iso14443,
+          NfcPollingOption.iso15693,
+          NfcPollingOption.iso18092,
+        },
         onDiscovered: (NfcTag tag) async {
           // Try to write first (so the phone with an active write session
           // acts as the "sender").  Fall back to reading if write fails.
@@ -203,7 +209,6 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
     final colorScheme = Theme.of(context).colorScheme;
     final auth = context.watch<AuthProvider>();
     final username = auth.username ?? auth.currentUser?.displayName ?? 'you';
-    final uid = auth.uid ?? '';
     final profileUrl = 'https://homeworkhelper.app/invite/@$username';
 
     return Scaffold(
