@@ -94,7 +94,16 @@ class DatabaseService {
     try {
       await _db.runTransaction((tx) async {
         final snap = await tx.get(_usernameDoc(lower));
-        if (snap.exists) throw Exception('taken');
+        if (snap.exists) {
+          // If the handle is already owned by this user (e.g. a retry after a
+          // partial write), just ensure the user document is in sync and
+          // treat the operation as successful.
+          if (snap.data()?['uid'] == uid) {
+            tx.set(_userDoc(uid), {'username': lower}, SetOptions(merge: true));
+            return;
+          }
+          throw Exception('taken');
+        }
         tx.set(_usernameDoc(lower), {'uid': uid});
         tx.set(_userDoc(uid), {'username': lower}, SetOptions(merge: true));
       });
