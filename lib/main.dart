@@ -29,8 +29,8 @@ Future<void> main() async {
   // Load environment variables.
   const geminiKey = String.fromEnvironment('GEMINI_API_KEY');
   if (geminiKey.isNotEmpty) {
-    // Correct way to inject keys into flutter_dotenv 6.x
-    dotenv.testLoad(fileInput: 'GEMINI_API_KEY=$geminiKey');
+    // Directly inject the key into the env map — works in flutter_dotenv 6.0.0.
+    dotenv.env['GEMINI_API_KEY'] = geminiKey;
   } else {
     // Fallback to standard .env file if it exists.
     await dotenv.load(fileName: '.env').catchError((_) => {});
