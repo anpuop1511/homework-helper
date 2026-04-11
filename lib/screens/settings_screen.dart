@@ -127,6 +127,95 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 28),
 
+            // ── 👁️ Profile Privacy ───────────────────────────────
+            _SectionLabel(label: '👁️  Profile Privacy', colorScheme: colorScheme),
+            const SizedBox(height: 10),
+            _SquircleCard(
+              colorScheme: colorScheme,
+              child: Column(
+                children: [
+                  // Profile visibility
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.visibility_rounded,
+                          color: colorScheme.onPrimaryContainer, size: 20),
+                    ),
+                    title: Text(
+                      'Profile Visibility',
+                      style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      _profileVisibilityLabel(socialProvider.profileVisibility),
+                      style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                    ),
+                    trailing: DropdownButton<ProfileVisibility>(
+                      value: socialProvider.profileVisibility,
+                      underline: const SizedBox.shrink(),
+                      items: ProfileVisibility.values.map((v) {
+                        return DropdownMenuItem(
+                          value: v,
+                          child: Text(_profileVisibilityLabel(v),
+                              style: textTheme.bodyMedium),
+                        );
+                      }).toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          context.read<SocialProvider>().setProfileVisibility(v);
+                        }
+                      },
+                    ),
+                  ),
+                  Divider(height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
+                  // Friend requests privacy
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.person_add_rounded,
+                          color: colorScheme.onSecondaryContainer, size: 20),
+                    ),
+                    title: Text(
+                      'Who Can Add Me',
+                      style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      _friendRequestsLabel(socialProvider.friendRequestsPrivacy),
+                      style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                    ),
+                    trailing: DropdownButton<FriendRequestsPrivacy>(
+                      value: socialProvider.friendRequestsPrivacy,
+                      underline: const SizedBox.shrink(),
+                      items: FriendRequestsPrivacy.values.map((v) {
+                        return DropdownMenuItem(
+                          value: v,
+                          child: Text(_friendRequestsLabel(v),
+                              style: textTheme.bodyMedium),
+                        );
+                      }).toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          context.read<SocialProvider>().setFriendRequestsPrivacy(v);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+
             // ── 🔒 Privacy & Security ─────────────────────────────────
             _SectionLabel(
                 label: '🔒  Privacy & Security',
@@ -406,6 +495,21 @@ class SettingsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _profileVisibilityLabel(ProfileVisibility v) {
+    switch (v) {
+      case ProfileVisibility.public: return 'Public';
+      case ProfileVisibility.friendsOnly: return 'Friends Only';
+      case ProfileVisibility.private: return 'Private';
+    }
+  }
+
+  String _friendRequestsLabel(FriendRequestsPrivacy v) {
+    switch (v) {
+      case FriendRequestsPrivacy.everyone: return 'Everyone';
+      case FriendRequestsPrivacy.nobody: return 'Nobody';
+    }
   }
 
   /// Returns a short human-readable device / platform label.
