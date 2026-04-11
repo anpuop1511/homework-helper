@@ -168,10 +168,7 @@ class _LoginScreenState extends State<LoginScreen>
     try {
       authenticated = await localAuth.authenticate(
         localizedReason: 'Sign in with your Passkey',
-        options: const AuthenticationOptions(
-          biometricOnly: false,
-          stickyAuth: true,
-        ),
+        persistAcrossBackgrounding: true,
       );
     } catch (_) {
       authenticated = false;
