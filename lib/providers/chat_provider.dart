@@ -39,8 +39,8 @@ class ChatProvider extends ChangeNotifier {
 
   static const _kHistoryEnabled = 'chat_history_enabled';
 
-  late final GenerativeModel _model;
-  late ChatSession _session;
+  GenerativeModel? _model;
+  ChatSession? _session;
 
   static ChatMessage _welcomeMessage() => ChatMessage(
         text: 'Hi! I\'m your AI Study Buddy 🤖📚 powered by Gemini. '
@@ -79,13 +79,19 @@ class ChatProvider extends ChangeNotifier {
   String? get error => _error;
 
   ChatProvider() {
+    _loadPrefs();
+  }
+
+  /// Lazily creates [_model] and [_session] on first use so the constructor
+  /// does not access [AppSecrets.geminiApiKey] before [dotenv] is ready.
+  void _ensureModel() {
+    if (_model != null) return;
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',
       apiKey: AppSecrets.geminiApiKey,
       systemInstruction: Content.system(_systemPrompt),
     );
-    _session = _model.startChat();
-    _loadPrefs();
+    _session ??= _model!.startChat();
   }
 
   Future<void> _loadPrefs() async {
@@ -127,6 +133,7 @@ class ChatProvider extends ChangeNotifier {
   Future<void> sendMessage(String userText) async {
     final trimmed = userText.trim();
     if (trimmed.isEmpty || _isStreaming) return;
+    _ensureModel();
 
     _error = null;
 
@@ -151,7 +158,7 @@ class ChatProvider extends ChangeNotifier {
     final aiIndex = list.length - 1;
 
     try {
-      final stream = _session.sendMessageStream(
+      final stream = _session!.sendMessageStream(
         Content.text(trimmed),
       );
 
@@ -285,7 +292,8 @@ class ChatProvider extends ChangeNotifier {
   ///
   /// Resets both the persistent history and the ghost-mode buffer.
   void clearChat() {
-    _session = _model.startChat();
+    _ensureModel();
+    _session = _model!.startChat();
     _messages
       ..clear()
       ..add(_welcomeMessage());
