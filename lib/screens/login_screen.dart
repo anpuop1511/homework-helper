@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:local_auth/local_auth.dart';
@@ -153,6 +154,10 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _signInWithPasskey() async {
+    if (kIsWeb) {
+      _showError('Passkey sign-in is not supported on Web.');
+      return;
+    }
     final security = context.read<SecurityProvider>();
     if (!security.isPasskeySet) {
       _showError('No Passkey registered. Set one up in Settings → Biometrics.');
@@ -533,7 +538,8 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Sign in with Passkey
+                  // Sign in with Passkey (not available on Web)
+                  if (!kIsWeb)
                   FadeInUp(
                     delay: const Duration(milliseconds: 700),
                     duration: const Duration(milliseconds: 400),

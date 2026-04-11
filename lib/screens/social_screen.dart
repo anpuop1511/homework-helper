@@ -58,54 +58,6 @@ class _SocialScreenState extends State<SocialScreen> {
     }
   }
 
-  /// Shows a dialog where the user can manually enter a @username or email
-  /// to send a friend request — the NFC fallback flow.
-  Future<void> _showAddFriendDialog(BuildContext context) async {
-    final controller = TextEditingController();
-
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.person_add_rounded, color: _kElectricBlue),
-            SizedBox(width: 10),
-            Text('Add a Friend'),
-          ],
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: TextInputType.text,
-          decoration: const InputDecoration(
-            hintText: '@username or email',
-            prefixIcon: Icon(Icons.alternate_email_rounded),
-          ),
-          onSubmitted: (_) => Navigator.of(ctx).pop(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: _kElectricBlue,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              _handleController.text = controller.text.trim();
-              Navigator.of(ctx).pop();
-              _sendRequest(context);
-            },
-            child: const Text('Send Request'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -127,14 +79,6 @@ class _SocialScreenState extends State<SocialScreen> {
             color: colorScheme.onSurface,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add_rounded, color: _kElectricBlue),
-            tooltip: 'Add Friend',
-            onPressed: () => _showAddFriendDialog(context),
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: SafeArea(
         top: false,
