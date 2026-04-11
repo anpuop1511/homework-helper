@@ -695,6 +695,32 @@ class _GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
 
 // ── Message Bubble ─────────────────────────────────────────────────────────
 
+/// Strips common Markdown formatting so raw API output renders cleanly in a
+/// plain [Text] widget (e.g. `**bold**` → `bold`, `# Heading` → `Heading`).
+String _sanitizeMarkdown(String raw) {
+  var text = raw;
+  // Fenced code blocks  (```…```)
+  text = text.replaceAll(RegExp(r'```[a-zA-Z]*\n?'), '').replaceAll('```', '');
+  // Inline code (`code`)
+  text = text.replaceAll(RegExp(r'`([^`]*)`'), r'$1');
+  // Bold + italic (***text***)
+  text = text.replaceAll(RegExp(r'\*{3}([^*]*)\*{3}'), r'$1');
+  // Bold (**text**)
+  text = text.replaceAll(RegExp(r'\*{2}([^*]*)\*{2}'), r'$1');
+  // Italic (*text* or _text_)
+  text = text.replaceAll(RegExp(r'\*([^*]+)\*'), r'$1');
+  text = text.replaceAll(RegExp(r'_([^_]+)_'), r'$1');
+  // ATX headings (### Heading)
+  text = text.replaceAll(RegExp(r'^#{1,6}\s+', multiLine: true), '');
+  // Unordered list markers (- item or * item)
+  text = text.replaceAll(RegExp(r'^\s*[-*]\s+', multiLine: true), '• ');
+  // Horizontal rules (--- or ***)
+  text = text.replaceAll(RegExp(r'^\s*[-*]{3,}\s*$', multiLine: true), '');
+  // Trim excessive blank lines
+  text = text.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+  return text.trim();
+}
+
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final ColorScheme colorScheme;
@@ -764,7 +790,7 @@ class _MessageBubble extends StatelessWidget {
                 const SizedBox(height: 4),
               ],
               Text(
-                message.text,
+                _sanitizeMarkdown(message.text),
                 style: textTheme.bodyMedium?.copyWith(
                   color: isUser
                       ? colorScheme.onPrimaryContainer
