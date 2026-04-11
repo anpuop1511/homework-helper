@@ -26,19 +26,15 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load environment variables. Supports two mechanisms:
-  //   1. A .env file bundled as a Flutter asset (add to pubspec.yaml assets locally).
-  //   2. --dart-define=GEMINI_API_KEY=xxx at build/run/test time (CI-friendly).
-  const geminiApiKeyFromDefine =
-      String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
-  try {
-    await dotenv.load(
-      fileName: '.env',
-      mergeWith: {'GEMINI_API_KEY': geminiApiKeyFromDefine},
-    );
-  } catch (e) {
-    // .env not available as a bundled asset — populate from dart-define only.
-    debugPrint('[dotenv] .env not bundled; falling back to --dart-define: $e');
-    await dotenv.testLoad(fileInput: 'GEMINI_API_KEY=$geminiApiKeyFromDefine');
+  //   1. --dart-define=GEMINI_API_KEY=xxx at build/run/test time (CI-friendly).
+  //   2. A .env file bundled as a Flutter asset (add to pubspec.yaml assets locally).
+  const geminiKey = String.fromEnvironment('GEMINI_API_KEY');
+  if (geminiKey.isNotEmpty) {
+    dotenv.clean();
+    dotenv.loadFromMap({'GEMINI_API_KEY': geminiKey});
+  } else {
+    // Fallback to standard .env file if it exists.
+    await dotenv.load(fileName: '.env').catchError((_) => {});
   }
 
   await NotificationService.instance.init();
