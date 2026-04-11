@@ -30,6 +30,7 @@ class SettingsScreen extends StatelessWidget {
     final socialProvider = context.watch<SocialProvider>();
     final security = context.watch<SecurityProvider>();
     final auth = context.watch<AuthProvider>();
+    final chat = context.watch<ChatProvider>();
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -163,6 +164,45 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     subtitle: Text(
                       'Let friends see when you are in a focus session.',
+                      style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                  Divider(
+                      height: 1,
+                      color: colorScheme.outlineVariant.withAlpha(100)),
+
+                  // Ghost Mode (Pause History)
+                  SwitchListTile(
+                    value: !chat.isHistoryEnabled,
+                    onChanged: (v) =>
+                        context.read<ChatProvider>().setHistoryEnabled(!v),
+                    contentPadding: EdgeInsets.zero,
+                    secondary: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: !chat.isHistoryEnabled
+                            ? colorScheme.secondaryContainer
+                            : colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '👻',
+                          style: const TextStyle(fontSize: 20),
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      'Ghost Mode',
+                      style: textTheme.bodyLarge
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      !chat.isHistoryEnabled
+                          ? 'New chats are not saved to history.'
+                          : 'Chat history is being recorded.',
                       style: textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant),
                     ),
