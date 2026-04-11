@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart' show ChangeNotifier, kIsWeb;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,8 +12,11 @@ class SecurityProvider extends ChangeNotifier {
   static const _kBioNfc = 'security_bio_nfc';
   static const _kPasskeySet = 'security_passkey_set';
   static const _kAiEnabled = 'security_ai_enabled';
+  static const _kPasskeyEmail = 'passkey_email';
+  static const _kPasskeyPassword = 'passkey_password';
 
   final LocalAuthentication _auth = LocalAuthentication();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   bool _isAppLockEnabled = false;
   bool _isBioNfcEnabled = false;
@@ -64,6 +68,26 @@ class SecurityProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kPasskeySet, value);
+    if (!value) {
+      // Clear stored credentials when passkey is removed.
+      await _secureStorage.delete(key: _kPasskeyEmail);
+      await _secureStorage.delete(key: _kPasskeyPassword);
+    }
+  }
+
+  /// Stores the user's email and password securely so the Passkey sign-in
+  /// can re-authenticate with Firebase after biometric verification succeeds.
+  Future<void> storePasskeyCredentials(String email, String password) async {
+    await _secureStorage.write(key: _kPasskeyEmail, value: email);
+    await _secureStorage.write(key: _kPasskeyPassword, value: password);
+  }
+
+  /// Returns the stored passkey credentials, or `null` if none are saved.
+  Future<({String email, String password})?> getPasskeyCredentials() async {
+    final email = await _secureStorage.read(key: _kPasskeyEmail);
+    final password = await _secureStorage.read(key: _kPasskeyPassword);
+    if (email == null || password == null) return null;
+    return (email: email, password: password);
   }
 
   /// Enables or disables AI features app-wide.

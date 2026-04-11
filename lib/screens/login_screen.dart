@@ -3,6 +3,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
@@ -98,6 +99,9 @@ class _LoginScreenState extends State<LoginScreen>
         context.read<UserProvider>().setName(name);
       }
       context.read<UserProvider>().recordActivity();
+      // Notify the platform's autofill service that the user has signed in so
+      // that it can prompt to save the credentials.
+      TextInput.finishAutofillContext();
       // _AuthGate in main.dart now handles routing to UsernameScreen for any
       // signed-in user without a handle (new sign-up or existing account).
     } on FirebaseAuthException catch (e) {
@@ -178,13 +182,35 @@ class _LoginScreenState extends State<LoginScreen>
       authenticated = false;
     }
     if (!mounted) return;
-    if (authenticated) {
-      context.read<UserProvider>().recordActivity();
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainScaffold()),
-      );
-    } else {
+    if (!authenticated) {
       _showError('Passkey verification failed. Please try again.');
+      return;
+    }
+
+    // Retrieve the stored credentials and sign in with Firebase.
+    final credentials = await security.getPasskeyCredentials();
+    if (!mounted) return;
+    if (credentials == null) {
+      _showError(
+          'No stored credentials found. Please sign in with email & password and set up your Passkey again in Settings.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final auth = context.read<app_auth.AuthProvider>();
+      await auth.signIn(credentials.email, credentials.password);
+      if (!mounted) return;
+      context.read<UserProvider>().recordActivity();
+      // _AuthGate will route appropriately once Firebase auth state updates.
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      _showError(app_auth.AuthProvider.friendlyError(e));
+    } catch (e) {
+      if (!mounted) return;
+      _showError('Sign-in failed. Please use email & password instead.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -321,14 +347,47 @@ class _LoginScreenState extends State<LoginScreen>
                         padding: const EdgeInsets.all(20),
                         child: FadeTransition(
                           opacity: _fadeAnim,
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (!_isSignIn) ...[
+                          child: AutofillGroup(
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (!_isSignIn) ...[
+                                    Text(
+                                      'Full Name',
+                                      style: GoogleFonts.lexend(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TextFormField(
+                                      controller: _nameController,
+                                      textCapitalization:
+                                          TextCapitalization.words,
+                                      decoration: InputDecoration(
+                                        hintText: 'e.g. Alex Johnson',
+                                        prefixIcon:
+                                            const Icon(Icons.person_outline),
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(_kInputRadius),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        filled: true,
+                                        fillColor: colorScheme.surface,
+                                      ),
+                                      validator: (v) =>
+                                          (v == null || v.trim().isEmpty)
+                                              ? 'Please enter your name'
+                                              : null,
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
                                   Text(
-                                    'Full Name',
+                                    'Email',
                                     style: GoogleFonts.lexend(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -337,141 +396,111 @@ class _LoginScreenState extends State<LoginScreen>
                                   ),
                                   const SizedBox(height: 8),
                                   TextFormField(
-                                    controller: _nameController,
-                                    textCapitalization:
-                                        TextCapitalization.words,
+                                    controller: _emailController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    autofillHints: const [AutofillHints.email],
                                     decoration: InputDecoration(
-                                      hintText: 'e.g. Alex Johnson',
+                                      hintText: 'you@example.com',
                                       prefixIcon:
-                                          const Icon(Icons.person_outline),
+                                          const Icon(Icons.email_outlined),
                                       border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(_kInputRadius),
+                                        borderRadius: BorderRadius.circular(_kInputRadius),
                                         borderSide: BorderSide.none,
                                       ),
                                       filled: true,
                                       fillColor: colorScheme.surface,
                                     ),
-                                    validator: (v) =>
-                                        (v == null || v.trim().isEmpty)
-                                            ? 'Please enter your name'
-                                            : null,
+                                    validator: (v) {
+                                      if (v == null || v.trim().isEmpty) {
+                                        return 'Please enter your email';
+                                      }
+                                      if (!v.contains('@')) {
+                                        return 'Please enter a valid email';
+                                      }
+                                      return null;
+                                    },
                                   ),
                                   const SizedBox(height: 16),
-                                ],
-                                Text(
-                                  'Email',
-                                  style: GoogleFonts.lexend(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                TextFormField(
-                                  controller: _emailController,
-                                  keyboardType: TextInputType.emailAddress,
-                                  decoration: InputDecoration(
-                                    hintText: 'you@example.com',
-                                    prefixIcon:
-                                        const Icon(Icons.email_outlined),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(_kInputRadius),
-                                      borderSide: BorderSide.none,
+                                  Text(
+                                    'Password',
+                                    style: GoogleFonts.lexend(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: colorScheme.onSurfaceVariant,
                                     ),
-                                    filled: true,
-                                    fillColor: colorScheme.surface,
                                   ),
-                                  validator: (v) {
-                                    if (v == null || v.trim().isEmpty) {
-                                      return 'Please enter your email';
-                                    }
-                                    if (!v.contains('@')) {
-                                      return 'Please enter a valid email';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Password',
-                                  style: GoogleFonts.lexend(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                TextFormField(
-                                  controller: _passwordController,
-                                  obscureText: _obscurePassword,
-                                  decoration: InputDecoration(
-                                    hintText: '••••••••',
-                                    prefixIcon:
-                                        const Icon(Icons.lock_outline),
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        _obscurePassword
-                                            ? Icons.visibility_outlined
-                                            : Icons.visibility_off_outlined,
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: _passwordController,
+                                    obscureText: _obscurePassword,
+                                    autofillHints: const [AutofillHints.password],
+                                    decoration: InputDecoration(
+                                      hintText: '••••••••',
+                                      prefixIcon:
+                                          const Icon(Icons.lock_outline),
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _obscurePassword
+                                              ? Icons.visibility_outlined
+                                              : Icons.visibility_off_outlined,
+                                        ),
+                                        onPressed: () => setState(() =>
+                                            _obscurePassword =
+                                                !_obscurePassword),
                                       ),
-                                      onPressed: () => setState(() =>
-                                          _obscurePassword =
-                                              !_obscurePassword),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(_kInputRadius),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      filled: true,
+                                      fillColor: colorScheme.surface,
                                     ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(_kInputRadius),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    filled: true,
-                                    fillColor: colorScheme.surface,
+                                    validator: (v) => (v == null || v.length < 6)
+                                        ? 'Password must be at least 6 characters'
+                                        : null,
                                   ),
-                                  validator: (v) => (v == null || v.length < 6)
-                                      ? 'Password must be at least 6 characters'
-                                      : null,
-                                ),
-                                if (_isSignIn) ...[
-                                  const SizedBox(height: 4),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: TextButton(
-                                      onPressed: _forgotPassword,
-                                      child: Text(
-                                        'Forgot password?',
-                                        style: GoogleFonts.lexend(
-                                          color: colorScheme.primary,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 13,
+                                  if (_isSignIn) ...[
+                                    const SizedBox(height: 4),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton(
+                                        onPressed: _forgotPassword,
+                                        child: Text(
+                                          'Forgot password?',
+                                          style: GoogleFonts.lexend(
+                                            color: colorScheme.primary,
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                                const SizedBox(height: 20),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 54,
-                                  child: FilledButton(
-                                    onPressed: _isLoading ? null : _submit,
-                                    style: FilledButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(_kButtonRadius),
+                                  ],
+                                  const SizedBox(height: 20),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 54,
+                                    child: FilledButton(
+                                      onPressed: _isLoading ? null : _submit,
+                                      style: FilledButton.styleFrom(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(_kButtonRadius),
+                                        ),
                                       ),
-                                    ),
-                                    child: _isLoading
-                                        ? const SizedBox(
-                                            width: 22,
-                                            height: 22,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.5,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : Text(
-                                            _isSignIn
-                                                ? 'Sign In'
-                                                : 'Create Account',
+                                      child: _isLoading
+                                          ? const SizedBox(
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.5,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : Text(
+                                              _isSignIn
+                                                  ? 'Sign In'
+                                                  : 'Create Account',
                                             style: GoogleFonts.lexend(
                                               fontSize: 16,
                                               fontWeight: FontWeight.w700,
@@ -479,7 +508,8 @@ class _LoginScreenState extends State<LoginScreen>
                                           ),
                                   ),
                                 ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),

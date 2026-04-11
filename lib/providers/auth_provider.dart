@@ -23,6 +23,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isSignedIn => _user != null;
   String? get uid => _user?.uid;
   String? get email => _user?.email;
+  String? get currentUserEmail => _user?.email;
   bool get isEmailVerified => _user?.emailVerified ?? false;
 
   /// The user's @handle, or null if not yet chosen.
@@ -151,6 +152,26 @@ class AuthProvider extends ChangeNotifier {
   /// Sends a verification email to the current user.
   Future<void> sendEmailVerification() async {
     await _auth?.currentUser?.sendEmailVerification();
+  }
+
+  /// Re-authenticates the current user with their password to verify it.
+  ///
+  /// Throws a [FirebaseAuthException] if the password is wrong.
+  Future<void> verifyCurrentPassword(String password) async {
+    final auth = _auth;
+    final user = auth?.currentUser;
+    if (auth == null || user == null) {
+      throw StateError('No signed-in user.');
+    }
+    final email = user.email;
+    if (email == null) {
+      throw StateError('Current user has no email.');
+    }
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
+    await user.reauthenticateWithCredential(credential);
   }
 
   /// Signs the current user out.

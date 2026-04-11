@@ -727,12 +727,97 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
   ColorScheme get cs => widget.colorScheme;
 
   Future<void> _setupPasskey(SecurityProvider security) async {
+    // First, prompt the user for their password so we can store credentials
+    // that will be used to re-authenticate with Firebase when using the Passkey.
+    final passwordController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Confirm Your Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter your password to securely link your biometric to your account.',
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              autofillHints: const [AutofillHints.password],
+              decoration: InputDecoration(
+                labelText: 'Password',
+                prefixIcon: const Icon(Icons.lock_outline),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
+      passwordController.dispose();
+      return;
+    }
+
+    final password = passwordController.text;
+    passwordController.dispose();
+
+    if (password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Password cannot be empty.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: cs.errorContainer,
+        ),
+      );
+      return;
+    }
+
     setState(() => _setupLoading = true);
+
+    // Verify the password with Firebase before registering the passkey.
+    final authProvider =
+        context.read<AuthProvider>();
+    try {
+      await authProvider.verifyCurrentPassword(password);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _setupLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Incorrect password. Passkey setup cancelled.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: cs.errorContainer,
+        ),
+      );
+      return;
+    }
+
     final ok = await security.authenticate(
         reason: 'Register your biometric as a Passkey');
     if (!mounted) return;
     setState(() => _setupLoading = false);
     if (ok) {
+      final email = authProvider.currentUserEmail ?? '';
+      await security.storePasskeyCredentials(email, password);
       await security.setPasskeySet(true);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
