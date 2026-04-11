@@ -8,6 +8,13 @@ import '../providers/auth_provider.dart' as app_auth;
 import '../providers/user_provider.dart';
 import 'main_scaffold.dart';
 
+// Squircle / Expressive radius constants — 24.0 throughout.
+const double _kCardRadius = 24.0;
+const double _kInputRadius = 24.0;
+const double _kButtonRadius = 24.0;
+const double _kToggleContainerRadius = 24.0;
+const double _kToggleTabRadius = 20.0;
+
 /// A modern Material 3 Expressive login screen with Sign In / Sign Up modes.
 ///
 /// Features:
@@ -233,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen>
                     child: Container(
                       decoration: BoxDecoration(
                         color: colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(_kToggleContainerRadius),
                       ),
                       padding: const EdgeInsets.all(4),
                       child: Row(
@@ -267,7 +274,7 @@ class _LoginScreenState extends State<LoginScreen>
                       elevation: 0,
                       color: colorScheme.surfaceContainerLow,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(_kCardRadius),
                         side: BorderSide(
                           color: colorScheme.outlineVariant.withAlpha(80),
                         ),
@@ -301,7 +308,7 @@ class _LoginScreenState extends State<LoginScreen>
                                           const Icon(Icons.person_outline),
                                       border: OutlineInputBorder(
                                         borderRadius:
-                                            BorderRadius.circular(16),
+                                            BorderRadius.circular(_kInputRadius),
                                         borderSide: BorderSide.none,
                                       ),
                                       filled: true,
@@ -331,7 +338,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     prefixIcon:
                                         const Icon(Icons.email_outlined),
                                     border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(_kInputRadius),
                                       borderSide: BorderSide.none,
                                     ),
                                     filled: true,
@@ -375,7 +382,7 @@ class _LoginScreenState extends State<LoginScreen>
                                               !_obscurePassword),
                                     ),
                                     border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(_kInputRadius),
                                       borderSide: BorderSide.none,
                                     ),
                                     filled: true,
@@ -411,7 +418,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     style: FilledButton.styleFrom(
                                       shape: RoundedRectangleBorder(
                                         borderRadius:
-                                            BorderRadius.circular(24),
+                                            BorderRadius.circular(_kButtonRadius),
                                       ),
                                     ),
                                     child: _isLoading
@@ -487,7 +494,7 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                         style: OutlinedButton.styleFrom(
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(_kButtonRadius),
                           ),
                         ),
                       ),
@@ -596,7 +603,7 @@ class _ModeTab extends StatelessWidget {
             color: isSelected
                 ? colorScheme.primaryContainer
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(_kToggleTabRadius),
           ),
           child: Center(
             child: Text(
