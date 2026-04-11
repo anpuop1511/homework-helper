@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/assignment.dart';
 import '../providers/assignments_provider.dart';
+import '../providers/chat_provider.dart';
 
 /// A modal bottom sheet for adding a new assignment.
 /// Uses [ChoiceChip]s for subject selection and [showDatePicker] for the due date.
@@ -19,6 +21,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   final _titleController = TextEditingController();
   String _selectedSubject = Subject.math;
   DateTime _dueDate = DateTime.now().add(const Duration(days: 1));
+  bool _scanning = false;
 
   static const List<String> _subjectOptions = [
     Subject.math,
@@ -35,6 +38,38 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   void dispose() {
     _titleController.dispose();
     super.dispose();
+  }
+
+  /// Uses the device camera (or gallery) to capture a worksheet photo,
+  /// then calls Gemini Vision to extract the task title and pre-fills the field.
+  Future<void> _scanWorksheet() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+
+    setState(() => _scanning = true);
+    final extracted =
+        await context.read<ChatProvider>().extractTaskFromImage(bytes);
+    if (!mounted) return;
+    setState(() => _scanning = false);
+
+    if (extracted != null && extracted.isNotEmpty) {
+      _titleController.text = extracted;
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not extract a task title. Try again.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _pickDate() async {
@@ -92,11 +127,31 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            Text(
-              'Add Assignment',
-              style: textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Add Assignment',
+                  style: textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                // AI Lens: scan a worksheet to auto-fill the title
+                _scanning
+                    ? const SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: Padding(
+                          padding: EdgeInsets.all(10),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.camera_alt_outlined),
+                        tooltip: 'Scan worksheet with AI',
+                        onPressed: _scanWorksheet,
+                      ),
+              ],
             ),
             const SizedBox(height: 20),
             // Title field

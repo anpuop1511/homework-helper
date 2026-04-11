@@ -49,10 +49,12 @@ class ChatProvider extends ChangeNotifier {
   ];
 
   bool _isStreaming = false;
+  bool _isLiveActive = false;
   String? _error;
 
   List<ChatMessage> get messages => List.unmodifiable(_messages);
   bool get isStreaming => _isStreaming;
+  bool get isLiveActive => _isLiveActive;
   String? get error => _error;
 
   ChatProvider() {
@@ -179,6 +181,41 @@ class ChatProvider extends ChangeNotifier {
     } finally {
       _isStreaming = false;
       notifyListeners();
+    }
+  }
+
+  /// Toggles Gemini Live Voice mode on/off.
+  ///
+  /// This is a placeholder for the Gemini Live API integration.
+  /// When [isLiveActive] is true, the UI shows the waveform pulse overlay.
+  void startLiveVoice() {
+    _isLiveActive = !_isLiveActive;
+    notifyListeners();
+  }
+
+  /// Sends an image to Gemini Vision and returns the extracted task title.
+  ///
+  /// Unlike [sendImageMessage], this method does **not** add anything to the
+  /// chat history — it's designed for silent extraction in the AddTaskSheet.
+  Future<String?> extractTaskFromImage(Uint8List imageBytes) async {
+    try {
+      final visionModel = GenerativeModel(
+        model: 'gemini-2.5-flash',
+        apiKey: AppSecrets.geminiApiKey,
+      );
+      final response = await visionModel.generateContent([
+        Content.multi([
+          TextPart(
+            'Extract the main assignment or homework task title from this '
+            'worksheet image. Return only a short task title (max 10 words), '
+            'nothing else.',
+          ),
+          DataPart('image/jpeg', imageBytes),
+        ]),
+      ]);
+      return response.text?.trim();
+    } catch (_) {
+      return null;
     }
   }
 

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui';
+import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -266,6 +267,8 @@ class _ChatScreenState extends State<ChatScreen>
       appBar: _GlassAppBar(
         colorScheme: colorScheme,
         textTheme: textTheme,
+        isLiveActive: chat.isLiveActive,
+        onLivePulse: () => context.read<ChatProvider>().startLiveVoice(),
         onClear: chat.messages.length > 1
             ? () => context.read<ChatProvider>().clearChat()
             : null,
@@ -317,6 +320,38 @@ class _ChatScreenState extends State<ChatScreen>
                       await _tts.stop();
                       setState(() => _voiceState = _VoiceState.idle);
                     },
+            ),
+          // ── Live Pulse overlay (Gemini Live voice mode) ─────────────
+          if (chat.isLiveActive)
+            FadeInDown(
+              duration: const Duration(milliseconds: 300),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: _kElectricBlue.withAlpha(20),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: _kElectricBlue.withAlpha(80),
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    _WaveformBars(controller: _waveController, barCount: 9),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Gemini Live Voice Active — tap 🎙️ to stop',
+                        style: TextStyle(
+                          color: _kElectricBlue,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           // Message list
           Expanded(
@@ -572,10 +607,14 @@ class _GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   final ColorScheme colorScheme;
   final TextTheme textTheme;
   final VoidCallback? onClear;
+  final bool isLiveActive;
+  final VoidCallback onLivePulse;
 
   const _GlassAppBar({
     required this.colorScheme,
     required this.textTheme,
+    required this.isLiveActive,
+    required this.onLivePulse,
     this.onClear,
   });
 
@@ -612,9 +651,11 @@ class _GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                   ),
                   Text(
-                    'Powered by Gemini AI',
+                    isLiveActive ? 'Live Voice Active 🎙️' : 'Powered by Gemini AI',
                     style: textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+                      color: isLiveActive
+                          ? _kElectricBlue
+                          : colorScheme.onSurfaceVariant,
                       fontSize: 11,
                     ),
                   ),
@@ -623,6 +664,21 @@ class _GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
             ],
           ),
           actions: [
+            // ── Live Pulse button ──────────────────────────────────────
+            Pulse(
+              infinite: isLiveActive,
+              duration: const Duration(milliseconds: 900),
+              child: IconButton(
+                icon: Icon(
+                  isLiveActive
+                      ? Icons.graphic_eq_rounded
+                      : Icons.mic_external_on_rounded,
+                  color: isLiveActive ? _kElectricBlue : colorScheme.onSurfaceVariant,
+                ),
+                tooltip: isLiveActive ? 'Stop Live Voice' : 'Start Live Voice',
+                onPressed: onLivePulse,
+              ),
+            ),
             if (onClear != null)
               IconButton(
                 icon: const Icon(Icons.refresh_rounded),
