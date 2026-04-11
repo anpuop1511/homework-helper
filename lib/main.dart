@@ -16,6 +16,7 @@ import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_scaffold.dart';
+import 'screens/splash_screen.dart';
 import 'screens/username_screen.dart';
 
 Future<void> main() async {
@@ -168,9 +169,7 @@ class _AuthGateState extends State<_AuthGate> {
           ),
         );
       }
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const SplashScreen();
     }
 
     // Loading finished – cancel any pending retry timer.
