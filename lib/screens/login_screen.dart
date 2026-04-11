@@ -542,7 +542,7 @@ class _LoginScreenState extends State<LoginScreen>
                       height: 54,
                       child: OutlinedButton.icon(
                         onPressed: _signInWithPasskey,
-                        icon: const Icon(Icons.passkey_rounded),
+                        icon: const Icon(Icons.fingerprint_rounded),
                         label: Text(
                           'Sign in with Passkey',
                           style: GoogleFonts.lexend(
