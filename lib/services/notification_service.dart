@@ -130,8 +130,6 @@ class NotificationService {
           macOS: const DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
       );
     } catch (e) {
       debugPrint('[NotificationService] scheduleDeadlineReminder failed: $e');

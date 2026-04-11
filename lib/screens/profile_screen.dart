@@ -61,9 +61,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _shareInviteLink(String username) {
     final link = 'https://homeworkhelper.app/invite/@$username';
-    Share.share(
-      'Add me on Homework Helper! Tap to send a friend request: $link',
-      subject: 'Study with me on Homework Helper 📚',
+    SharePlus.instance.share(
+      ShareParams(
+        text: 'Add me on Homework Helper! Tap to send a friend request: $link',
+        subject: 'Study with me on Homework Helper 📚',
+      ),
     );
   }
 

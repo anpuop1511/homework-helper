@@ -84,9 +84,9 @@ class SecurityProvider extends ChangeNotifier {
   Future<bool> canAuthenticate() async {
     if (kIsWeb) return false;
     try {
-      final canCheck = await _auth.canCheckBiometrics;
+      final available = await _auth.getAvailableBiometrics();
       final isDeviceSupported = await _auth.isDeviceSupported();
-      return canCheck || isDeviceSupported;
+      return available.isNotEmpty || isDeviceSupported;
     } catch (_) {
       return false;
     }
