@@ -373,6 +373,31 @@ class DatabaseService {
     }
   }
 
+  /// Writes / merges privacy settings onto the user document.
+  Future<void> savePrivacySettings(
+    String uid, {
+    required int profileVisibility,
+    required int friendRequestsPrivacy,
+  }) async {
+    await _userDoc(uid).set(
+      {
+        'profileVisibility': profileVisibility,
+        'friendRequestsPrivacy': friendRequestsPrivacy,
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Fetches a public profile for a given @[handle].
+  /// Returns null if the user doesn't exist.
+  Future<Map<String, dynamic>?> getPublicProfile(String handle) async {
+    final uid = await lookupUidByUsername(handle.toLowerCase());
+    if (uid == null) return null;
+    final data = await getUserData(uid);
+    if (data == null) return null;
+    return {'uid': uid, ...data};
+  }
+
   /// Removes a friend from both users' friends sub-collections.
   Future<void> removeFriend(String currentUid, String friendUid) async {
     final batch = _db.batch();
