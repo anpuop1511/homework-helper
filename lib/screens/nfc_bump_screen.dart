@@ -1,9 +1,13 @@
+import 'dart:convert' show utf8;
+import 'dart:typed_data' show Uint8List;
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:nfc_manager/ndef_record.dart';
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../providers/auth_provider.dart';
@@ -108,9 +112,18 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
             final ndef = Ndef.from(tag);
             if (ndef != null && ndef.isWritable) {
               // Write our info to the tag.
-              final payload = '$uid:$username';
-              final record = NdefRecord.createText(payload);
-              await ndef.write(NdefMessage([record]));
+              final text = '$uid:$username';
+              final langCode = utf8.encode('en');
+              final textBytes = utf8.encode(text);
+              final ndefPayload = Uint8List.fromList(
+                  [langCode.length, ...langCode, ...textBytes]);
+              final record = NdefRecord(
+                typeNameFormat: TypeNameFormat.wellKnown,
+                type: Uint8List.fromList([0x54]),
+                identifier: Uint8List(0),
+                payload: ndefPayload,
+              );
+              await ndef.write(message: NdefMessage(records: [record]));
               await NfcManager.instance.stopSession();
               _onSuccess('Link written! Tell your friend to tap now.');
               return;
@@ -124,6 +137,11 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
             final ndef = Ndef.from(tag);
             if (ndef != null) {
               final message = await ndef.read();
+              if (message == null) {
+                await NfcManager.instance.stopSession();
+                _onError('Could not read the tag. Please try again.');
+                return;
+              }
               for (final record in message.records) {
                 final text = String.fromCharCodes(record.payload.skip(3));
                 final parts = text.split(':');
@@ -143,9 +161,6 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
             await NfcManager.instance.stopSession();
             _onError('Could not read the tag. Please try again.');
           }
-        },
-        onError: (e) async {
-          _onError('NFC error. Please try again.');
         },
       );
     } catch (_) {

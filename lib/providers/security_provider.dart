@@ -101,10 +101,7 @@ class SecurityProvider extends ChangeNotifier {
     try {
       return await _auth.authenticate(
         localizedReason: reason,
-        options: const AuthenticationOptions(
-          biometricOnly: false,
-          stickyAuth: true,
-        ),
+        persistAcrossBackgrounding: true,
       );
     } catch (_) {
       return false;

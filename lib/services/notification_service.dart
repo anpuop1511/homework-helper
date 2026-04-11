@@ -67,7 +67,7 @@ class NotificationService {
         linux: linuxSettings,
       );
 
-      await _plugin.initialize(initSettings);
+      await _plugin.initialize(settings: initSettings);
 
       // Request permission on Android 13+
       if (!kIsWeb) {
@@ -91,10 +91,10 @@ class NotificationService {
     if (!_initialized) return;
     try {
       await _plugin.show(
-        _timerDoneId,
-        '🍅 Focus Session Complete!',
-        'Great work! Take a short break before your next session.',
-        const NotificationDetails(
+        id: _timerDoneId,
+        title: '🍅 Focus Session Complete!',
+        body: 'Great work! Take a short break before your next session.',
+        notificationDetails: const NotificationDetails(
           android: _androidTimer,
           iOS: DarwinNotificationDetails(),
           macOS: DarwinNotificationDetails(),
@@ -120,11 +120,11 @@ class NotificationService {
 
     try {
       await _plugin.zonedSchedule(
-        _deadlineBaseId + assignmentId,
-        '📚 Deadline in 1 hour!',
-        '"$title" is due at ${_formatTime(deadline)}.',
-        tz.TZDateTime.from(reminderTime, tz.local),
-        NotificationDetails(
+        id: _deadlineBaseId + assignmentId,
+        title: '📚 Deadline in 1 hour!',
+        body: '"$title" is due at ${_formatTime(deadline)}.',
+        scheduledDate: tz.TZDateTime.from(reminderTime, tz.local),
+        notificationDetails: NotificationDetails(
           android: _androidDeadline,
           iOS: const DarwinNotificationDetails(),
           macOS: const DarwinNotificationDetails(),
@@ -140,7 +140,7 @@ class NotificationService {
   Future<void> cancelDeadlineReminder(int assignmentId) async {
     if (!_initialized) return;
     try {
-      await _plugin.cancel(_deadlineBaseId + assignmentId);
+      await _plugin.cancel(id: _deadlineBaseId + assignmentId);
     } catch (_) {}
   }
 
