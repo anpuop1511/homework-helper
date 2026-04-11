@@ -29,11 +29,16 @@ Future<void> main() async {
   // Load environment variables.
   const geminiKey = String.fromEnvironment('GEMINI_API_KEY');
   if (geminiKey.isNotEmpty) {
-    // Directly inject the key into the env map — works in flutter_dotenv 6.0.0.
-    dotenv.env['GEMINI_API_KEY'] = geminiKey;
+    // Inject key supplied via --dart-define and mark dotenv as initialised.
+    dotenv.testLoad(fileInput: 'GEMINI_API_KEY=$geminiKey');
   } else {
-    // Fallback to standard .env file if it exists.
-    await dotenv.load(fileName: '.env').catchError((_) => {});
+    // Load from .env file; fall back to an empty initialisation so dotenv
+    // never throws NotInitializedError later.
+    try {
+      await dotenv.load(fileName: '.env');
+    } catch (_) {
+      dotenv.testLoad(fileInput: '');
+    }
   }
 
   await NotificationService.instance.init();
