@@ -93,17 +93,28 @@ class DatabaseService {
     final lower = handle.toLowerCase();
     try {
       await _db.runTransaction((tx) async {
-        final snap = await tx.get(_usernameDoc(lower));
-        if (snap.exists) {
+        // Read both the target username doc and the user's existing profile
+        // so we can clean up any old handle in the same atomic operation.
+        final newHandleSnap = await tx.get(_usernameDoc(lower));
+        final userSnap = await tx.get(_userDoc(uid));
+
+        if (newHandleSnap.exists) {
           // If the handle is already owned by this user (e.g. a retry after a
           // partial write), just ensure the user document is in sync and
           // treat the operation as successful.
-          if (snap.data()?['uid'] == uid) {
+          if (newHandleSnap.data()?['uid'] == uid) {
             tx.set(_userDoc(uid), {'username': lower}, SetOptions(merge: true));
             return;
           }
           throw Exception('taken');
         }
+
+        // Delete the old handle mapping so it doesn't become a ghost entry.
+        final oldHandle = userSnap.data()?['username'] as String?;
+        if (oldHandle != null && oldHandle != lower) {
+          tx.delete(_usernameDoc(oldHandle));
+        }
+
         tx.set(_usernameDoc(lower), {'uid': uid});
         tx.set(_userDoc(uid), {'username': lower}, SetOptions(merge: true));
       });
