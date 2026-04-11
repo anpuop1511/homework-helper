@@ -44,4 +44,5 @@ app.*.map.json
 
 # Secret keys - never commit to version control
 lib/config/secrets.dart
+.env
 

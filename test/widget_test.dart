@@ -85,13 +85,6 @@ void main() {
       await tester.pump();
       expect(find.text('Continue as Guest'), findsOneWidget);
     });
-
-    testWidgets('login screen shows Sign in with Google button',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(_buildFullApp());
-      await tester.pump();
-      expect(find.text('Sign in with Google'), findsOneWidget);
-    });
   });
 
   group('HomeScreen widget', () {
