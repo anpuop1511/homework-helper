@@ -1,13 +1,16 @@
 import 'dart:async';
+import 'package:animate_do/animate_do.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'providers/assignments_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
+import 'providers/security_provider.dart';
 import 'providers/social_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/theme_provider.dart';
@@ -61,6 +64,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => SecurityProvider()),
         ChangeNotifierProvider(
           create: (_) => AuthProvider(firebaseReady: firebaseReady),
         ),
@@ -203,9 +207,151 @@ class HomeworkHelperApp extends StatelessWidget {
           theme: AppTheme.lightTheme(vibe, lightDynamic),
           darkTheme: AppTheme.darkTheme(vibe, darkDynamic),
           themeMode: ThemeMode.system,
-          home: _AuthGate(),
+          home: _AppShieldGate(child: _AuthGate()),
         );
       },
+    );
+  }
+}
+
+/// Wraps the entire app and shows a biometric lock screen whenever the app
+/// returns from the background while [SecurityProvider.isAppLockEnabled] is on.
+class _AppShieldGate extends StatefulWidget {
+  final Widget child;
+  const _AppShieldGate({required this.child});
+
+  @override
+  State<_AppShieldGate> createState() => _AppShieldGateState();
+}
+
+class _AppShieldGateState extends State<_AppShieldGate>
+    with WidgetsBindingObserver {
+  bool _locked = false;
+  bool _authenticating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final security = context.read<SecurityProvider>();
+    if (state == AppLifecycleState.resumed) {
+      if (security.isAppLockEnabled && !_authenticating) {
+        setState(() => _locked = true);
+        _unlock();
+      } else {
+        security.recordActive();
+      }
+    } else if (state == AppLifecycleState.paused) {
+      security.recordActive();
+    }
+  }
+
+  Future<void> _unlock() async {
+    if (_authenticating) return;
+    setState(() => _authenticating = true);
+    final security = context.read<SecurityProvider>();
+    final ok = await security.authenticate(reason: 'Unlock Homework Helper');
+    if (!mounted) return;
+    setState(() {
+      _authenticating = false;
+      _locked = !ok;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_locked) {
+      return _AppShieldOverlay(onUnlock: _unlock);
+    }
+    return widget.child;
+  }
+}
+
+/// Full-screen overlay shown when the app is locked.
+class _AppShieldOverlay extends StatelessWidget {
+  final VoidCallback onUnlock;
+  const _AppShieldOverlay({required this.onUnlock});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      body: FadeIn(
+        duration: const Duration(milliseconds: 400),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorScheme.primary.withAlpha(60),
+                      blurRadius: 24,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.lock_rounded,
+                  size: 48,
+                  color: colorScheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Text(
+                'App Locked',
+                style: GoogleFonts.lexend(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Use biometrics or your PIN to continue.',
+                style: GoogleFonts.lexend(
+                  fontSize: 14,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 40),
+              FilledButton.icon(
+                onPressed: onUnlock,
+                icon: const Icon(Icons.fingerprint_rounded),
+                label: Text(
+                  'Unlock',
+                  style: GoogleFonts.lexend(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(200, 54),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

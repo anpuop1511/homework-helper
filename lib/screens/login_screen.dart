@@ -3,8 +3,10 @@ import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart' as app_auth;
+import '../providers/security_provider.dart';
 import '../providers/user_provider.dart';
 import 'main_scaffold.dart';
 
@@ -148,6 +150,36 @@ class _LoginScreenState extends State<LoginScreen>
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  Future<void> _signInWithPasskey() async {
+    final security = context.read<SecurityProvider>();
+    if (!security.isPasskeySet) {
+      _showError('No Passkey registered. Set one up in Settings → Biometrics.');
+      return;
+    }
+    final localAuth = LocalAuthentication();
+    bool authenticated = false;
+    try {
+      authenticated = await localAuth.authenticate(
+        localizedReason: 'Sign in with your Passkey',
+        options: const AuthenticationOptions(
+          biometricOnly: false,
+          stickyAuth: true,
+        ),
+      );
+    } catch (_) {
+      authenticated = false;
+    }
+    if (!mounted) return;
+    if (authenticated) {
+      context.read<UserProvider>().recordActivity();
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainScaffold()),
+      );
+    } else {
+      _showError('Passkey verification failed. Please try again.');
+    }
   }
 
   @override
@@ -474,19 +506,45 @@ class _LoginScreenState extends State<LoginScreen>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  // Continue as guest
+                   const SizedBox(height: 16),
+                   // Continue as guest
+                   FadeInUp(
+                     delay: const Duration(milliseconds: 600),
+                     duration: const Duration(milliseconds: 400),
+                     child: SizedBox(
+                       width: double.infinity,
+                       height: 54,
+                       child: OutlinedButton.icon(
+                         onPressed: _navigateAsGuest,
+                         icon: const Icon(Icons.person_outline),
+                         label: Text(
+                           'Continue as Guest',
+                           style: GoogleFonts.lexend(
+                             fontSize: 15,
+                             fontWeight: FontWeight.w500,
+                           ),
+                         ),
+                         style: OutlinedButton.styleFrom(
+                           shape: RoundedRectangleBorder(
+                             borderRadius: BorderRadius.circular(_kButtonRadius),
+                           ),
+                         ),
+                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Sign in with Passkey
                   FadeInUp(
-                    delay: const Duration(milliseconds: 600),
+                    delay: const Duration(milliseconds: 700),
                     duration: const Duration(milliseconds: 400),
                     child: SizedBox(
                       width: double.infinity,
                       height: 54,
                       child: OutlinedButton.icon(
-                        onPressed: _navigateAsGuest,
-                        icon: const Icon(Icons.person_outline),
+                        onPressed: _signInWithPasskey,
+                        icon: const Icon(Icons.passkey_rounded),
                         label: Text(
-                          'Continue as Guest',
+                          'Sign in with Passkey',
                           style: GoogleFonts.lexend(
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
@@ -494,7 +552,8 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                         style: OutlinedButton.styleFrom(
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(_kButtonRadius),
+                            borderRadius:
+                                BorderRadius.circular(_kButtonRadius),
                           ),
                         ),
                       ),
