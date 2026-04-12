@@ -104,10 +104,10 @@ class NotificationService {
         subText: modeName,
       );
       await _plugin.show(
-        _timerOngoingId,
-        '⏱ ${modeName ?? 'Focus'} — $timeRemaining remaining',
-        'Tap to return to the timer.',
-        NotificationDetails(
+        id: _timerOngoingId,
+        title: '⏱ ${modeName ?? 'Focus'} — $timeRemaining remaining',
+        body: 'Tap to return to the timer.',
+        notificationDetails: NotificationDetails(
           android: androidDetails,
           iOS: const DarwinNotificationDetails(
             presentAlert: false,
@@ -125,7 +125,7 @@ class NotificationService {
   Future<void> cancelTimerOngoing() async {
     if (!_initialized) return;
     try {
-      await _plugin.cancel(_timerOngoingId);
+      await _plugin.cancel(id: _timerOngoingId);
     } catch (e) {
       debugPrint('[NotificationService] cancelTimerOngoing failed: $e');
     }
