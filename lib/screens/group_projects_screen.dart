@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:animate_do/animate_do.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -323,10 +326,78 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
+  GroupProject? _directProject;
+  bool _loading = false;
+  String? _error;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // Defer the Firestore fallback load so we can read the provider first.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureLoaded());
+  }
+
+  /// If the project is already in the provider list we show it immediately.
+  /// Otherwise fall back to a direct Firestore fetch with a timeout so the
+  /// screen never gets stuck on the spinner forever.
+  Future<void> _ensureLoaded() async {
+    if (!mounted) return;
+    final inList = context
+        .read<ProjectsProvider>()
+        .projects
+        .cast<GroupProject?>()
+        .firstWhere((p) => p?.id == widget.projectId, orElse: () => null);
+    if (inList != null) return; // already available – build() will show it.
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(widget.projectId)
+          .get()
+          .timeout(const Duration(seconds: 12));
+      if (!mounted) return;
+      if (!doc.exists) {
+        setState(() {
+          _error = 'Project not found or has been deleted.';
+          _loading = false;
+        });
+        return;
+      }
+      setState(() {
+        _directProject = GroupProject.fromJson(doc.id, doc.data()!);
+        _loading = false;
+      });
+    } on TimeoutException {
+      if (mounted) {
+        setState(() {
+          _error = "Couldn't load project. Check your connection and try again.";
+          _loading = false;
+        });
+      }
+    } on FirebaseException catch (e) {
+      if (mounted) {
+        final msg = e.code == 'permission-denied'
+            ? "You don't have permission to view this project."
+            : "Couldn't load project (${e.code}). Please try again.";
+        setState(() {
+          _error = msg;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _error = "Couldn't load project. Please try again.";
+          _loading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -426,17 +497,72 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+
+    // Prefer the live provider list so edits are reflected instantly.
     final provider = context.watch<ProjectsProvider>();
     final project = provider.projects
-        .cast<GroupProject?>()
-        .firstWhere((p) => p?.id == widget.projectId, orElse: () => null);
+            .cast<GroupProject?>()
+            .firstWhere((p) => p?.id == widget.projectId,
+                orElse: () => null) ??
+        _directProject;
 
-    if (project == null) {
+    // ── Still waiting for Firestore ──────────────────────────────────────────
+    if (project == null && _loading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Project')),
+        appBar: AppBar(
+          backgroundColor: colorScheme.surface,
+          elevation: 0,
+          title: Text('Project',
+              style: GoogleFonts.lexend(fontWeight: FontWeight.w700)),
+        ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
+
+    // ── Error / not-found ────────────────────────────────────────────────────
+    if (project == null) {
+      final message = _error ?? 'Project not found.';
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: colorScheme.surface,
+          elevation: 0,
+          title: Text('Project',
+              style: GoogleFonts.lexend(fontWeight: FontWeight.w700)),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.folder_off_rounded,
+                    size: 56, color: colorScheme.outlineVariant),
+                const SizedBox(height: 16),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: _ensureLoaded,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Retry'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: const Text('Go Back'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ── Project loaded ───────────────────────────────────────────────────────
 
     return Scaffold(
       backgroundColor: colorScheme.surface,

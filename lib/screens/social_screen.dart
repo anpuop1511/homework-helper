@@ -4,17 +4,18 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../providers/auth_provider.dart';
+import '../providers/projects_provider.dart';
 import '../providers/social_provider.dart';
 import 'group_projects_screen.dart';
 import 'nfc_bump_screen.dart';
 import 'public_profile_screen.dart';
 import 'qr_scan_screen.dart';
 
-/// Electric Blue — used for the "Add Friend" action to match the V2.3 design.
+/// Electric Blue — used for action tiles to match the V2.3 design.
 const _kElectricBlue = Color(0xFF007FFF);
 
-/// The "Social Quad" tab – search for friends by @username, view pending
-/// requests, and browse your accepted friends list.
+/// The "Social Quad" tab – Quick-Settings–inspired tile panel, pending
+/// requests, and the friends list.
 class SocialScreen extends StatefulWidget {
   const SocialScreen({super.key});
 
@@ -122,6 +123,258 @@ class _SocialScreenState extends State<SocialScreen> {
     }
   }
 
+  /// Shows the Add-Friend bottom sheet (search by @username).
+  void _showAddFriendSheet(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(28)),
+            border:
+                Border(top: BorderSide(color: colorScheme.outlineVariant)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Add a Friend',
+                style: GoogleFonts.lexend(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _handleController,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: '@username',
+                        prefixIcon:
+                            const Icon(Icons.alternate_email_rounded),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onSubmitted: (_) {
+                        Navigator.pop(context);
+                        _sendRequest(context);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: _searching
+                        ? const SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Padding(
+                              padding: EdgeInsets.all(12),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2),
+                            ),
+                          )
+                        : FilledButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _sendRequest(context);
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _kElectricBlue,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(48, 48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Icon(Icons.send_rounded),
+                          ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shows a dialog that accepts a project code/link and joins the project.
+  void _showJoinProjectSheet(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final codeController = TextEditingController();
+    bool joining = false;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border(
+                  top: BorderSide(color: colorScheme.outlineVariant)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Join a Group Project',
+                  style: GoogleFonts.lexend(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Paste an invite link or enter a project ID.',
+                  style: TextStyle(
+                      color: colorScheme.onSurfaceVariant, fontSize: 14),
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: codeController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'homeworkhelper://project/... or project ID',
+                    prefixIcon: const Icon(Icons.link_rounded),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: FilledButton.icon(
+                    onPressed: joining
+                        ? null
+                        : () async {
+                            final raw = codeController.text.trim();
+                            if (raw.isEmpty) return;
+                            // Extract project ID from deep-link or bare ID.
+                            String projectId = raw;
+                            final uri = Uri.tryParse(raw);
+                            if (uri != null &&
+                                uri.pathSegments.isNotEmpty) {
+                              projectId = uri.pathSegments.last;
+                            }
+                            setSheetState(() => joining = true);
+                            final error = await ctx
+                                .read<ProjectsProvider>()
+                                .joinProject(projectId);
+                            if (!ctx.mounted) return;
+                            setSheetState(() => joining = false);
+                            Navigator.of(ctx).pop();
+                            if (error == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text(
+                                      'Joined project! 🎉'),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor:
+                                      colorScheme.primaryContainer,
+                                ),
+                              );
+                              // Navigate into the project.
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ProjectDetailScreen(
+                                      projectId: projectId),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(error),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor:
+                                      colorScheme.errorContainer,
+                                ),
+                              );
+                            }
+                          },
+                    icon: joining
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white))
+                        : const Icon(Icons.login_rounded),
+                    label: Text(
+                      joining ? 'Joining…' : 'Join Project',
+                      style: GoogleFonts.lexend(
+                          fontWeight: FontWeight.w700),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1976D2),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -147,13 +400,13 @@ class _SocialScreenState extends State<SocialScreen> {
       body: SafeArea(
         top: false,
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           children: [
             // ── Header ────────────────────────────────────────────────
             FadeInDown(
               duration: const Duration(milliseconds: 400),
               child: Padding(
-                padding: const EdgeInsets.only(top: 16, bottom: 8),
+                padding: const EdgeInsets.only(top: 16, bottom: 4),
                 child: Text(
                   'Social Quad',
                   style: GoogleFonts.lexend(
@@ -214,206 +467,44 @@ class _SocialScreenState extends State<SocialScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // ── NFC Buddy Bump Button ─────────────────────────────────
+            // ── Quick Actions Panel ───────────────────────────────────
             FadeInUp(
               delay: const Duration(milliseconds: 80),
               duration: const Duration(milliseconds: 400),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: FilledButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const NfcBumpScreen()),
-                  ),
-                  icon: const Icon(Icons.nfc_rounded, size: 20),
-                  label: Text(
-                    'Bump to Study ⚡',
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _kElectricBlue,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // ── Group Projects ────────────────────────────────────
-            FadeInUp(
-              delay: const Duration(milliseconds: 90),
-              duration: const Duration(milliseconds: 400),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: FilledButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const GroupProjectsScreen()),
-                  ),
-                  icon: const Icon(Icons.group_work_rounded, size: 20),
-                  label: Text(
-                    'Group Projects',
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF1976D2),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // ── Scan QR Button ────────────────────────────────────
-            const SizedBox(height: 12),
-            FadeInUp(
-              delay: const Duration(milliseconds: 100),
-              duration: const Duration(milliseconds: 400),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const QrScanScreen()),
-                  ),
-                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
-                  label: Text(
-                    'Scan Friend\'s QR',
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // ── Show My QR Button ─────────────────────────────────
-            FadeInUp(
-              delay: const Duration(milliseconds: 120),
-              duration: const Duration(milliseconds: 400),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: OutlinedButton.icon(
-                  onPressed: myHandle != null && myHandle.isNotEmpty
-                      ? () => _showMyQr(context, myHandle)
-                      : null,
-                  icon: const Icon(Icons.qr_code_rounded, size: 20),
-                  label: Text(
-                    'Show My QR Code',
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            FadeInUp(
-              delay: const Duration(milliseconds: 100),
-              duration: const Duration(milliseconds: 400),
-              child: _SectionCard(
+              child: _SectionHeader(
+                icon: Icons.grid_view_rounded,
+                label: 'Quick Actions',
+                badge: 0,
                 colorScheme: colorScheme,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.person_add_rounded,
-                            color: _kElectricBlue, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Add a Friend',
-                          style: GoogleFonts.lexend(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _handleController,
-                            keyboardType: TextInputType.text,
-                            decoration: InputDecoration(
-                              hintText: '@username',
-                              prefixIcon:
-                                  const Icon(Icons.alternate_email_rounded),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            onSubmitted: (_) => _sendRequest(context),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: _searching
-                              ? const SizedBox(
-                                  width: 48,
-                                  height: 48,
-                                  child: Padding(
-                                    padding: EdgeInsets.all(12),
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  ),
-                                )
-                              : FilledButton(
-                                  onPressed: () => _sendRequest(context),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: _kElectricBlue,
-                                    foregroundColor: Colors.white,
-                                    minimumSize: const Size(48, 48),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                  child:
-                                      const Icon(Icons.send_rounded),
-                                ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
+            FadeInUp(
+              delay: const Duration(milliseconds: 100),
+              duration: const Duration(milliseconds: 400),
+              child: _QuickActionsGrid(
+                colorScheme: colorScheme,
+                onAddFriend: () => _showAddFriendSheet(context),
+                onScanQr: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const QrScanScreen()),
+                ),
+                onMyQr: myHandle != null && myHandle.isNotEmpty
+                    ? () => _showMyQr(context, myHandle)
+                    : null,
+                onNfcBump: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const NfcBumpScreen()),
+                ),
+                onCreateProject: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const GroupProjectsScreen()),
+                ),
+                onJoinProject: () => _showJoinProjectSheet(context),
+              ),
+            ),
+            const SizedBox(height: 24),
 
             // ── Pending Requests ──────────────────────────────────────
             if (social.pendingRequests.isNotEmpty) ...[
@@ -488,27 +579,156 @@ class _SocialScreenState extends State<SocialScreen> {
   }
 }
 
-// ── Sub-widgets ──────────────────────────────────────────────────────────────
+// ── Quick Actions Grid ────────────────────────────────────────────────────────
 
-class _SectionCard extends StatelessWidget {
+/// Android Quick-Settings–inspired 2-column tile grid for Social quick actions.
+class _QuickActionsGrid extends StatelessWidget {
   final ColorScheme colorScheme;
-  final Widget child;
+  final VoidCallback onAddFriend;
+  final VoidCallback onScanQr;
+  final VoidCallback? onMyQr;
+  final VoidCallback onNfcBump;
+  final VoidCallback onCreateProject;
+  final VoidCallback onJoinProject;
 
-  const _SectionCard({required this.colorScheme, required this.child});
+  const _QuickActionsGrid({
+    required this.colorScheme,
+    required this.onAddFriend,
+    required this.onScanQr,
+    required this.onMyQr,
+    required this.onNfcBump,
+    required this.onCreateProject,
+    required this.onJoinProject,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colorScheme.outlineVariant),
+    final tiles = <_TileData>[
+      _TileData(
+        icon: Icons.person_add_rounded,
+        label: 'Add Friend',
+        color: colorScheme.primaryContainer,
+        foreground: colorScheme.onPrimaryContainer,
+        onTap: onAddFriend,
       ),
-      child: child,
+      _TileData(
+        icon: Icons.qr_code_scanner_rounded,
+        label: 'Scan QR',
+        color: colorScheme.secondaryContainer,
+        foreground: colorScheme.onSecondaryContainer,
+        onTap: onScanQr,
+      ),
+      _TileData(
+        icon: Icons.qr_code_rounded,
+        label: 'My QR',
+        color: colorScheme.tertiaryContainer,
+        foreground: colorScheme.onTertiaryContainer,
+        onTap: onMyQr,
+        disabled: onMyQr == null,
+      ),
+      _TileData(
+        icon: Icons.nfc_rounded,
+        label: 'NFC Bump',
+        color: const Color(0xFF007FFF).withAlpha(30),
+        foreground: const Color(0xFF007FFF),
+        onTap: onNfcBump,
+      ),
+      _TileData(
+        icon: Icons.group_work_rounded,
+        label: 'Create Project',
+        color: colorScheme.surfaceContainerHigh,
+        foreground: colorScheme.onSurface,
+        onTap: onCreateProject,
+      ),
+      _TileData(
+        icon: Icons.login_rounded,
+        label: 'Join Project',
+        color: const Color(0xFF1976D2).withAlpha(30),
+        foreground: const Color(0xFF1976D2),
+        onTap: onJoinProject,
+      ),
+    ];
+
+    return GridView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 1.55,
+      ),
+      itemCount: tiles.length,
+      itemBuilder: (_, i) => _QsTile(data: tiles[i]),
     );
   }
 }
+
+class _TileData {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color foreground;
+  final VoidCallback? onTap;
+  final bool disabled;
+
+  const _TileData({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.foreground,
+    required this.onTap,
+    this.disabled = false,
+  });
+}
+
+class _QsTile extends StatelessWidget {
+  final _TileData data;
+  const _QsTile({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: data.disabled
+          ? data.color.withAlpha(100)
+          : data.color,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: data.disabled ? null : data.onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                data.icon,
+                color: data.disabled
+                    ? data.foreground.withAlpha(100)
+                    : data.foreground,
+                size: 28,
+              ),
+              const Spacer(),
+              Text(
+                data.label,
+                style: GoogleFonts.lexend(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: data.disabled
+                      ? data.foreground.withAlpha(100)
+                      : data.foreground,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Sub-widgets ──────────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
   final IconData icon;
