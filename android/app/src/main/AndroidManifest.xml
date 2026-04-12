@@ -18,7 +18,7 @@
         </intent>
     </queries>
     <application
-        android:label="homework_helper"
+        android:label="Homework Helper"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round">
