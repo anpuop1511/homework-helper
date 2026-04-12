@@ -111,13 +111,12 @@ class ClassroomProvider extends ChangeNotifier {
   static const _kAuthorized = 'classroom_authorized';
 
   // ── Google Sign-In (Classroom scopes only) ─────────────────────────────
-  static final _googleSignIn = GoogleSignIn(
-    scopes: [
-      'https://www.googleapis.com/auth/classroom.courses.readonly',
-      'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
-      'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
-    ],
-  );
+  static final _googleSignIn = GoogleSignIn.instance;
+  static const List<String> _scopes = [
+    'https://www.googleapis.com/auth/classroom.courses.readonly',
+    'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
+    'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
+  ];
 
   // ── Internal state ─────────────────────────────────────────────────────
   ClassroomAuthStatus _status = ClassroomAuthStatus.loading;
@@ -127,6 +126,10 @@ class ClassroomProvider extends ChangeNotifier {
   bool _coursesLoading = false;
   bool _courseworkLoading = false;
   String? _selectedCourseId;
+  // Tracks the authenticated account (google_sign_in v7 removed currentUser).
+  GoogleSignInAccount? _currentAccount;
+  // Guards against calling initialize() more than once.
+  bool _gsiInitialized = false;
 
   // ── Public getters ─────────────────────────────────────────────────────
   ClassroomAuthStatus get status => _status;
@@ -145,6 +148,24 @@ class ClassroomProvider extends ChangeNotifier {
 
   // ── Initialization ─────────────────────────────────────────────────────
 
+  /// Calls [GoogleSignIn.initialize] exactly once and wires up the
+  /// authentication event stream to keep [_currentAccount] up to date.
+  Future<void> _ensureGsiInitialized() async {
+    if (_gsiInitialized) return;
+    await _googleSignIn.initialize();
+    _gsiInitialized = true;
+    _googleSignIn.authenticationEvents.listen(
+      (event) {
+        if (event is GoogleSignInAuthenticationEventSignIn) {
+          _currentAccount = event.user;
+        } else if (event is GoogleSignInAuthenticationEventSignOut) {
+          _currentAccount = null;
+        }
+      },
+      onError: (_) {},
+    );
+  }
+
   Future<void> _init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -156,9 +177,16 @@ class ClassroomProvider extends ChangeNotifier {
         return;
       }
 
+      await _ensureGsiInitialized();
+
       // Try to silently restore the existing Google session.
-      final account = await _googleSignIn.signInSilently();
+      // attemptLightweightAuthentication returns Future<GoogleSignInAccount?>?
+      // (nullable Future) – on platforms where it can't return immediately it
+      // returns null and posts to the authenticationEvents stream instead.
+      final future = _googleSignIn.attemptLightweightAuthentication();
+      final account = future != null ? await future : null;
       if (account != null) {
+        _currentAccount = account;
         _status = ClassroomAuthStatus.authorized;
       } else {
         // Token expired or revoked – clear stored flag.
@@ -184,17 +212,22 @@ class ClassroomProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      await _ensureGsiInitialized();
+
       // Sign out first so the user always sees the account-picker if they
       // have multiple Google accounts.
       await _googleSignIn.signOut();
-      final account = await _googleSignIn.signIn();
+      _currentAccount = null;
 
-      if (account == null) {
-        // User cancelled the consent screen.
-        _status = ClassroomAuthStatus.notAuthorized;
-        notifyListeners();
-        return false;
-      }
+      // authenticate() shows the account-picker and (when scopeHint is
+      // provided) may also show the OAuth consent screen inline on platforms
+      // that support a combined flow (e.g. Android).
+      final account = await _googleSignIn.authenticate(scopeHint: _scopes);
+      _currentAccount = account;
+
+      // Explicitly request Classroom scopes in case the platform deferred
+      // authorization to a separate step.
+      await account.authorizationClient.authorizeScopes(_scopes);
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_kAuthorized, true);
@@ -223,6 +256,7 @@ class ClassroomProvider extends ChangeNotifier {
     } catch (_) {
       // Best-effort revoke.
     }
+    _currentAccount = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kAuthorized, false);
     _status = ClassroomAuthStatus.notAuthorized;
@@ -330,10 +364,19 @@ class ClassroomProvider extends ChangeNotifier {
   /// session has expired / been revoked.
   Future<Map<String, String>?> _authHeaders() async {
     try {
-      final account = _googleSignIn.currentUser ??
-          await _googleSignIn.signInSilently();
-      if (account == null) return null;
-      return await account.authHeaders;
+      var account = _currentAccount;
+      if (account == null) {
+        // Try to restore the session silently.
+        final future = _googleSignIn.attemptLightweightAuthentication();
+        if (future == null) return null;
+        account = await future;
+        if (account == null) return null;
+        _currentAccount = account;
+      }
+      final auth =
+          await account.authorizationClient.authorizationForScopes(_scopes);
+      if (auth == null) return null;
+      return {'Authorization': 'Bearer ${auth.accessToken}'};
     } catch (_) {
       return null;
     }
