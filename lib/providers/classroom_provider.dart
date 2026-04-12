@@ -121,6 +121,8 @@ class ClassroomProvider extends ChangeNotifier {
   // ── Internal state ─────────────────────────────────────────────────────
   ClassroomAuthStatus _status = ClassroomAuthStatus.loading;
   String? _error;
+  // Raw exception detail surfaced only in debug builds for diagnostics.
+  String? _diagnosticDetail;
   List<ClassroomCourse> _courses = [];
   List<ClassroomCoursework> _coursework = [];
   bool _coursesLoading = false;
@@ -134,6 +136,9 @@ class ClassroomProvider extends ChangeNotifier {
   // ── Public getters ─────────────────────────────────────────────────────
   ClassroomAuthStatus get status => _status;
   String? get error => _error;
+  /// Raw exception detail for diagnosing failures. Only non-null in debug
+  /// builds; always null in release/profile mode.
+  String? get diagnosticDetail => kDebugMode ? _diagnosticDetail : null;
   List<ClassroomCourse> get courses => List.unmodifiable(_courses);
   List<ClassroomCoursework> get coursework =>
       List.unmodifiable(_coursework);
@@ -209,6 +214,7 @@ class ClassroomProvider extends ChangeNotifier {
   Future<bool> authorize() async {
     _status = ClassroomAuthStatus.authorizing;
     _error = null;
+    _diagnosticDetail = null;
     notifyListeners();
 
     try {
@@ -242,6 +248,7 @@ class ClassroomProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       debugPrint('[ClassroomProvider] authorize error: $e');
+      _diagnosticDetail = e.toString();
       _error = _friendlyError(e);
       _status = ClassroomAuthStatus.error;
       notifyListeners();
@@ -261,6 +268,7 @@ class ClassroomProvider extends ChangeNotifier {
     await prefs.setBool(_kAuthorized, false);
     _status = ClassroomAuthStatus.notAuthorized;
     _error = null;
+    _diagnosticDetail = null;
     _courses = [];
     _coursework = [];
     _selectedCourseId = null;
@@ -402,21 +410,60 @@ class ClassroomProvider extends ChangeNotifier {
   }
 
   static String _friendlyError(Object e) {
-    final msg = e.toString().toLowerCase();
-    if (msg.contains('network') ||
-        msg.contains('socket') ||
-        msg.contains('connection')) {
+    final raw = e.toString();
+    final lower = raw.toLowerCase();
+
+    // OAuth / developer misconfiguration: SHA certificate mismatch or the app
+    // is not registered correctly in Google Cloud Console.
+    // google_sign_in surfaces this as ApiException code 10 (DEVELOPER_ERROR).
+    if (lower.contains('developer_error') ||
+        lower.contains('apiexception: 10') ||
+        RegExp(r'apiexception:?\s*10\b').hasMatch(lower)) {
+      return 'OAuth configuration error. The app\'s signing certificate may '
+          'not match your Google Cloud project. Check your SHA fingerprints '
+          'in the Cloud Console and ensure the Classroom API is enabled.';
+    }
+
+    // User voluntarily cancelled the sign-in picker or consent screen.
+    // google_sign_in v7 uses sign_in_canceled; older SDKs used sign_in_cancelled.
+    if (lower.contains('sign_in_canceled') ||
+        lower.contains('sign_in_cancelled') ||
+        lower.contains('12500') ||
+        lower.contains('cancel') ||
+        lower.contains('aborted')) {
+      return 'Sign-in was cancelled. Tap "Try Again" whenever you\'re ready.';
+    }
+
+    // Network / connectivity issues.
+    if (lower.contains('network') ||
+        lower.contains('socket') ||
+        lower.contains('connection') ||
+        lower.contains('unreachable') ||
+        lower.contains('timeout')) {
       return 'No internet connection. Please check your network and retry.';
     }
-    if (msg.contains('quota') || msg.contains('rate')) {
+
+    // Access denied, insufficient OAuth scopes, or the Classroom API is not
+    // enabled on the Google Cloud project.
+    if (lower.contains('access_denied') ||
+        lower.contains('insufficient_scope') ||
+        lower.contains('insufficient scope') ||
+        lower.contains('forbidden') ||
+        lower.contains('service_disabled') ||
+        lower.contains('not authorized') ||
+        lower.contains('permission')) {
+      return 'Access denied. Make sure the Google Classroom API is enabled '
+          'in your Google Cloud project and the required permissions are '
+          'granted.';
+    }
+
+    // API quota / rate limit.
+    if (lower.contains('quota') || lower.contains('rate')) {
       return 'API quota exceeded. Please wait a moment and try again.';
     }
-    if (msg.contains('cancel') || msg.contains('aborted')) {
-      return 'Authorization was cancelled.';
-    }
-    if (msg.contains('sign_in_failed') || msg.contains('sign_in_canceled')) {
-      return 'Google sign-in failed. Please try again.';
-    }
-    return 'Something went wrong. Please try again.';
+
+    // Unknown / fallback.
+    return 'Connection failed. Please try again or contact support if the '
+        'issue persists.';
   }
 }
