@@ -46,3 +46,8 @@ app.*.map.json
 lib/config/secrets.dart
 .env
 
+# Android release signing – never commit these to version control
+*.jks
+keystore.txt
+key.properties
+
