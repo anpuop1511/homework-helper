@@ -35,11 +35,26 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Profile deep links: homeworkhelper://profile/@handle -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="homeworkhelper" android:host="profile" />
+            </intent-filter>
+            <!-- Friend invite deep links: homeworkhelper://invite/<inviteId> -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="homeworkhelper" android:host="invite" />
+            </intent-filter>
+            <!-- Group project invite deep links: homeworkhelper://project/<projectId> -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="homeworkhelper" android:host="project" />
             </intent-filter>
         </activity>
         <meta-data

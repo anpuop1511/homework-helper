@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../providers/auth_provider.dart';
 import '../providers/social_provider.dart';
+import 'group_projects_screen.dart';
 import 'nfc_bump_screen.dart';
 import 'public_profile_screen.dart';
 import 'qr_scan_screen.dart';
@@ -70,7 +71,7 @@ class _SocialScreenState extends State<SocialScreen> {
             ),
             const SizedBox(height: 24),
             QrImageView(
-              data: 'homeworkhelper://profile/@$handle',
+              data: 'homeworkhelper://invite/$handle',
               version: QrVersions.auto,
               size: 240,
               backgroundColor: Colors.white,
@@ -246,6 +247,37 @@ class _SocialScreenState extends State<SocialScreen> {
               ),
             ),
             const SizedBox(height: 20),
+
+            // ── Group Projects ────────────────────────────────────
+            FadeInUp(
+              delay: const Duration(milliseconds: 90),
+              duration: const Duration(milliseconds: 400),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const GroupProjectsScreen()),
+                  ),
+                  icon: const Icon(Icons.group_work_rounded, size: 20),
+                  label: Text(
+                    'Group Projects',
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF1976D2),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
             // ── Scan QR Button ────────────────────────────────────
             const SizedBox(height: 12),
