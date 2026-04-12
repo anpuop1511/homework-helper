@@ -8,7 +8,6 @@ import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/assignments_provider.dart';
 import 'home_screen.dart';
-import 'subjects_screen.dart';
 import 'timer_screen.dart';
 import 'chat_screen.dart';
 import 'social_screen.dart';
@@ -45,7 +44,6 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   static const List<Widget> _screens = [
     HomeScreen(),
-    SubjectsScreen(),
     TimerScreen(),
     ChatScreen(),
     SocialScreen(),
@@ -63,19 +61,14 @@ class _MainScaffoldState extends State<MainScaffold> {
       label: Text('Home'),
     ),
     NavigationRailDestination(
-      icon: Icon(Icons.folder_outlined),
-      selectedIcon: Icon(Icons.folder_rounded),
-      label: Text('Subjects'),
-    ),
-    NavigationRailDestination(
       icon: Icon(Icons.timer_outlined),
       selectedIcon: Icon(Icons.timer_rounded),
-      label: Text('Timer'),
+      label: Text('Focus'),
     ),
     NavigationRailDestination(
-      icon: Icon(Icons.smart_toy_outlined),
-      selectedIcon: Icon(Icons.smart_toy_rounded),
-      label: Text('AI Chat'),
+      icon: Icon(Icons.auto_awesome_outlined),
+      selectedIcon: Icon(Icons.auto_awesome_rounded),
+      label: Text('Helper'),
     ),
     NavigationRailDestination(
       icon: Icon(Icons.people_outline_rounded),
@@ -196,19 +189,14 @@ class _MainScaffoldState extends State<MainScaffold> {
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.folder_outlined),
-            selectedIcon: Icon(Icons.folder_rounded),
-            label: 'Subjects',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.timer_outlined),
             selectedIcon: Icon(Icons.timer_rounded),
-            label: 'Timer',
+            label: 'Focus',
           ),
           NavigationDestination(
-            icon: Icon(Icons.smart_toy_outlined),
-            selectedIcon: Icon(Icons.smart_toy_rounded),
-            label: 'AI Chat',
+            icon: Icon(Icons.auto_awesome_outlined),
+            selectedIcon: Icon(Icons.auto_awesome_rounded),
+            label: 'Helper',
           ),
           NavigationDestination(
             icon: Icon(Icons.people_outline_rounded),
