@@ -2,6 +2,15 @@
 
 A comprehensive Flutter homework management app with AI study buddy, social features, and gamification.
 
+## App Icon — Reinstall Note
+
+If you install a new build and the launcher icon still shows the old icon, you need to:
+1. **Uninstall** the app from your device.
+2. **Reinstall** from the latest APK (from GitHub Actions → Artifacts).
+3. If the icon still looks wrong, clear the launcher cache (long-press the launcher → Settings → Clear cache) or restart the device.
+
+This is an Android launcher cache limitation — the OS does not always refresh icon assets on update.
+
 ## Social System — Firestore Security Rules
 
 The social features store data in Firestore. Below are **recommended** security rules.
@@ -18,11 +27,15 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == uid;
 
-      // Accepted friends sub-collection
+      // Accepted friends sub-collection.
+      // The owner (uid) can always write their own friends list.
+      // The friend being added (friendUid) may write their own entry so that
+      // the accept-request batch can write the reciprocal friend doc.
       match /friends/{friendUid} {
         allow read: if request.auth != null &&
           (request.auth.uid == uid || request.auth.uid == friendUid);
-        allow write: if request.auth != null && request.auth.uid == uid;
+        allow write: if request.auth != null &&
+          (request.auth.uid == uid || request.auth.uid == friendUid);
       }
 
       // Incoming friend-request sub-collection (new model)
@@ -38,7 +51,7 @@ service cloud.firestore {
       }
     }
 
-    // Global friend-requests collection (legacy / dual-write model)
+    // Global friend-requests collection
     match /friend_requests/{requestId} {
       allow read: if request.auth != null &&
         (resource.data.from == request.auth.uid ||
@@ -48,6 +61,37 @@ service cloud.firestore {
       allow update, delete: if request.auth != null &&
         (resource.data.from == request.auth.uid ||
          resource.data.to   == request.auth.uid);
+    }
+
+    // Group Projects collection
+    match /projects/{projectId} {
+      // Any authenticated user can read a project (needed to join via invite).
+      allow read: if request.auth != null;
+      // Any authenticated user can create a project (they become owner).
+      allow create: if request.auth != null &&
+        request.resource.data.ownerUid == request.auth.uid;
+      // Only existing members can update (e.g. join / add tasks).
+      allow update: if request.auth != null &&
+        request.auth.uid in resource.data.memberUids;
+      // Only the owner can delete a project.
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.ownerUid;
+
+      match /bulletins/{postId} {
+        allow read: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
+        allow create: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
+        allow delete: if request.auth != null &&
+          request.auth.uid == resource.data.authorUid;
+      }
+
+      match /tasks/{taskId} {
+        allow read: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
+        allow write: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
+      }
     }
 
     // Username → UID mapping (usernames collection)

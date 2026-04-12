@@ -210,20 +210,20 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
     if (name.isEmpty) return;
     setState(() => _loading = true);
     final provider = context.read<ProjectsProvider>();
-    final id = await provider.createProject(
+    final result = await provider.createProject(
       name: name,
       description: _descController.text.trim(),
     );
     if (!mounted) return;
     setState(() => _loading = false);
-    if (id != null) {
+    if (result.id != null) {
       // Replace create screen with detail screen.
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => ProjectDetailScreen(projectId: id)),
+        MaterialPageRoute(builder: (_) => ProjectDetailScreen(projectId: result.id!)),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to create project. Try again.')),
+        SnackBar(content: Text(result.error ?? 'Failed to create project. Try again.')),
       );
     }
   }
