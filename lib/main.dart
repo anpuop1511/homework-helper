@@ -12,6 +12,7 @@ import 'firebase_options.dart';
 import 'providers/assignments_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
+import 'providers/classroom_provider.dart';
 import 'providers/classes_provider.dart';
 import 'providers/projects_provider.dart';
 import 'providers/security_provider.dart';
@@ -63,6 +64,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => SecurityProvider()),
+        ChangeNotifierProvider(create: (_) => ClassroomProvider()),
         ChangeNotifierProvider(
           create: (_) => AuthProvider(firebaseReady: firebaseReady),
         ),
