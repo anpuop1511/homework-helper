@@ -537,43 +537,53 @@ class _AiModelsSettingsPage extends StatelessWidget {
                         ],
                       ),
                     ),
-                    DropdownButton<AiModel>(
-                      value: chat.selectedModel,
-                      underline: const SizedBox.shrink(),
-                      items: AiModel.values.map((m) {
-                        return DropdownMenuItem(
-                          value: m,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(m.label, style: textTheme.bodyMedium),
-                              if (m == AiModel.gemini31FlashLitePreview) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.tertiaryContainer,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
+                    SizedBox(
+                      width: 160,
+                      child: DropdownButton<AiModel>(
+                        value: chat.selectedModel,
+                        isExpanded: true,
+                        underline: const SizedBox.shrink(),
+                        items: AiModel.values.map((m) {
+                          return DropdownMenuItem(
+                            value: m,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
                                   child: Text(
-                                    'Preview',
-                                    style: textTheme.labelSmall?.copyWith(
-                                      color: colorScheme.onTertiaryContainer,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                    m.label,
+                                    style: textTheme.bodyMedium,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
+                                if (m == AiModel.gemini31FlashLitePreview) ...[
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 5, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.tertiaryContainer,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'Preview',
+                                      style: textTheme.labelSmall?.copyWith(
+                                        color: colorScheme.onTertiaryContainer,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (m) {
-                        if (m != null) {
-                          context.read<ChatProvider>().setModel(m);
-                        }
-                      },
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (m) {
+                          if (m != null) {
+                            context.read<ChatProvider>().setModel(m);
+                          }
+                        },
+                      ),
                     ),
                   ],
                 ),

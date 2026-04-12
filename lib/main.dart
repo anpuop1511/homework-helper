@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:animate_do/animate_do.dart';
+import 'package:app_links/app_links.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -12,6 +13,7 @@ import 'providers/assignments_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/classes_provider.dart';
+import 'providers/projects_provider.dart';
 import 'providers/security_provider.dart';
 import 'providers/social_provider.dart';
 import 'providers/user_provider.dart';
@@ -19,6 +21,8 @@ import 'providers/theme_provider.dart';
 import 'services/database_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
+import 'screens/group_projects_screen.dart';
+import 'screens/join_invite_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_scaffold.dart';
 import 'screens/splash_screen.dart';
@@ -82,6 +86,15 @@ Future<void> main() async {
           create: (_) => ClassesProvider(),
           update: (_, auth, prev) {
             final provider = prev ?? ClassesProvider();
+            provider.setUid(auth.uid);
+            return provider;
+          },
+        ),
+        // ProjectsProvider is wired to AuthProvider for Firestore sync.
+        ChangeNotifierProxyProvider<AuthProvider, ProjectsProvider>(
+          create: (_) => ProjectsProvider(),
+          update: (_, auth, prev) {
+            final provider = prev ?? ProjectsProvider();
             provider.setUid(auth.uid);
             return provider;
           },
@@ -213,11 +226,97 @@ class HomeworkHelperApp extends StatelessWidget {
           theme: AppTheme.lightTheme(vibe, useDynamic ? lightDynamic : null),
           darkTheme: AppTheme.darkTheme(vibe, useDynamic ? darkDynamic : null),
           themeMode: ThemeMode.system,
-          home: _AppShieldGate(child: _AuthGate()),
+          home: _DeepLinkHandler(child: _AppShieldGate(child: _AuthGate())),
         );
       },
     );
   }
+}
+
+/// Listens for incoming `homeworkhelper://` deep links and routes to the
+/// appropriate screen (JoinInviteScreen or JoinProjectScreen).
+///
+/// Handles both the **initial link** (app cold-started via a link) and
+/// **subsequent links** (app already running when a link is opened).
+class _DeepLinkHandler extends StatefulWidget {
+  final Widget child;
+  const _DeepLinkHandler({required this.child});
+
+  @override
+  State<_DeepLinkHandler> createState() => _DeepLinkHandlerState();
+}
+
+class _DeepLinkHandlerState extends State<_DeepLinkHandler> {
+  StreamSubscription<Uri>? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!kIsWeb) {
+      _initLinks();
+    }
+  }
+
+  Future<void> _initLinks() async {
+    try {
+      final appLinks = AppLinks();
+      // Handle the link that launched the app (cold start).
+      final initial = await appLinks.getInitialLink();
+      if (initial != null) {
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => _handleLink(initial));
+      }
+      // Handle links while the app is already running.
+      _sub = appLinks.uriLinkStream.listen(_handleLink, onError: (_) {});
+    } catch (_) {
+      // Deep link handling is best-effort.
+    }
+  }
+
+  void _handleLink(Uri uri) {
+    if (uri.scheme != 'homeworkhelper') return;
+    final ctx = context;
+    if (!mounted) return;
+
+    final host = uri.host;
+    final pathSegments = uri.pathSegments;
+    final id = pathSegments.isNotEmpty ? pathSegments.first : '';
+
+    switch (host) {
+      case 'profile':
+      case 'u':
+        // Profile links are handled by QrScanScreen; nothing to do here
+        // unless we want to open PublicProfileScreen directly.
+        break;
+      case 'invite':
+        if (id.isNotEmpty) {
+          Navigator.of(ctx, rootNavigator: true).push(
+            MaterialPageRoute(
+              builder: (_) => JoinInviteScreen(inviteId: id),
+            ),
+          );
+        }
+        break;
+      case 'project':
+        if (id.isNotEmpty) {
+          Navigator.of(ctx, rootNavigator: true).push(
+            MaterialPageRoute(
+              builder: (_) => JoinProjectScreen(projectId: id),
+            ),
+          );
+        }
+        break;
+    }
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Wraps the entire app and shows a biometric lock screen once per cold start

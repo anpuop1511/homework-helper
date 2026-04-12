@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'group_projects_screen.dart';
+import 'join_invite_screen.dart';
 import 'public_profile_screen.dart';
 
 /// QR code scan screen.
 ///
-/// Parses handles from deep links in the formats:
-///   - `homeworkhelper://profile/@handle`
-///   - `homeworkhelper://u/handle`
-///   - `homeworkhelper://profile/handle`
-///
-/// On a successful scan, navigates to [PublicProfileScreen].
+/// Parses deep links encoded in QR codes and navigates to the correct screen:
+///   - `homeworkhelper://profile/@handle` → [PublicProfileScreen]
+///   - `homeworkhelper://u/handle`         → [PublicProfileScreen]
+///   - `homeworkhelper://invite/<handle>`  → [JoinInviteScreen]
+///   - `homeworkhelper://project/<id>`     → [JoinProjectScreen]
 class QrScanScreen extends StatefulWidget {
   const QrScanScreen({super.key});
 
@@ -34,43 +35,60 @@ class _QrScanScreenState extends State<QrScanScreen> {
     final raw = barcode?.rawValue;
     if (raw == null) return;
 
-    final handle = _parseHandle(raw);
-    if (handle == null) return;
+    final dest = _parseLink(raw);
+    if (dest == null) return;
 
     setState(() => _scanned = true);
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => PublicProfileScreen(handle: handle),
-      ),
+      MaterialPageRoute(builder: (_) => dest),
     );
   }
 
-  /// Parses a handle from a QR value string.
-  /// Supports:
-  ///   - `homeworkhelper://profile/@handle`
-  ///   - `homeworkhelper://profile/handle`
-  ///   - `homeworkhelper://u/handle`
+  /// Parses a QR value string and returns the appropriate destination widget.
+  ///
+  /// Supported formats:
+  ///   - `homeworkhelper://profile/@handle` / `homeworkhelper://u/handle`
+  ///   - `homeworkhelper://invite/<handle>`
+  ///   - `homeworkhelper://project/<projectId>`
   ///   - bare `@handle` or `handle`
-  static String? _parseHandle(String raw) {
+  static Widget? _parseLink(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return null;
 
-    // Try URI parsing first.
     try {
       final uri = Uri.parse(trimmed);
       if (uri.scheme == 'homeworkhelper') {
+        final host = uri.host;
         final segments = uri.pathSegments;
-        if (segments.isNotEmpty) {
-          final last = segments.last.replaceFirst(RegExp(r'^@'), '');
-          if (last.isNotEmpty) return last;
+        final id = segments.isNotEmpty
+            ? segments.first.replaceFirst(RegExp(r'^@'), '')
+            : '';
+
+        switch (host) {
+          case 'project':
+            if (id.isNotEmpty) {
+              return JoinProjectScreen(projectId: id);
+            }
+            break;
+          case 'invite':
+            if (id.isNotEmpty) {
+              return JoinInviteScreen(inviteId: id);
+            }
+            break;
+          case 'profile':
+          case 'u':
+            if (id.isNotEmpty) {
+              return PublicProfileScreen(handle: id);
+            }
+            break;
         }
       }
     } catch (_) {}
 
-    // Bare @handle or handle.
+    // Bare @handle or handle — treat as a profile link.
     final bare = trimmed.replaceFirst(RegExp(r'^@'), '');
     if (RegExp(r'^[a-zA-Z0-9_]{3,20}$').hasMatch(bare)) {
-      return bare;
+      return PublicProfileScreen(handle: bare);
     }
     return null;
   }
