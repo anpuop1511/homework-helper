@@ -13,7 +13,6 @@ class SubjectsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     final assignments =
         context.watch<AssignmentsProvider>().assignments.toList();
 
@@ -48,7 +47,7 @@ class SubjectsScreen extends StatelessWidget {
                   subject: entry.key,
                   assignments: entry.value,
                   colorScheme: colorScheme,
-                  textTheme: textTheme,
+                  textTheme: Theme.of(context).textTheme,
                 );
               }).toList(),
             ),
@@ -64,6 +63,95 @@ class SubjectsScreen extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (_) => const AddTaskSheet(),
+    );
+  }
+}
+
+/// Inline subject folders widget embedded in [HomeScreen].
+///
+/// Shows a collapsible "Subject Folders" header followed by individual
+/// subject folder cards for each subject that has at least one assignment.
+class SubjectFolderSection extends StatefulWidget {
+  final ColorScheme colorScheme;
+
+  const SubjectFolderSection({super.key, required this.colorScheme});
+
+  @override
+  State<SubjectFolderSection> createState() => _SubjectFolderSectionState();
+}
+
+class _SubjectFolderSectionState extends State<SubjectFolderSection> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final assignments =
+        context.watch<AssignmentsProvider>().assignments.toList();
+
+    final Map<String, List<Assignment>> grouped = {};
+    for (final subject in Subject.allSubjects) {
+      if (subject == Subject.all) continue;
+      final list = assignments.where((a) => a.subject == subject).toList()
+        ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      if (list.isNotEmpty) {
+        grouped[subject] = list;
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              child: Row(
+                children: [
+                  Text(
+                    'Subject Folders',
+                    style: textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(),
+                  AnimatedRotation(
+                    turns: _expanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 250),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: widget.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: grouped.isEmpty
+                ? _EmptyFolders(colorScheme: widget.colorScheme)
+                : Column(
+                    children: grouped.entries.map((entry) {
+                      return _SubjectFolder(
+                        subject: entry.key,
+                        assignments: entry.value,
+                        colorScheme: widget.colorScheme,
+                        textTheme: textTheme,
+                      );
+                    }).toList(),
+                  ),
+            secondChild: const SizedBox.shrink(),
+            crossFadeState: _expanded
+                ? CrossFadeState.showFirst
+                : CrossFadeState.showSecond,
+            duration: const Duration(milliseconds: 250),
+          ),
+        ],
+      ),
     );
   }
 }

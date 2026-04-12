@@ -11,14 +11,12 @@ import 'username_screen.dart';
 
 /// Settings screen – Android 16 / Material 3 Expressive style.
 ///
-/// Sections:
-///   - 🎨 Personalization  (App Vibe)
-///   - 🏷️ Identity         (username)
-///   - 🔒 Privacy & Security (study activity, chat history, AI permissions,
-///                            data export, biometric lock, NFC biometric,
-///                            passkey, change password, email verification)
-///   - ℹ️  About            (version, device type)
-///   - Sign Out
+/// Settings are organized into collapsible [ExpansionTile] categories:
+///   - 🏷️ Account     (identity, password, sign out)
+///   - 🎨 Appearance  (vibe/palette, profile privacy)
+///   - 🤖 AI & Models (model selector, BYOK, AI toggle, ghost mode)
+///   - 🔒 Privacy & Security (study activity, data, biometrics)
+///   - ℹ️  About       (version, device)
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -66,430 +64,528 @@ class SettingsScreen extends StatelessWidget {
                 color: colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
 
-            // ── 🎨 Personalization ────────────────────────────────────
-            _SectionLabel(
-                label: '🎨  Personalization', colorScheme: colorScheme),
-            const SizedBox(height: 4),
-            Text(
-              'Choose a color palette that matches your mood.',
-              style: textTheme.bodySmall
-                  ?.copyWith(color: colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 12),
-            _SquircleCard(
+            // ── 🏷️ Account ────────────────────────────────────────────
+            _CategoryTile(
+              icon: Icons.person_rounded,
+              label: '🏷️  Account',
               colorScheme: colorScheme,
-              child: Column(
-                children: AppVibe.values.map((vibe) {
-                  final isSelected = themeProvider.vibe == vibe;
-                  final vibeScheme = ColorScheme.fromSeed(
-                    seedColor: vibe.seedColor,
-                    brightness: Theme.of(context).brightness,
-                  );
-                  return _VibeRow(
-                    vibe: vibe,
-                    vibeScheme: vibeScheme,
-                    isSelected: isSelected,
-                    onTap: () =>
-                        context.read<ThemeProvider>().setVibe(vibe),
-                    showDivider: vibe != AppVibe.values.last,
+              children: [
+                const SizedBox(height: 8),
+                _SquircleCard(
+                  colorScheme: colorScheme,
+                  child: _SecurityTile(
+                    icon: Icons.alternate_email_rounded,
+                    title: auth.username != null && auth.username!.isNotEmpty
+                        ? 'Change Username  (@${auth.username})'
+                        : 'Set your @username',
+                    subtitle: auth.username != null && auth.username!.isNotEmpty
+                        ? 'Update your unique @handle.'
+                        : 'Pick a unique handle so friends can find you.',
                     colorScheme: colorScheme,
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // ── 🏷️ Identity ───────────────────────────────────────────
-            _SectionLabel(label: '🏷️  Identity', colorScheme: colorScheme),
-            const SizedBox(height: 10),
-            _SquircleCard(
-              colorScheme: colorScheme,
-              child: _SecurityTile(
-                icon: Icons.alternate_email_rounded,
-                title: auth.username != null && auth.username!.isNotEmpty
-                    ? 'Change Username  (@${auth.username})'
-                    : 'Set your @username',
-                subtitle: auth.username != null && auth.username!.isNotEmpty
-                    ? 'Update your unique @handle.'
-                    : 'Pick a unique handle so friends can find you.',
-                colorScheme: colorScheme,
-                onTap: auth.isSignedIn
-                    ? () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                const UsernameScreen(allowSkip: true),
-                          ),
-                        )
-                    : null,
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // ── 👁️ Profile Privacy ───────────────────────────────
-            _SectionLabel(label: '👁️  Profile Privacy', colorScheme: colorScheme),
-            const SizedBox(height: 10),
-            _SquircleCard(
-              colorScheme: colorScheme,
-              child: Column(
-                children: [
-                  // Profile visibility
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(Icons.visibility_rounded,
-                          color: colorScheme.onPrimaryContainer, size: 20),
-                    ),
-                    title: Text(
-                      'Profile Visibility',
-                      style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      _profileVisibilityLabel(socialProvider.profileVisibility),
-                      style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                    ),
-                    trailing: DropdownButton<ProfileVisibility>(
-                      value: socialProvider.profileVisibility,
-                      underline: const SizedBox.shrink(),
-                      items: ProfileVisibility.values.map((v) {
-                        return DropdownMenuItem(
-                          value: v,
-                          child: Text(_profileVisibilityLabel(v),
-                              style: textTheme.bodyMedium),
-                        );
-                      }).toList(),
-                      onChanged: (v) {
-                        if (v != null) {
-                          context.read<SocialProvider>().setProfileVisibility(v);
-                        }
-                      },
-                    ),
+                    onTap: auth.isSignedIn
+                        ? () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const UsernameScreen(allowSkip: true),
+                              ),
+                            )
+                        : null,
                   ),
-                  Divider(height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
-                  // Friend requests privacy
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(12),
+                ),
+                const SizedBox(height: 12),
+                _SquircleCard(
+                  colorScheme: colorScheme,
+                  child: Column(
+                    children: [
+                      _SecurityTile(
+                        icon: Icons.lock_reset_rounded,
+                        title: 'Change Password',
+                        subtitle: 'Send a password-reset email.',
+                        colorScheme: colorScheme,
+                        onTap: auth.isSignedIn && auth.email != null
+                            ? () => _sendPasswordReset(context, auth.email!)
+                            : null,
                       ),
-                      child: Icon(Icons.person_add_rounded,
-                          color: colorScheme.onSecondaryContainer, size: 20),
-                    ),
-                    title: Text(
-                      'Who Can Add Me',
-                      style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      _friendRequestsLabel(socialProvider.friendRequestsPrivacy),
-                      style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                    ),
-                    trailing: DropdownButton<FriendRequestsPrivacy>(
-                      value: socialProvider.friendRequestsPrivacy,
-                      underline: const SizedBox.shrink(),
-                      items: FriendRequestsPrivacy.values.map((v) {
-                        return DropdownMenuItem(
-                          value: v,
-                          child: Text(_friendRequestsLabel(v),
-                              style: textTheme.bodyMedium),
-                        );
-                      }).toList(),
-                      onChanged: (v) {
-                        if (v != null) {
-                          context.read<SocialProvider>().setFriendRequestsPrivacy(v);
-                        }
-                      },
-                    ),
+                      Divider(
+                          height: 1,
+                          color: colorScheme.outlineVariant.withAlpha(100)),
+                      _SecurityTile(
+                        icon: Icons.verified_user_rounded,
+                        title: 'Email Verification',
+                        subtitle: auth.isEmailVerified
+                            ? 'Your email is verified ✅'
+                            : 'Send a verification email.',
+                        colorScheme: colorScheme,
+                        onTap: auth.isSignedIn && !auth.isEmailVerified
+                            ? () => _sendVerification(context)
+                            : null,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // ── 🔒 Privacy & Security ─────────────────────────────────
-            _SectionLabel(
-                label: '🔒  Privacy & Security',
-                colorScheme: colorScheme),
-            const SizedBox(height: 10),
-
-            // Privacy sub-card
-            _SquircleCard(
-              colorScheme: colorScheme,
-              child: Column(
-                children: [
-                  // Show Study Activity
-                  SwitchListTile(
-                    value: socialProvider.showStudyActivity,
-                    onChanged: (v) =>
-                        context
-                            .read<SocialProvider>()
-                            .setShowStudyActivity(v),
-                    contentPadding: EdgeInsets.zero,
-                    secondary: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(12),
+                ),
+                const SizedBox(height: 12),
+                if (auth.isSignedIn)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: FilledButton.icon(
+                      onPressed: () => _confirmSignOut(context),
+                      icon: const Icon(Icons.logout_rounded),
+                      label: Text(
+                        'Sign Out',
+                        style: GoogleFonts.lexend(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                      child: Icon(Icons.people_rounded,
-                          color: colorScheme.onSecondaryContainer,
-                          size: 20),
-                    ),
-                    title: Text(
-                      'Show Study Activity to Friends',
-                      style: textTheme.bodyLarge
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      'Let friends see when you are in a focus session.',
-                      style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant),
-                    ),
-                  ),
-                  Divider(
-                      height: 1,
-                      color: colorScheme.outlineVariant.withAlpha(100)),
-
-                  // Ghost Mode (Pause History)
-                  SwitchListTile(
-                    value: !chat.isHistoryEnabled,
-                    onChanged: (v) =>
-                        context.read<ChatProvider>().setHistoryEnabled(!v),
-                    contentPadding: EdgeInsets.zero,
-                    secondary: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: !chat.isHistoryEnabled
-                            ? colorScheme.secondaryContainer
-                            : colorScheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '👻',
-                          style: const TextStyle(fontSize: 20),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: colorScheme.errorContainer,
+                        foregroundColor: colorScheme.onErrorContainer,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
                         ),
                       ),
                     ),
-                    title: Text(
-                      'Ghost Mode',
-                      style: textTheme.bodyLarge
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      !chat.isHistoryEnabled
-                          ? 'New chats are not saved to history.'
-                          : 'Chat history is being recorded.',
-                      style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant),
-                    ),
                   ),
-                  Divider(
-                      height: 1,
-                      color: colorScheme.outlineVariant.withAlpha(100)),
-
-                  // Revoke AI Permissions
-                  SwitchListTile(
-                    value: security.isAiEnabled,
-                    onChanged: (v) =>
-                        context.read<SecurityProvider>().setAiEnabled(v),
-                    contentPadding: EdgeInsets.zero,
-                    secondary: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: security.isAiEnabled
-                            ? colorScheme.primaryContainer
-                            : colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.smart_toy_rounded,
-                        color: security.isAiEnabled
-                            ? colorScheme.onPrimaryContainer
-                            : colorScheme.onErrorContainer,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      'AI Features',
-                      style: textTheme.bodyLarge
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      security.isAiEnabled
-                          ? 'AI Study Buddy is active.'
-                          : 'AI features have been revoked.',
-                      style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant),
-                    ),
-                  ),
-                  Divider(
-                      height: 1,
-                      color: colorScheme.outlineVariant.withAlpha(100)),
-
-                  // Clear Chat History
-                  _SecurityTile(
-                    icon: Icons.delete_sweep_rounded,
-                    title: 'Clear Chat History',
-                    subtitle: 'Erase all AI Study Buddy messages.',
-                    colorScheme: colorScheme,
-                    onTap: () => _confirmClearChat(context),
-                  ),
-                  Divider(
-                      height: 1,
-                      color: colorScheme.outlineVariant.withAlpha(100)),
-
-                  // Data Export
-                  _SecurityTile(
-                    icon: Icons.file_download_rounded,
-                    title: 'Export My Data',
-                    subtitle: 'Download a copy of your data.',
-                    colorScheme: colorScheme,
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Data export coming soon.'),
-                        behavior: SnackBarBehavior.floating,
-                        backgroundColor:
-                            colorScheme.surfaceContainerHighest,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                const SizedBox(height: 8),
+              ],
             ),
-            const SizedBox(height: 16),
 
-            // Account Security sub-card
-            _SquircleCard(
+            const SizedBox(height: 8),
+
+            // ── 🎨 Appearance ─────────────────────────────────────────
+            _CategoryTile(
+              icon: Icons.palette_rounded,
+              label: '🎨  Appearance',
               colorScheme: colorScheme,
-              child: Column(
-                children: [
-                  _SecurityTile(
-                    icon: Icons.lock_reset_rounded,
-                    title: 'Change Password',
-                    subtitle: 'Send a password-reset email.',
-                    colorScheme: colorScheme,
-                    onTap: auth.isSignedIn && auth.email != null
-                        ? () => _sendPasswordReset(context, auth.email!)
-                        : null,
-                  ),
-                  Divider(
-                      height: 1,
-                      color: colorScheme.outlineVariant.withAlpha(100)),
-                  _SecurityTile(
-                    icon: Icons.verified_user_rounded,
-                    title: 'Email Verification',
-                    subtitle: auth.isEmailVerified
-                        ? 'Your email is verified ✅'
-                        : 'Send a verification email.',
-                    colorScheme: colorScheme,
-                    onTap: auth.isSignedIn && !auth.isEmailVerified
-                        ? () => _sendVerification(context)
-                        : null,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Biometrics & Passkey sub-card
-            _BiometricsSection(colorScheme: colorScheme),
-            const SizedBox(height: 28),
-
-            // ── ℹ️  About ─────────────────────────────────────────────
-            _SectionLabel(label: 'ℹ️  About', colorScheme: colorScheme),
-            const SizedBox(height: 10),
-            _SquircleCard(
-              colorScheme: colorScheme,
-              child: Column(
-                children: [
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        Icons.menu_book_rounded,
-                        color: colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                    title: Text(
-                      'Homework Helper',
-                      style: textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: const Text('Version 2.4.0'),
-                  ),
-                  Divider(
-                      height: 1,
-                      color: colorScheme.outlineVariant.withAlpha(100)),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        Icons.phone_android_rounded,
-                        color: colorScheme.onSecondaryContainer,
-                      ),
-                    ),
-                    title: Text(
-                      'Device',
-                      style: textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(_deviceLabel()),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // ── Sign Out ──────────────────────────────────────────────
-            if (auth.isSignedIn)
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: FilledButton.icon(
-                  onPressed: () => _confirmSignOut(context),
-                  icon: const Icon(Icons.logout_rounded),
-                  label: Text(
-                    'Sign Out',
-                    style: GoogleFonts.lexend(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colorScheme.errorContainer,
-                    foregroundColor: colorScheme.onErrorContainer,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
+              children: [
+                const SizedBox(height: 8),
+                Text(
+                  'Choose a color palette that matches your mood.',
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 10),
+                _SquircleCard(
+                  colorScheme: colorScheme,
+                  child: Column(
+                    children: AppVibe.values.map((vibe) {
+                      final isSelected = themeProvider.vibe == vibe;
+                      final vibeScheme = ColorScheme.fromSeed(
+                        seedColor: vibe.seedColor,
+                        brightness: Theme.of(context).brightness,
+                      );
+                      return _VibeRow(
+                        vibe: vibe,
+                        vibeScheme: vibeScheme,
+                        isSelected: isSelected,
+                        onTap: () =>
+                            context.read<ThemeProvider>().setVibe(vibe),
+                        showDivider: vibe != AppVibe.values.last,
+                        colorScheme: colorScheme,
+                      );
+                    }).toList(),
                   ),
                 ),
-              ),
+                const SizedBox(height: 12),
+                _SquircleCard(
+                  colorScheme: colorScheme,
+                  child: Column(
+                    children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.visibility_rounded,
+                              color: colorScheme.onPrimaryContainer, size: 20),
+                        ),
+                        title: Text(
+                          'Profile Visibility',
+                          style: textTheme.bodyLarge
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          _profileVisibilityLabel(
+                              socialProvider.profileVisibility),
+                          style: textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                        trailing: DropdownButton<ProfileVisibility>(
+                          value: socialProvider.profileVisibility,
+                          underline: const SizedBox.shrink(),
+                          items: ProfileVisibility.values.map((v) {
+                            return DropdownMenuItem(
+                              value: v,
+                              child: Text(_profileVisibilityLabel(v),
+                                  style: textTheme.bodyMedium),
+                            );
+                          }).toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              context
+                                  .read<SocialProvider>()
+                                  .setProfileVisibility(v);
+                            }
+                          },
+                        ),
+                      ),
+                      Divider(
+                          height: 1,
+                          color: colorScheme.outlineVariant.withAlpha(100)),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.person_add_rounded,
+                              color: colorScheme.onSecondaryContainer,
+                              size: 20),
+                        ),
+                        title: Text(
+                          'Who Can Add Me',
+                          style: textTheme.bodyLarge
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          _friendRequestsLabel(
+                              socialProvider.friendRequestsPrivacy),
+                          style: textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                        trailing: DropdownButton<FriendRequestsPrivacy>(
+                          value: socialProvider.friendRequestsPrivacy,
+                          underline: const SizedBox.shrink(),
+                          items: FriendRequestsPrivacy.values.map((v) {
+                            return DropdownMenuItem(
+                              value: v,
+                              child: Text(_friendRequestsLabel(v),
+                                  style: textTheme.bodyMedium),
+                            );
+                          }).toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              context
+                                  .read<SocialProvider>()
+                                  .setFriendRequestsPrivacy(v);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── 🤖 AI & Models ────────────────────────────────────────
+            _CategoryTile(
+              icon: Icons.auto_awesome_rounded,
+              label: '🤖  AI & Models',
+              colorScheme: colorScheme,
+              children: [
+                const SizedBox(height: 8),
+                _SquircleCard(
+                  colorScheme: colorScheme,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Model selector
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(Icons.psychology_rounded,
+                                  color: colorScheme.onPrimaryContainer,
+                                  size: 20),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('AI Model',
+                                      style: textTheme.bodyLarge?.copyWith(
+                                          fontWeight: FontWeight.w600)),
+                                  Text('Choose the Gemini model to use.',
+                                      style: textTheme.bodySmall?.copyWith(
+                                          color:
+                                              colorScheme.onSurfaceVariant)),
+                                ],
+                              ),
+                            ),
+                            DropdownButton<AiModel>(
+                              value: chat.selectedModel,
+                              underline: const SizedBox.shrink(),
+                              items: AiModel.values.map((m) {
+                                return DropdownMenuItem(
+                                  value: m,
+                                  child: Text(m.label,
+                                      style: textTheme.bodyMedium),
+                                );
+                              }).toList(),
+                              onChanged: (m) {
+                                if (m != null) {
+                                  context.read<ChatProvider>().setModel(m);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      // BYOK key input — only visible when Custom is selected
+                      if (chat.selectedModel == AiModel.custom) ...[
+                        Divider(
+                            height: 1,
+                            color: colorScheme.outlineVariant.withAlpha(100)),
+                        _ByokKeyField(colorScheme: colorScheme),
+                      ],
+                      Divider(
+                          height: 1,
+                          color: colorScheme.outlineVariant.withAlpha(100)),
+                      // AI Features toggle
+                      SwitchListTile(
+                        value: security.isAiEnabled,
+                        onChanged: (v) =>
+                            context.read<SecurityProvider>().setAiEnabled(v),
+                        contentPadding: EdgeInsets.zero,
+                        secondary: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: security.isAiEnabled
+                                ? colorScheme.primaryContainer
+                                : colorScheme.errorContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.smart_toy_rounded,
+                            color: security.isAiEnabled
+                                ? colorScheme.onPrimaryContainer
+                                : colorScheme.onErrorContainer,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          'AI Features',
+                          style: textTheme.bodyLarge
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          security.isAiEnabled
+                              ? 'AI Study Buddy is active.'
+                              : 'AI features have been revoked.',
+                          style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                      Divider(
+                          height: 1,
+                          color: colorScheme.outlineVariant.withAlpha(100)),
+                      // Ghost Mode
+                      SwitchListTile(
+                        value: !chat.isHistoryEnabled,
+                        onChanged: (v) =>
+                            context.read<ChatProvider>().setHistoryEnabled(!v),
+                        contentPadding: EdgeInsets.zero,
+                        secondary: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: !chat.isHistoryEnabled
+                                ? colorScheme.secondaryContainer
+                                : colorScheme.surfaceContainerHigh,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Text('👻',
+                                style: TextStyle(fontSize: 20)),
+                          ),
+                        ),
+                        title: Text(
+                          'Ghost Mode',
+                          style: textTheme.bodyLarge
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          !chat.isHistoryEnabled
+                              ? 'New chats are not saved to history.'
+                              : 'Chat history is being recorded.',
+                          style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                      Divider(
+                          height: 1,
+                          color: colorScheme.outlineVariant.withAlpha(100)),
+                      // Clear Chat History
+                      _SecurityTile(
+                        icon: Icons.delete_sweep_rounded,
+                        title: 'Clear Chat History',
+                        subtitle: 'Erase all AI Study Buddy messages.',
+                        colorScheme: colorScheme,
+                        onTap: () => _confirmClearChat(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── 🔒 Privacy & Security ─────────────────────────────────
+            _CategoryTile(
+              icon: Icons.shield_rounded,
+              label: '🔒  Privacy & Security',
+              colorScheme: colorScheme,
+              children: [
+                const SizedBox(height: 8),
+                _SquircleCard(
+                  colorScheme: colorScheme,
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        value: socialProvider.showStudyActivity,
+                        onChanged: (v) => context
+                            .read<SocialProvider>()
+                            .setShowStudyActivity(v),
+                        contentPadding: EdgeInsets.zero,
+                        secondary: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.people_rounded,
+                              color: colorScheme.onSecondaryContainer,
+                              size: 20),
+                        ),
+                        title: Text(
+                          'Show Study Activity to Friends',
+                          style: textTheme.bodyLarge
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          'Let friends see when you are in a focus session.',
+                          style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                      Divider(
+                          height: 1,
+                          color: colorScheme.outlineVariant.withAlpha(100)),
+                      _SecurityTile(
+                        icon: Icons.file_download_rounded,
+                        title: 'Export My Data',
+                        subtitle: 'Download a copy of your data.',
+                        colorScheme: colorScheme,
+                        onTap: () =>
+                            ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Data export coming soon.'),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor:
+                                colorScheme.surfaceContainerHighest,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _BiometricsSection(colorScheme: colorScheme),
+                const SizedBox(height: 8),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── ℹ️  About ─────────────────────────────────────────────
+            _CategoryTile(
+              icon: Icons.info_outline_rounded,
+              label: 'ℹ️  About',
+              colorScheme: colorScheme,
+              children: [
+                const SizedBox(height: 8),
+                _SquircleCard(
+                  colorScheme: colorScheme,
+                  child: Column(
+                    children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            Icons.menu_book_rounded,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                        title: Text(
+                          'Homework Helper',
+                          style: textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: const Text('Version 2.5.0'),
+                      ),
+                      Divider(
+                          height: 1,
+                          color: colorScheme.outlineVariant.withAlpha(100)),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            Icons.phone_android_rounded,
+                            color: colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                        title: Text(
+                          'Device',
+                          style: textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: Text(_deviceLabel()),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+
             const SizedBox(height: 24),
           ],
         ),
@@ -648,21 +744,166 @@ class SettingsScreen extends StatelessWidget {
 
 // ── Shared sub-widgets ───────────────────────────────────────────────────────
 
-/// Large section label following Android 16 style.
-class _SectionLabel extends StatelessWidget {
+/// Expandable category tile that wraps content in a themed ExpansionTile.
+class _CategoryTile extends StatelessWidget {
+  final IconData icon;
   final String label;
   final ColorScheme colorScheme;
+  final List<Widget> children;
 
-  const _SectionLabel({required this.label, required this.colorScheme});
+  const _CategoryTile({
+    required this.icon,
+    required this.label,
+    required this.colorScheme,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: GoogleFonts.lexend(
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-        color: colorScheme.onSurface,
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
+          tilePadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          childrenPadding:
+              const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          leading: Icon(icon, color: colorScheme.primary),
+          title: Text(
+            label,
+            style: GoogleFonts.lexend(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
+            ),
+          ),
+          children: children,
+        ),
+      ),
+    );
+  }
+}
+
+/// Text field widget for entering a custom BYOK API key.
+class _ByokKeyField extends StatefulWidget {
+  final ColorScheme colorScheme;
+  const _ByokKeyField({required this.colorScheme});
+
+  @override
+  State<_ByokKeyField> createState() => _ByokKeyFieldState();
+}
+
+class _ByokKeyFieldState extends State<_ByokKeyField> {
+  late final TextEditingController _controller;
+  bool _obscure = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final key = context.read<ChatProvider>().customApiKey;
+    _controller = TextEditingController(text: key);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = widget.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: colorScheme.tertiaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.vpn_key_rounded,
+                    color: colorScheme.onTertiaryContainer, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Your Gemini API Key',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600)),
+                    Text('Paste your key from Google AI Studio.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            obscureText: _obscure,
+            decoration: InputDecoration(
+              hintText: 'AIza...',
+              filled: true,
+              fillColor: colorScheme.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide:
+                    BorderSide(color: colorScheme.outlineVariant),
+              ),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(
+                        _obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        size: 20),
+                    onPressed: () =>
+                        setState(() => _obscure = !_obscure),
+                  ),
+                  IconButton(
+                    icon:
+                        const Icon(Icons.check_circle_rounded, size: 20),
+                    color: colorScheme.primary,
+                    tooltip: 'Save key',
+                    onPressed: () {
+                      context
+                          .read<ChatProvider>()
+                          .setCustomApiKey(_controller.text);
+                      FocusScope.of(context).unfocus();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('API key saved.'),
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor:
+                              colorScheme.surfaceContainerHighest,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

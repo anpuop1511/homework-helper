@@ -6,6 +6,7 @@ import '../models/assignment.dart';
 import '../providers/assignments_provider.dart';
 import '../widgets/assignment_card.dart';
 import '../widgets/add_task_sheet.dart';
+import 'subjects_screen.dart' show SubjectFolderSection;
 
 /// The main dashboard screen featuring Material 3 Expressive design.
 /// Displays a motivational header, subject filter chips, and assignment list.
@@ -177,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
           filtered.isEmpty
               ? SliverToBoxAdapter(child: _EmptyState(colorScheme: colorScheme))
               : SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
@@ -193,6 +194,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+
+          // Subject Folders section embedded in Home
+          SliverToBoxAdapter(
+            child: SubjectFolderSection(colorScheme: colorScheme),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(

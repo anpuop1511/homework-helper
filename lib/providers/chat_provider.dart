@@ -24,6 +24,41 @@ class ChatMessage {
       );
 }
 
+/// Available AI model identifiers.
+///
+/// - [gemini25Flash] – default, Gemini 2.5 Flash (fast & capable).
+/// - [gemini30Flash] – Gemini 3.0 Flash (cutting-edge, limited quota).
+/// - [custom] – Bring Your Own Key (BYOK); uses [ChatProvider.customApiKey].
+enum AiModel {
+  gemini25Flash,
+  gemini30Flash,
+  custom;
+
+  /// The model string sent to the Generative AI SDK.
+  String get modelId {
+    switch (this) {
+      case AiModel.gemini25Flash:
+        return 'gemini-2.5-flash';
+      case AiModel.gemini30Flash:
+        return 'gemini-3.0-flash';
+      case AiModel.custom:
+        return 'gemini-2.5-flash';
+    }
+  }
+
+  /// Human-readable display label shown in the Settings UI.
+  String get label {
+    switch (this) {
+      case AiModel.gemini25Flash:
+        return 'Gemini 2.5 Flash';
+      case AiModel.gemini30Flash:
+        return 'Gemini 3.0 Flash (Limited)';
+      case AiModel.custom:
+        return 'Custom / BYOK';
+    }
+  }
+}
+
 /// Manages the AI Study Buddy chat state and Gemini API integration.
 ///
 /// Exposes a [messages] list and a [isStreaming] flag that the UI can
@@ -38,9 +73,17 @@ class ChatProvider extends ChangeNotifier {
       'with plain text (not LaTeX). Keep responses focused.';
 
   static const _kHistoryEnabled = 'chat_history_enabled';
+  static const _kSelectedModel = 'chat_selected_model';
+  static const _kCustomApiKey = 'chat_custom_api_key';
 
   GenerativeModel? _model;
   ChatSession? _session;
+
+  /// The currently selected AI model.
+  AiModel _selectedModel = AiModel.gemini25Flash;
+
+  /// Custom API key provided by the user for BYOK mode.
+  String _customApiKey = '';
 
   static ChatMessage _welcomeMessage() => ChatMessage(
         text: 'Hi! I\'m your AI Study Buddy 🤖📚 powered by Gemini. '
@@ -78,6 +121,21 @@ class ChatProvider extends ChangeNotifier {
 
   String? get error => _error;
 
+  /// The currently selected AI model.
+  AiModel get selectedModel => _selectedModel;
+
+  /// The user-provided API key for BYOK mode (may be empty).
+  String get customApiKey => _customApiKey;
+
+  /// Returns the effective API key: custom key if BYOK selected and non-empty,
+  /// otherwise the default app key.
+  String get _effectiveApiKey {
+    if (_selectedModel == AiModel.custom && _customApiKey.isNotEmpty) {
+      return _customApiKey;
+    }
+    return AppSecrets.geminiApiKey;
+  }
+
   ChatProvider() {
     _loadPrefs();
   }
@@ -87,17 +145,55 @@ class ChatProvider extends ChangeNotifier {
   void _ensureModel() {
     if (_model != null) return;
     _model = GenerativeModel(
-      model: 'gemini-1.5-flash',
-      apiKey: AppSecrets.geminiApiKey,
+      model: _selectedModel.modelId,
+      apiKey: _effectiveApiKey,
       systemInstruction: Content.system(_systemPrompt),
     );
     _session ??= _model!.startChat();
   }
 
+  /// Rebuilds the model when settings change (model or API key).
+  void _rebuildModel() {
+    _model = GenerativeModel(
+      model: _selectedModel.modelId,
+      apiKey: _effectiveApiKey,
+      systemInstruction: Content.system(_systemPrompt),
+    );
+    _session = _model!.startChat();
+  }
+
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     _isHistoryEnabled = prefs.getBool(_kHistoryEnabled) ?? true;
+    final modelIndex = prefs.getInt(_kSelectedModel);
+    if (modelIndex != null && modelIndex < AiModel.values.length) {
+      _selectedModel = AiModel.values[modelIndex];
+    }
+    _customApiKey = prefs.getString(_kCustomApiKey) ?? '';
     notifyListeners();
+  }
+
+  /// Changes the active AI model and persists the choice.
+  Future<void> setModel(AiModel model) async {
+    if (_selectedModel == model) return;
+    _selectedModel = model;
+    _rebuildModel();
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kSelectedModel, model.index);
+  }
+
+  /// Updates the custom BYOK API key and persists it.
+  Future<void> setCustomApiKey(String key) async {
+    final trimmed = key.trim();
+    if (_customApiKey == trimmed) return;
+    _customApiKey = trimmed;
+    if (_selectedModel == AiModel.custom) {
+      _rebuildModel();
+    }
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kCustomApiKey, trimmed);
   }
 
   /// Enables or disables Ghost Mode (chat history recording).
@@ -216,10 +312,10 @@ class ChatProvider extends ChangeNotifier {
     final aiIndex = list.length - 1;
 
     try {
-      // Vision model — use gemini-1.5-flash which supports multimodal input.
+      // Vision model — use the selected model for multimodal input.
       final visionModel = GenerativeModel(
-        model: 'gemini-1.5-flash',
-        apiKey: AppSecrets.geminiApiKey,
+        model: _selectedModel.modelId,
+        apiKey: _effectiveApiKey,
         systemInstruction: Content.system(_systemPrompt),
       );
 
@@ -269,8 +365,8 @@ class ChatProvider extends ChangeNotifier {
   Future<String?> extractTaskFromImage(Uint8List imageBytes) async {
     try {
       final visionModel = GenerativeModel(
-        model: 'gemini-1.5-flash',
-        apiKey: AppSecrets.geminiApiKey,
+        model: _selectedModel.modelId,
+        apiKey: _effectiveApiKey,
       );
       final response = await visionModel.generateContent([
         Content.multi([
