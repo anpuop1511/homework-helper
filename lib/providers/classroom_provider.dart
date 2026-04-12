@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -228,12 +229,16 @@ class ClassroomProvider extends ChangeNotifier {
       // authenticate() shows the account-picker and (when scopeHint is
       // provided) may also show the OAuth consent screen inline on platforms
       // that support a combined flow (e.g. Android).
-      final account = await _googleSignIn.authenticate(scopeHint: _scopes);
+      final account = await _googleSignIn
+          .authenticate(scopeHint: _scopes)
+          .timeout(const Duration(seconds: 15));
       _currentAccount = account;
 
       // Explicitly request Classroom scopes in case the platform deferred
       // authorization to a separate step.
-      await account.authorizationClient.authorizeScopes(_scopes);
+      await account.authorizationClient
+          .authorizeScopes(_scopes)
+          .timeout(const Duration(seconds: 15));
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_kAuthorized, true);
@@ -246,6 +251,14 @@ class ClassroomProvider extends ChangeNotifier {
       // Pre-fetch courses immediately after authorization.
       await fetchCourses();
       return true;
+    } on TimeoutException {
+      debugPrint('[ClassroomProvider] authorize timed out');
+      _diagnosticDetail = 'TimeoutException after 15 s';
+      _error = 'Sign-in timed out. Please check your internet connection or '
+          'verify your app\'s Google Cloud configuration (missing Web Client ID).';
+      _status = ClassroomAuthStatus.error;
+      notifyListeners();
+      return false;
     } catch (e) {
       debugPrint('[ClassroomProvider] authorize error: $e');
       _diagnosticDetail = e.toString();
