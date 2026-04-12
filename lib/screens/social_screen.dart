@@ -635,7 +635,7 @@ class _QuickActionsGrid extends StatelessWidget {
       ),
       _TileData(
         icon: Icons.group_work_rounded,
-        label: 'Create Project',
+        label: 'Current Projects',
         color: colorScheme.surfaceContainerHigh,
         foreground: colorScheme.onSurface,
         onTap: onCreateProject,

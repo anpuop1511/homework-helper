@@ -50,6 +50,7 @@ class _TimerScreenState extends State<TimerScreen>
   void dispose() {
     _timer?.cancel();
     NotificationService.instance.cancelTimerOngoing();
+    NotificationService.instance.cancelStudySessionLive();
     _successController.dispose();
     super.dispose();
   }
@@ -57,6 +58,7 @@ class _TimerScreenState extends State<TimerScreen>
   void _setMode(_TimerMode mode) {
     _timer?.cancel();
     NotificationService.instance.cancelTimerOngoing();
+    NotificationService.instance.cancelStudySessionLive();
     setState(() {
       _mode = mode;
       _isRunning = false;
@@ -81,13 +83,20 @@ class _TimerScreenState extends State<TimerScreen>
     if (_isRunning) {
       _timer?.cancel();
       setState(() => _isRunning = false);
-      NotificationService.instance.cancelTimerOngoing();
+      // Update notification to paused state (keep visible so user can resume).
+      NotificationService.instance.showStudySessionLive(
+        sessionEndMs: DateTime.now().millisecondsSinceEpoch +
+            _remainingSeconds * 1000,
+        isPaused: true,
+        subject: _modeLabel(_mode),
+      );
     } else {
       setState(() => _isRunning = true);
       _postOngoingNotification();
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (_remainingSeconds <= 0) {
           _timer?.cancel();
+          NotificationService.instance.cancelStudySessionLive();
           NotificationService.instance.cancelTimerOngoing();
           setState(() {
             _isRunning = false;
@@ -119,6 +128,15 @@ class _TimerScreenState extends State<TimerScreen>
     final seconds = _remainingSeconds % 60;
     final timeStr =
         '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    final sessionEndMs = DateTime.now().millisecondsSinceEpoch +
+        _remainingSeconds * 1000;
+    // Post the Live Update-compatible study session notification.
+    NotificationService.instance.showStudySessionLive(
+      sessionEndMs: sessionEndMs,
+      isPaused: false,
+      subject: _modeLabel(_mode),
+    );
+    // Also update the legacy ongoing notification.
     NotificationService.instance.showTimerOngoing(
       timeStr,
       modeName: _modeLabel(_mode),
@@ -128,6 +146,7 @@ class _TimerScreenState extends State<TimerScreen>
   void _reset() {
     _timer?.cancel();
     NotificationService.instance.cancelTimerOngoing();
+    NotificationService.instance.cancelStudySessionLive();
     setState(() {
       _isRunning = false;
       _showSuccess = false;

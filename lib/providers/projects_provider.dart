@@ -113,16 +113,28 @@ class ProjectsProvider extends ChangeNotifier {
   /// The caller is responsible for enforcing owner rules before calling this.
   Future<String?> leaveProject(String projectId) async {
     if (_uid == null) return 'Not signed in.';
+    // Optimistic removal: hide project immediately so feed updates instantly.
+    final removed = _projects.where((p) => p.id == projectId).toList();
+    _projects = _projects.where((p) => p.id != projectId).toList();
+    notifyListeners();
     try {
       await _db.collection('projects').doc(projectId).update({
         'memberUids': FieldValue.arrayRemove([_uid!]),
       });
       return null;
     } on FirebaseException catch (e) {
+      // Revert optimistic removal on error.
+      _projects = [...removed, ..._projects]..sort(
+          (a, b) => b.createdAt.compareTo(a.createdAt));
+      notifyListeners();
       return e.code == 'permission-denied'
           ? 'Permission denied.'
           : 'Could not leave project (${e.code}). Please try again.';
     } catch (_) {
+      // Revert optimistic removal on error.
+      _projects = [...removed, ..._projects]..sort(
+          (a, b) => b.createdAt.compareTo(a.createdAt));
+      notifyListeners();
       return 'Could not leave project. Please try again.';
     }
   }
@@ -132,14 +144,26 @@ class ProjectsProvider extends ChangeNotifier {
   /// Returns `null` on success or a human-readable error string on failure.
   Future<String?> deleteProject(String projectId) async {
     if (_uid == null) return 'Not signed in.';
+    // Optimistic removal: hide project immediately so feed updates instantly.
+    final removed = _projects.where((p) => p.id == projectId).toList();
+    _projects = _projects.where((p) => p.id != projectId).toList();
+    notifyListeners();
     try {
       await _db.collection('projects').doc(projectId).delete();
       return null;
     } on FirebaseException catch (e) {
+      // Revert optimistic removal on error.
+      _projects = [...removed, ..._projects]..sort(
+          (a, b) => b.createdAt.compareTo(a.createdAt));
+      notifyListeners();
       return e.code == 'permission-denied'
           ? 'Permission denied. Only the project owner can delete it.'
           : 'Could not delete project (${e.code}). Please try again.';
     } catch (_) {
+      // Revert optimistic removal on error.
+      _projects = [...removed, ..._projects]..sort(
+          (a, b) => b.createdAt.compareTo(a.createdAt));
+      notifyListeners();
       return 'Could not delete project. Please try again.';
     }
   }

@@ -17,8 +17,157 @@ enum _ProjectAction { leave }
 
 // ── Group Projects List Screen ────────────────────────────────────────────────
 
-/// Entry screen for Group Projects – lists the user's projects and lets them
-/// create a new one.
+/// Shows a bottom sheet for joining a project by ID or invite link.
+void _showGroupJoinSheet(BuildContext context) {
+  final colorScheme = Theme.of(context).colorScheme;
+  final codeController = TextEditingController();
+  bool joining = false;
+
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (sheetCtx) => StatefulBuilder(
+      builder: (ctx, setSheetState) {
+        return Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border(
+                  top: BorderSide(color: colorScheme.outlineVariant)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Join a Group Project',
+                  style: GoogleFonts.lexend(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Paste an invite link or enter a project ID.',
+                  style: TextStyle(
+                      color: colorScheme.onSurfaceVariant, fontSize: 14),
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: codeController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'homeworkhelper://project/... or project ID',
+                    prefixIcon: const Icon(Icons.link_rounded),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: FilledButton.icon(
+                    onPressed: joining
+                        ? null
+                        : () async {
+                            final raw = codeController.text.trim();
+                            if (raw.isEmpty) return;
+                            String projectId = raw;
+                            final uri = Uri.tryParse(raw);
+                            if (uri != null &&
+                                uri.pathSegments.isNotEmpty) {
+                              projectId = uri.pathSegments.last;
+                            }
+                            setSheetState(() => joining = true);
+                            final error = await ctx
+                                .read<ProjectsProvider>()
+                                .joinProject(projectId);
+                            if (!ctx.mounted) return;
+                            setSheetState(() => joining = false);
+                            Navigator.of(ctx).pop();
+                            if (error == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Joined project! 🎉'),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor:
+                                      colorScheme.primaryContainer,
+                                ),
+                              );
+                              if (!context.mounted) return;
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ProjectDetailScreen(
+                                      projectId: projectId),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(error),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor:
+                                      colorScheme.errorContainer,
+                                ),
+                              );
+                            }
+                          },
+                    icon: joining
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white))
+                        : const Icon(Icons.login_rounded),
+                    label: Text(
+                      joining ? 'Joining…' : 'Join Project',
+                      style: GoogleFonts.lexend(
+                          fontWeight: FontWeight.w700),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1976D2),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
+
+/// Entry screen for Current Projects – lists the user's projects and lets them
+/// create a new one or join an existing one.
 class GroupProjectsScreen extends StatelessWidget {
   const GroupProjectsScreen({super.key});
 
@@ -33,10 +182,15 @@ class GroupProjectsScreen extends StatelessWidget {
         backgroundColor: colorScheme.surface,
         elevation: 0,
         title: Text(
-          'Group Projects',
+          'Current Projects',
           style: GoogleFonts.lexend(fontWeight: FontWeight.w700),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.login_rounded),
+            tooltip: 'Join project',
+            onPressed: () => _showGroupJoinSheet(context),
+          ),
           IconButton(
             icon: const Icon(Icons.add_rounded),
             tooltip: 'Create project',

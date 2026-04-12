@@ -6,9 +6,9 @@ import 'package:timezone/timezone.dart' as tz;
 
 /// Singleton service for scheduling and displaying local notifications.
 ///
-/// Handles timer completion alerts and assignment deadline reminders.
-/// Degrades gracefully on platforms / browsers where notifications are
-/// not supported or permission is denied.
+/// Handles timer completion alerts, live study session updates, and assignment
+/// deadline reminders. Degrades gracefully on platforms / browsers where
+/// notifications are not supported or permission is denied.
 class NotificationService {
   NotificationService._();
 
@@ -22,6 +22,7 @@ class NotificationService {
   // ── Notification channel / IDs ──────────────────────────────────────────
   static const int _timerDoneId = 1;
   static const int _timerOngoingId = 2;
+  static const int _studySessionId = 3;
   static const int _deadlineBaseId = 100; // offset for deadline notifications
 
   static const AndroidNotificationDetails _androidTimer =
@@ -87,6 +88,83 @@ class NotificationService {
 
   // ── Public API ────────────────────────────────────────────────────────────
 
+  /// Shows (or updates) the live study session notification.
+  ///
+  /// This is an Android Live Update-compatible promoted ongoing notification.
+  /// [sessionEndMs] is the session end time in ms since epoch (used for the
+  /// live countdown chip). [isPaused] switches between running and paused
+  /// states. [subject] is an optional subject/mode label shown in the title.
+  Future<void> showStudySessionLive({
+    required int sessionEndMs,
+    bool isPaused = false,
+    String? subject,
+  }) async {
+    if (!_initialized) return;
+    try {
+      final statusLabel = isPaused ? 'Paused' : 'Active';
+      final androidDetails = AndroidNotificationDetails(
+        'study_session_channel',
+        'Study Session',
+        channelDescription:
+            'Live ongoing notification for an active study session.',
+        importance: Importance.defaultImportance,
+        priority: Priority.high,
+        ongoing: true,
+        autoCancel: false,
+        icon: '@mipmap/ic_launcher',
+        subText: statusLabel,
+        // Chronometer shows a live countdown in the status chip while running.
+        when: isPaused ? null : sessionEndMs,
+        usesChronometer: !isPaused,
+        chronometerCountDown: true,
+        showWhen: !isPaused,
+        actions: [
+          AndroidNotificationAction(
+            isPaused ? 'resume' : 'pause',
+            isPaused ? 'Resume' : 'Pause',
+            showsUserInterface: true,
+          ),
+          const AndroidNotificationAction(
+            'end_session',
+            'End Session',
+            showsUserInterface: true,
+          ),
+        ],
+      );
+      final title = subject != null && subject.isNotEmpty
+          ? 'Study Session — $subject'
+          : 'Study Session';
+      final body = isPaused
+          ? 'Session paused. Tap Resume to continue.'
+          : 'Focus mode active. Keep it up!';
+      await _plugin.show(
+        id: _studySessionId,
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
+          android: androidDetails,
+          iOS: const DarwinNotificationDetails(
+            presentAlert: false,
+            presentBadge: false,
+            presentSound: false,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('[NotificationService] showStudySessionLive failed: $e');
+    }
+  }
+
+  /// Cancels the live study session notification.
+  Future<void> cancelStudySessionLive() async {
+    if (!_initialized) return;
+    try {
+      await _plugin.cancel(id: _studySessionId);
+    } catch (e) {
+      debugPrint('[NotificationService] cancelStudySessionLive failed: $e');
+    }
+  }
+
   /// Shows (or updates) a persistent ongoing notification displaying the
   /// remaining time while the focus timer is active.
   Future<void> showTimerOngoing(String timeRemaining, {String? modeName}) async {
@@ -96,8 +174,8 @@ class NotificationService {
         'timer_ongoing_channel',
         'Focus Timer Progress',
         channelDescription: 'Live countdown shown while the focus timer runs.',
-        importance: Importance.low,
-        priority: Priority.low,
+        importance: Importance.defaultImportance,
+        priority: Priority.high,
         ongoing: true,
         autoCancel: false,
         icon: '@mipmap/ic_launcher',
