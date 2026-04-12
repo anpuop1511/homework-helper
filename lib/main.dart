@@ -11,6 +11,7 @@ import 'firebase_options.dart';
 import 'providers/assignments_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
+import 'providers/classes_provider.dart';
 import 'providers/security_provider.dart';
 import 'providers/social_provider.dart';
 import 'providers/user_provider.dart';
@@ -73,6 +74,15 @@ Future<void> main() async {
               name: auth.currentUser?.displayName,
               username: auth.username,
             );
+            return provider;
+          },
+        ),
+        // ClassesProvider is wired to AuthProvider for Firestore sync.
+        ChangeNotifierProxyProvider<AuthProvider, ClassesProvider>(
+          create: (_) => ClassesProvider(),
+          update: (_, auth, prev) {
+            final provider = prev ?? ClassesProvider();
+            provider.setUid(auth.uid);
             return provider;
           },
         ),

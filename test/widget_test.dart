@@ -7,6 +7,7 @@ import 'package:homework_helper/models/assignment.dart';
 import 'package:homework_helper/providers/assignments_provider.dart';
 import 'package:homework_helper/providers/auth_provider.dart';
 import 'package:homework_helper/providers/chat_provider.dart';
+import 'package:homework_helper/providers/classes_provider.dart';
 import 'package:homework_helper/providers/security_provider.dart';
 import 'package:homework_helper/providers/social_provider.dart';
 import 'package:homework_helper/providers/user_provider.dart';
@@ -26,6 +27,7 @@ Widget _buildTestApp(Widget child) {
       ChangeNotifierProvider(
           create: (_) => AuthProvider(firebaseReady: false)),
       ChangeNotifierProvider(create: (_) => SocialProvider()),
+      ChangeNotifierProvider(create: (_) => ClassesProvider()),
       ChangeNotifierProxyProvider<UserProvider, AssignmentsProvider>(
         create: (_) => AssignmentsProvider(),
         update: (_, userProvider, prev) =>
@@ -47,6 +49,7 @@ Widget _buildFullApp() {
       ChangeNotifierProvider(
           create: (_) => AuthProvider(firebaseReady: false)),
       ChangeNotifierProvider(create: (_) => SocialProvider()),
+      ChangeNotifierProvider(create: (_) => ClassesProvider()),
       ChangeNotifierProxyProvider<UserProvider, AssignmentsProvider>(
         create: (_) => AssignmentsProvider(),
         update: (_, userProvider, prev) =>
