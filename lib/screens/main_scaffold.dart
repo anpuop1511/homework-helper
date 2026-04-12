@@ -537,7 +537,13 @@ class _ThemeQuickSwitch extends StatelessWidget {
           Wrap(
             spacing: 8.0,
             runSpacing: 8.0,
-            children: AppVibe.values.map((vibe) {
+            children: const [
+              AppVibe.defaultPurple,
+              AppVibe.midnight,
+              AppVibe.sunset,
+              AppVibe.ocean,
+              AppVibe.sakura,
+            ].map((vibe) {
               final isSelected = vibe == currentVibe;
               return GestureDetector(
                 onTap: () => onVibeSelected(vibe),
