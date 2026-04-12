@@ -249,6 +249,17 @@ class ClassroomProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('[ClassroomProvider] authorize error: $e');
       _diagnosticDetail = e.toString();
+
+      // Recoverable credential failure (BadAuthentication / long-lived token
+      // gone): call disconnect() to fully clear the stale GMS session so the
+      // next authorize() attempt starts from a clean state instead of looping.
+      if (_isRecoverableBadAuth(e)) {
+        try {
+          await _googleSignIn.disconnect();
+        } catch (_) {}
+        _currentAccount = null;
+      }
+
       _error = _friendlyError(e);
       _status = ClassroomAuthStatus.error;
       notifyListeners();
@@ -368,6 +379,18 @@ class ClassroomProvider extends ChangeNotifier {
 
   // ── Helpers ─────────────────────────────────────────────────────────────
 
+  /// Returns `true` when [e] represents a recoverable device-level credential
+  /// failure (e.g. Google Play Services `BAD_AUTHENTICATION` /
+  /// "Long live credential not available").
+  static bool _isRecoverableBadAuth(Object e) {
+    final lower = e.toString().toLowerCase();
+    return lower.contains('badauthentication') ||
+        lower.contains('bad_authentication') ||
+        lower.contains('long live credential not available') ||
+        lower.contains('long_live_credential') ||
+        lower.contains('userrecoverable');
+  }
+
   /// Returns auth headers for the current Google session, or `null` if the
   /// session has expired / been revoked.
   Future<Map<String, String>?> _authHeaders() async {
@@ -412,6 +435,16 @@ class ClassroomProvider extends ChangeNotifier {
   static String _friendlyError(Object e) {
     final raw = e.toString();
     final lower = raw.toLowerCase();
+
+    // Recoverable device-level credential failure: GMS reports
+    // BAD_AUTHENTICATION / "Long live credential not available".
+    // The user must re-add or re-authenticate their Google account on the
+    // device before the app can obtain a fresh token.
+    if (_isRecoverableBadAuth(e)) {
+      return 'Your Google account session is no longer valid on this device. '
+          'Go to Android Settings → Accounts → Google, remove and re-add your '
+          'account (or sign out and back in), then try connecting again.';
+    }
 
     // OAuth / developer misconfiguration: SHA certificate mismatch or the app
     // is not registered correctly in Google Cloud Console.
