@@ -108,11 +108,40 @@ class ProjectsProvider extends ChangeNotifier {
   }
 
   /// Leaves a project (removes the current user from memberUids).
-  Future<void> leaveProject(String projectId) async {
-    if (_uid == null) return;
-    await _db.collection('projects').doc(projectId).update({
-      'memberUids': FieldValue.arrayRemove([_uid!]),
-    });
+  ///
+  /// Returns `null` on success or a human-readable error string on failure.
+  /// The caller is responsible for enforcing owner rules before calling this.
+  Future<String?> leaveProject(String projectId) async {
+    if (_uid == null) return 'Not signed in.';
+    try {
+      await _db.collection('projects').doc(projectId).update({
+        'memberUids': FieldValue.arrayRemove([_uid!]),
+      });
+      return null;
+    } on FirebaseException catch (e) {
+      return e.code == 'permission-denied'
+          ? 'Permission denied.'
+          : 'Could not leave project (${e.code}). Please try again.';
+    } catch (_) {
+      return 'Could not leave project. Please try again.';
+    }
+  }
+
+  /// Deletes a project document (owner-only operation).
+  ///
+  /// Returns `null` on success or a human-readable error string on failure.
+  Future<String?> deleteProject(String projectId) async {
+    if (_uid == null) return 'Not signed in.';
+    try {
+      await _db.collection('projects').doc(projectId).delete();
+      return null;
+    } on FirebaseException catch (e) {
+      return e.code == 'permission-denied'
+          ? 'Permission denied. Only the project owner can delete it.'
+          : 'Could not delete project (${e.code}). Please try again.';
+    } catch (_) {
+      return 'Could not delete project. Please try again.';
+    }
   }
 
   // ── Bulletin posts ────────────────────────────────────────────────────────

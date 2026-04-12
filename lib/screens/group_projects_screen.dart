@@ -13,6 +13,8 @@ import '../providers/projects_provider.dart';
 
 const _kBlue = Color(0xFF007FFF);
 
+enum _ProjectAction { leave }
+
 // ── Group Projects List Screen ────────────────────────────────────────────────
 
 /// Entry screen for Group Projects – lists the user's projects and lets them
@@ -406,6 +408,153 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     super.dispose();
   }
 
+  /// Handles the Leave / Delete project action with role-aware dialogs.
+  Future<void> _handleLeaveOrDelete(
+      BuildContext context, GroupProject project) async {
+    final uid = context.read<AuthProvider>().uid;
+    final isOwner = project.ownerUid == uid;
+    final memberCount = project.memberUids.length;
+
+    if (isOwner && memberCount > 1) {
+      // Owner cannot leave while others are still in the project.
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) {
+          final cs = Theme.of(ctx).colorScheme;
+          return AlertDialog(
+            title: Text(
+              'Cannot Leave Project',
+              style: GoogleFonts.lexend(fontWeight: FontWeight.w700),
+            ),
+            content: Text(
+              'You are the owner of "${project.name}" and there are still '
+              '${memberCount - 1} other member${memberCount - 1 == 1 ? '' : 's'}. '
+              'Transfer ownership to another member before leaving, or remove '
+              'all other members first.',
+              style: TextStyle(color: cs.onSurfaceVariant),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
+    if (isOwner && memberCount <= 1) {
+      // Owner is sole member – offer to delete the project.
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) {
+          final cs = Theme.of(ctx).colorScheme;
+          return AlertDialog(
+            title: Text(
+              'Delete Project?',
+              style: GoogleFonts.lexend(fontWeight: FontWeight.w700),
+            ),
+            content: Text(
+              'You are the only member of "${project.name}". '
+              'Leaving will permanently delete the project and all its data.',
+              style: TextStyle(color: cs.onSurfaceVariant),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                    backgroundColor: cs.error,
+                    foregroundColor: cs.onError),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Delete'),
+              ),
+            ],
+          );
+        },
+      );
+      if (confirmed != true) return;
+      if (!mounted) return;
+      final err = await context
+          .read<ProjectsProvider>()
+          .deleteProject(project.id);
+      if (!mounted) return;
+      if (err != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(err),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Project deleted.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+
+    // Regular member – confirm then leave.
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        return AlertDialog(
+          title: Text(
+            'Leave Project?',
+            style: GoogleFonts.lexend(fontWeight: FontWeight.w700),
+          ),
+          content: Text(
+            'Are you sure you want to leave "${project.name}"? '
+            'You can rejoin with an invite link.',
+            style: TextStyle(color: cs.onSurfaceVariant),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                  backgroundColor: cs.error, foregroundColor: cs.onError),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Leave'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true) return;
+    if (!mounted) return;
+    final err =
+        await context.read<ProjectsProvider>().leaveProject(project.id);
+    if (!mounted) return;
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You have left the project.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.of(context).maybePop();
+    }
+  }
+
   void _showInviteSheet(BuildContext context, GroupProject project) {
     final colorScheme = Theme.of(context).colorScheme;
     final link = 'homeworkhelper://project/${project.id}';
@@ -578,6 +727,43 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
             icon: const Icon(Icons.group_add_rounded),
             tooltip: 'Invite',
             onPressed: () => _showInviteSheet(context, project),
+          ),
+          PopupMenuButton<_ProjectAction>(
+            icon: const Icon(Icons.more_vert_rounded),
+            tooltip: 'More options',
+            onSelected: (action) {
+              if (action == _ProjectAction.leave) {
+                _handleLeaveOrDelete(context, project);
+              }
+            },
+            itemBuilder: (_) {
+              final uid = context.read<AuthProvider>().uid;
+              final isOwner = project.ownerUid == uid;
+              final isSoleMember = project.memberUids.length <= 1;
+              final label = (isOwner && isSoleMember)
+                  ? 'Delete Project'
+                  : (isOwner ? 'Leave / Delete…' : 'Leave Project');
+              final icon = (isOwner && isSoleMember)
+                  ? Icons.delete_forever_rounded
+                  : Icons.exit_to_app_rounded;
+              return [
+                PopupMenuItem<_ProjectAction>(
+                  value: _ProjectAction.leave,
+                  child: Row(
+                    children: [
+                      Icon(icon,
+                          color: Theme.of(context).colorScheme.error, size: 20),
+                      const SizedBox(width: 10),
+                      Text(
+                        label,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error),
+                      ),
+                    ],
+                  ),
+                ),
+              ];
+            },
           ),
         ],
         bottom: TabBar(
