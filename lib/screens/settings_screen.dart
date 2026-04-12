@@ -1052,8 +1052,10 @@ class _PrivacySecuritySettingsPage extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 12),
-        _BiometricsSection(colorScheme: colorScheme),
+        if (!kIsWeb) ...[
+          const SizedBox(height: 12),
+          _BiometricsSection(colorScheme: colorScheme),
+        ],
       ],
     );
   }

@@ -49,6 +49,8 @@ class NotificationService {
 
   Future<void> init() async {
     if (_initialized) return;
+    // flutter_local_notifications has no web implementation; skip entirely.
+    if (kIsWeb) return;
     try {
       tz.initializeTimeZones();
 
