@@ -395,6 +395,7 @@ class DatabaseService {
       await _friendsCol(request.fromUid).doc(request.toUid).set(currentUserData);
     } catch (_) {}
   }
+
   Future<void> declineFriendRequest(String requestId, {String? targetUid}) async {
     await _requestsCol.doc(requestId).delete();
     if (targetUid != null) {
