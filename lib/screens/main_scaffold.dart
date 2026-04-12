@@ -546,8 +546,9 @@ class _ThemeQuickSwitch extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 8.0,
             children: AppVibe.values.map((vibe) {
               final isSelected = vibe == currentVibe;
               return GestureDetector(

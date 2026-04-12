@@ -23,6 +23,7 @@ class UserProvider extends ChangeNotifier {
   int _level = 1;
   int _streak = 0;
   String _name = 'Student';
+  String _bio = '';
   DateTime? _lastActiveDate;
 
   /// UID of the currently signed-in Firebase user, or null for guest mode.
@@ -32,6 +33,7 @@ class UserProvider extends ChangeNotifier {
   int get level => _level;
   int get streak => _streak;
   String get name => _name;
+  String get bio => _bio;
 
   /// XP needed to reach the next level from the current one.
   int get xpForNextLevel => _baseXp * _level;
@@ -143,6 +145,7 @@ class UserProvider extends ChangeNotifier {
     _level = (data['level'] as int?) ?? 1;
     _streak = (data['streak'] as int?) ?? 0;
     _name = (data['name'] as String?) ?? 'Student';
+    _bio = (data['bio'] as String?) ?? '';
     final lastMs = data['lastActiveDate'] as int?;
     if (lastMs != null) {
       _lastActiveDate = DateTime.fromMillisecondsSinceEpoch(lastMs);

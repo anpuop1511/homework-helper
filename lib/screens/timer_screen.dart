@@ -49,12 +49,14 @@ class _TimerScreenState extends State<TimerScreen>
   @override
   void dispose() {
     _timer?.cancel();
+    NotificationService.instance.cancelTimerOngoing();
     _successController.dispose();
     super.dispose();
   }
 
   void _setMode(_TimerMode mode) {
     _timer?.cancel();
+    NotificationService.instance.cancelTimerOngoing();
     setState(() {
       _mode = mode;
       _isRunning = false;
@@ -79,11 +81,14 @@ class _TimerScreenState extends State<TimerScreen>
     if (_isRunning) {
       _timer?.cancel();
       setState(() => _isRunning = false);
+      NotificationService.instance.cancelTimerOngoing();
     } else {
       setState(() => _isRunning = true);
+      _postOngoingNotification();
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (_remainingSeconds <= 0) {
           _timer?.cancel();
+          NotificationService.instance.cancelTimerOngoing();
           setState(() {
             _isRunning = false;
             _showSuccess = true;
@@ -100,13 +105,29 @@ class _TimerScreenState extends State<TimerScreen>
           _successController.forward(from: 0);
         } else {
           setState(() => _remainingSeconds--);
+          // Update ongoing notification every minute.
+          if (_remainingSeconds % 60 == 0) {
+            _postOngoingNotification();
+          }
         }
       });
     }
   }
 
+  void _postOngoingNotification() {
+    final minutes = _remainingSeconds ~/ 60;
+    final seconds = _remainingSeconds % 60;
+    final timeStr =
+        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    NotificationService.instance.showTimerOngoing(
+      timeStr,
+      modeName: _modeLabel(_mode),
+    );
+  }
+
   void _reset() {
     _timer?.cancel();
+    NotificationService.instance.cancelTimerOngoing();
     setState(() {
       _isRunning = false;
       _showSuccess = false;

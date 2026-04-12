@@ -69,6 +69,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _showEditProfileDialog(
+    BuildContext context,
+    String currentDisplayName,
+    String currentBio,
+  ) async {
+    final auth = context.read<AuthProvider>();
+    final uid = auth.uid;
+    if (uid == null) return;
+
+    final nameCtrl = TextEditingController(text: currentDisplayName);
+    final bioCtrl = TextEditingController(text: currentBio);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Profile'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Display Name',
+                border: OutlineInputBorder(),
+              ),
+              textCapitalization: TextCapitalization.words,
+              maxLength: 40,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: bioCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Bio',
+                hintText: 'Tell others a bit about yourself…',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+              maxLength: 150,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final newName = nameCtrl.text.trim();
+      final newBio = bioCtrl.text.trim();
+      if (newName.isEmpty) return;
+      try {
+        await DatabaseService.instance.updateProfile(uid, newName, newBio);
+        if (mounted) {
+          context.read<UserProvider>().setName(newName);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to save profile. Please try again.')),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -231,6 +304,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
+                  if (auth.isSignedIn) ...[
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      onPressed: () => _showEditProfileDialog(
+                        context,
+                        displayName,
+                        user.bio,
+                      ),
+                      icon: const Icon(Icons.edit_rounded, size: 16),
+                      label: const Text('Edit Profile'),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
