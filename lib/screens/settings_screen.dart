@@ -9,26 +9,112 @@ import '../providers/social_provider.dart';
 import '../providers/theme_provider.dart';
 import 'username_screen.dart';
 
-/// Settings screen – Android 16 / Material 3 Expressive style.
+// ── Settings landing page ─────────────────────────────────────────────────
+
+/// Settings screen – Android-style landing page.
 ///
-/// Settings are organized into collapsible [ExpansionTile] categories:
-///   - 🏷️ Account     (identity, password, sign out)
-///   - 🎨 Appearance  (vibe/palette, profile privacy)
-///   - 🤖 AI & Models (model selector, BYOK, AI toggle, ghost mode)
-///   - 🔒 Privacy & Security (study activity, data, biometrics)
-///   - ℹ️  About       (version, device)
-class SettingsScreen extends StatelessWidget {
+/// Displays a search bar and a vertical list of large rounded category tiles:
+///   - Account
+///   - AI & Models
+///   - Appearance
+///   - Notifications
+///   - Privacy & Security
+///   - About
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+
+  static const List<_CategoryData> _categories = [
+    _CategoryData(
+      icon: Icons.person_rounded,
+      color: Color(0xFF6750A4),
+      title: 'Account',
+      subtitle: 'Username, password, sign out',
+    ),
+    _CategoryData(
+      icon: Icons.auto_awesome_rounded,
+      color: Color(0xFF0069C0),
+      title: 'AI & Models',
+      subtitle: 'Model selector, Bring Your Own Key',
+    ),
+    _CategoryData(
+      icon: Icons.palette_rounded,
+      color: Color(0xFF2E7D32),
+      title: 'Appearance',
+      subtitle: 'Color theme, vibe palette',
+    ),
+    _CategoryData(
+      icon: Icons.notifications_rounded,
+      color: Color(0xFFE64A19),
+      title: 'Notifications',
+      subtitle: 'Timer alerts, deadline reminders',
+    ),
+    _CategoryData(
+      icon: Icons.shield_rounded,
+      color: Color(0xFF37474F),
+      title: 'Privacy & Security',
+      subtitle: 'App lock, biometrics, data export',
+    ),
+    _CategoryData(
+      icon: Icons.info_outline_rounded,
+      color: Color(0xFF4E6B3A),
+      title: 'About',
+      subtitle: 'Version, device info',
+    ),
+  ];
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _openCategory(_CategoryData cat, BuildContext context) {
+    Widget page;
+    switch (cat.title) {
+      case 'Account':
+        page = const _AccountSettingsPage();
+        break;
+      case 'AI & Models':
+        page = const _AiModelsSettingsPage();
+        break;
+      case 'Appearance':
+        page = const _AppearanceSettingsPage();
+        break;
+      case 'Notifications':
+        page = const _NotificationsSettingsPage();
+        break;
+      case 'Privacy & Security':
+        page = const _PrivacySecuritySettingsPage();
+        break;
+      case 'About':
+        page = const _AboutSettingsPage();
+        break;
+      default:
+        return;
+    }
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final themeProvider = context.watch<ThemeProvider>();
-    final socialProvider = context.watch<SocialProvider>();
-    final security = context.watch<SecurityProvider>();
-    final auth = context.watch<AuthProvider>();
-    final chat = context.watch<ChatProvider>();
+
+    final filtered = _query.isEmpty
+        ? _categories
+        : _categories
+            .where((c) =>
+                c.title.toLowerCase().contains(_query.toLowerCase()) ||
+                c.subtitle.toLowerCase().contains(_query.toLowerCase()))
+            .toList();
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -40,593 +126,297 @@ class SettingsScreen extends StatelessWidget {
           tooltip: 'Back',
           onPressed: () => Navigator.pop(context),
         ),
+        title: Text(
+          'Settings',
+          style: GoogleFonts.lexend(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onSurface,
+          ),
+        ),
       ),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        child: Column(
           children: [
-            // ── Large Bold Header ─────────────────────────────────────
+            // ── Search bar ────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.only(top: 8, bottom: 4),
-              child: Text(
-                'Settings',
-                style: GoogleFonts.lexend(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
-                  color: colorScheme.onSurface,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _query = v),
+                decoration: InputDecoration(
+                  hintText: 'Search settings',
+                  hintStyle: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  suffixIcon: _query.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _query = '');
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: colorScheme.surfaceContainerHigh,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(50),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(50),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(50),
+                    borderSide:
+                        BorderSide(color: colorScheme.primary, width: 1.5),
+                  ),
                 ),
               ),
             ),
-            Text(
-              'Customise your experience.',
-              style: textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // ── 🏷️ Account ────────────────────────────────────────────
-            _CategoryTile(
-              icon: Icons.person_rounded,
-              label: '🏷️  Account',
-              colorScheme: colorScheme,
-              children: [
-                const SizedBox(height: 8),
-                _SquircleCard(
-                  colorScheme: colorScheme,
-                  child: _SecurityTile(
-                    icon: Icons.alternate_email_rounded,
-                    title: auth.username != null && auth.username!.isNotEmpty
-                        ? 'Change Username  (@${auth.username})'
-                        : 'Set your @username',
-                    subtitle: auth.username != null && auth.username!.isNotEmpty
-                        ? 'Update your unique @handle.'
-                        : 'Pick a unique handle so friends can find you.',
+            // ── Category tiles ────────────────────────────────────────
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                itemCount: filtered.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (context, i) {
+                  final cat = filtered[i];
+                  return _SettingsCategoryTile(
+                    data: cat,
                     colorScheme: colorScheme,
-                    onTap: auth.isSignedIn
-                        ? () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    const UsernameScreen(allowSkip: true),
-                              ),
-                            )
-                        : null,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _SquircleCard(
-                  colorScheme: colorScheme,
-                  child: Column(
-                    children: [
-                      _SecurityTile(
-                        icon: Icons.lock_reset_rounded,
-                        title: 'Change Password',
-                        subtitle: 'Send a password-reset email.',
-                        colorScheme: colorScheme,
-                        onTap: auth.isSignedIn && auth.email != null
-                            ? () => _sendPasswordReset(context, auth.email!)
-                            : null,
-                      ),
-                      Divider(
-                          height: 1,
-                          color: colorScheme.outlineVariant.withAlpha(100)),
-                      _SecurityTile(
-                        icon: Icons.verified_user_rounded,
-                        title: 'Email Verification',
-                        subtitle: auth.isEmailVerified
-                            ? 'Your email is verified ✅'
-                            : 'Send a verification email.',
-                        colorScheme: colorScheme,
-                        onTap: auth.isSignedIn && !auth.isEmailVerified
-                            ? () => _sendVerification(context)
-                            : null,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (auth.isSignedIn)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: FilledButton.icon(
-                      onPressed: () => _confirmSignOut(context),
-                      icon: const Icon(Icons.logout_rounded),
-                      label: Text(
-                        'Sign Out',
-                        style: GoogleFonts.lexend(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: colorScheme.errorContainer,
-                        foregroundColor: colorScheme.onErrorContainer,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-              ],
+                    onTap: () => _openCategory(cat, context),
+                  );
+                },
+              ),
             ),
-
-            const SizedBox(height: 8),
-
-            // ── 🎨 Appearance ─────────────────────────────────────────
-            _CategoryTile(
-              icon: Icons.palette_rounded,
-              label: '🎨  Appearance',
-              colorScheme: colorScheme,
-              children: [
-                const SizedBox(height: 8),
-                Text(
-                  'Choose a color palette that matches your mood.',
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: 10),
-                _SquircleCard(
-                  colorScheme: colorScheme,
-                  child: Column(
-                    children: AppVibe.values.map((vibe) {
-                      final isSelected = themeProvider.vibe == vibe;
-                      final vibeScheme = ColorScheme.fromSeed(
-                        seedColor: vibe.seedColor,
-                        brightness: Theme.of(context).brightness,
-                      );
-                      return _VibeRow(
-                        vibe: vibe,
-                        vibeScheme: vibeScheme,
-                        isSelected: isSelected,
-                        onTap: () =>
-                            context.read<ThemeProvider>().setVibe(vibe),
-                        showDivider: vibe != AppVibe.values.last,
-                        colorScheme: colorScheme,
-                      );
-                    }).toList(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _SquircleCard(
-                  colorScheme: colorScheme,
-                  child: Column(
-                    children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(Icons.visibility_rounded,
-                              color: colorScheme.onPrimaryContainer, size: 20),
-                        ),
-                        title: Text(
-                          'Profile Visibility',
-                          style: textTheme.bodyLarge
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Text(
-                          _profileVisibilityLabel(
-                              socialProvider.profileVisibility),
-                          style: textTheme.bodySmall
-                              ?.copyWith(color: colorScheme.onSurfaceVariant),
-                        ),
-                        trailing: DropdownButton<ProfileVisibility>(
-                          value: socialProvider.profileVisibility,
-                          underline: const SizedBox.shrink(),
-                          items: ProfileVisibility.values.map((v) {
-                            return DropdownMenuItem(
-                              value: v,
-                              child: Text(_profileVisibilityLabel(v),
-                                  style: textTheme.bodyMedium),
-                            );
-                          }).toList(),
-                          onChanged: (v) {
-                            if (v != null) {
-                              context
-                                  .read<SocialProvider>()
-                                  .setProfileVisibility(v);
-                            }
-                          },
-                        ),
-                      ),
-                      Divider(
-                          height: 1,
-                          color: colorScheme.outlineVariant.withAlpha(100)),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: colorScheme.secondaryContainer,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(Icons.person_add_rounded,
-                              color: colorScheme.onSecondaryContainer,
-                              size: 20),
-                        ),
-                        title: Text(
-                          'Who Can Add Me',
-                          style: textTheme.bodyLarge
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Text(
-                          _friendRequestsLabel(
-                              socialProvider.friendRequestsPrivacy),
-                          style: textTheme.bodySmall
-                              ?.copyWith(color: colorScheme.onSurfaceVariant),
-                        ),
-                        trailing: DropdownButton<FriendRequestsPrivacy>(
-                          value: socialProvider.friendRequestsPrivacy,
-                          underline: const SizedBox.shrink(),
-                          items: FriendRequestsPrivacy.values.map((v) {
-                            return DropdownMenuItem(
-                              value: v,
-                              child: Text(_friendRequestsLabel(v),
-                                  style: textTheme.bodyMedium),
-                            );
-                          }).toList(),
-                          onChanged: (v) {
-                            if (v != null) {
-                              context
-                                  .read<SocialProvider>()
-                                  .setFriendRequestsPrivacy(v);
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── 🤖 AI & Models ────────────────────────────────────────
-            _CategoryTile(
-              icon: Icons.auto_awesome_rounded,
-              label: '🤖  AI & Models',
-              colorScheme: colorScheme,
-              children: [
-                const SizedBox(height: 8),
-                _SquircleCard(
-                  colorScheme: colorScheme,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Model selector
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(Icons.psychology_rounded,
-                                  color: colorScheme.onPrimaryContainer,
-                                  size: 20),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('AI Model',
-                                      style: textTheme.bodyLarge?.copyWith(
-                                          fontWeight: FontWeight.w600)),
-                                  Text('Choose the Gemini model to use.',
-                                      style: textTheme.bodySmall?.copyWith(
-                                          color:
-                                              colorScheme.onSurfaceVariant)),
-                                ],
-                              ),
-                            ),
-                            DropdownButton<AiModel>(
-                              value: chat.selectedModel,
-                              underline: const SizedBox.shrink(),
-                              items: AiModel.values.map((m) {
-                                return DropdownMenuItem(
-                                  value: m,
-                                  child: Text(m.label,
-                                      style: textTheme.bodyMedium),
-                                );
-                              }).toList(),
-                              onChanged: (m) {
-                                if (m != null) {
-                                  context.read<ChatProvider>().setModel(m);
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      // BYOK key input — only visible when Custom is selected
-                      if (chat.selectedModel == AiModel.custom) ...[
-                        Divider(
-                            height: 1,
-                            color: colorScheme.outlineVariant.withAlpha(100)),
-                        _ByokKeyField(colorScheme: colorScheme),
-                      ],
-                      Divider(
-                          height: 1,
-                          color: colorScheme.outlineVariant.withAlpha(100)),
-                      // AI Features toggle
-                      SwitchListTile(
-                        value: security.isAiEnabled,
-                        onChanged: (v) =>
-                            context.read<SecurityProvider>().setAiEnabled(v),
-                        contentPadding: EdgeInsets.zero,
-                        secondary: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: security.isAiEnabled
-                                ? colorScheme.primaryContainer
-                                : colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            Icons.smart_toy_rounded,
-                            color: security.isAiEnabled
-                                ? colorScheme.onPrimaryContainer
-                                : colorScheme.onErrorContainer,
-                            size: 20,
-                          ),
-                        ),
-                        title: Text(
-                          'AI Features',
-                          style: textTheme.bodyLarge
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Text(
-                          security.isAiEnabled
-                              ? 'AI Study Buddy is active.'
-                              : 'AI features have been revoked.',
-                          style: textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant),
-                        ),
-                      ),
-                      Divider(
-                          height: 1,
-                          color: colorScheme.outlineVariant.withAlpha(100)),
-                      // Ghost Mode
-                      SwitchListTile(
-                        value: !chat.isHistoryEnabled,
-                        onChanged: (v) =>
-                            context.read<ChatProvider>().setHistoryEnabled(!v),
-                        contentPadding: EdgeInsets.zero,
-                        secondary: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: !chat.isHistoryEnabled
-                                ? colorScheme.secondaryContainer
-                                : colorScheme.surfaceContainerHigh,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Center(
-                            child: Text('👻',
-                                style: TextStyle(fontSize: 20)),
-                          ),
-                        ),
-                        title: Text(
-                          'Ghost Mode',
-                          style: textTheme.bodyLarge
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Text(
-                          !chat.isHistoryEnabled
-                              ? 'New chats are not saved to history.'
-                              : 'Chat history is being recorded.',
-                          style: textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant),
-                        ),
-                      ),
-                      Divider(
-                          height: 1,
-                          color: colorScheme.outlineVariant.withAlpha(100)),
-                      // Clear Chat History
-                      _SecurityTile(
-                        icon: Icons.delete_sweep_rounded,
-                        title: 'Clear Chat History',
-                        subtitle: 'Erase all AI Study Buddy messages.',
-                        colorScheme: colorScheme,
-                        onTap: () => _confirmClearChat(context),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── 🔒 Privacy & Security ─────────────────────────────────
-            _CategoryTile(
-              icon: Icons.shield_rounded,
-              label: '🔒  Privacy & Security',
-              colorScheme: colorScheme,
-              children: [
-                const SizedBox(height: 8),
-                _SquircleCard(
-                  colorScheme: colorScheme,
-                  child: Column(
-                    children: [
-                      SwitchListTile(
-                        value: socialProvider.showStudyActivity,
-                        onChanged: (v) => context
-                            .read<SocialProvider>()
-                            .setShowStudyActivity(v),
-                        contentPadding: EdgeInsets.zero,
-                        secondary: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: colorScheme.secondaryContainer,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(Icons.people_rounded,
-                              color: colorScheme.onSecondaryContainer,
-                              size: 20),
-                        ),
-                        title: Text(
-                          'Show Study Activity to Friends',
-                          style: textTheme.bodyLarge
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Text(
-                          'Let friends see when you are in a focus session.',
-                          style: textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant),
-                        ),
-                      ),
-                      Divider(
-                          height: 1,
-                          color: colorScheme.outlineVariant.withAlpha(100)),
-                      _SecurityTile(
-                        icon: Icons.file_download_rounded,
-                        title: 'Export My Data',
-                        subtitle: 'Download a copy of your data.',
-                        colorScheme: colorScheme,
-                        onTap: () =>
-                            ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('Data export coming soon.'),
-                            behavior: SnackBarBehavior.floating,
-                            backgroundColor:
-                                colorScheme.surfaceContainerHighest,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _BiometricsSection(colorScheme: colorScheme),
-                const SizedBox(height: 8),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── ℹ️  About ─────────────────────────────────────────────
-            _CategoryTile(
-              icon: Icons.info_outline_rounded,
-              label: 'ℹ️  About',
-              colorScheme: colorScheme,
-              children: [
-                const SizedBox(height: 8),
-                _SquircleCard(
-                  colorScheme: colorScheme,
-                  child: Column(
-                    children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Icon(
-                            Icons.menu_book_rounded,
-                            color: colorScheme.onPrimaryContainer,
-                          ),
-                        ),
-                        title: Text(
-                          'Homework Helper',
-                          style: textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: const Text('Version 2.5.0'),
-                      ),
-                      Divider(
-                          height: 1,
-                          color: colorScheme.outlineVariant.withAlpha(100)),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: colorScheme.secondaryContainer,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Icon(
-                            Icons.phone_android_rounded,
-                            color: colorScheme.onSecondaryContainer,
-                          ),
-                        ),
-                        title: Text(
-                          'Device',
-                          style: textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text(_deviceLabel()),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-
-            const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
+}
 
-  String _profileVisibilityLabel(ProfileVisibility v) {
-    switch (v) {
-      case ProfileVisibility.public: return 'Public';
-      case ProfileVisibility.friendsOnly: return 'Friends Only';
-      case ProfileVisibility.private: return 'Private';
-    }
+/// Immutable descriptor for a settings category.
+class _CategoryData {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+
+  const _CategoryData({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+  });
+}
+
+/// Large rounded tile matching Android Settings style.
+class _SettingsCategoryTile extends StatelessWidget {
+  final _CategoryData data;
+  final ColorScheme colorScheme;
+  final VoidCallback onTap;
+
+  const _SettingsCategoryTile({
+    required this.data,
+    required this.colorScheme,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Material(
+      color: colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Row(
+            children: [
+              // Circular icon avatar with tinted background
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: data.color.withAlpha(30),
+                child: Icon(data.icon, color: data.color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.title,
+                      style: GoogleFonts.lexend(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      data.subtitle,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded,
+                  color: colorScheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
   }
+}
 
-  String _friendRequestsLabel(FriendRequestsPrivacy v) {
-    switch (v) {
-      case FriendRequestsPrivacy.everyone: return 'Everyone';
-      case FriendRequestsPrivacy.nobody: return 'Nobody';
-    }
+// ── Category detail pages ─────────────────────────────────────────────────
+
+/// Base scaffold used by all category detail pages.
+class _CategoryPage extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _CategoryPage({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+        title: Text(
+          title,
+          style: GoogleFonts.lexend(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface),
+        ),
+        leading: const BackButton(),
+      ),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          children: children,
+        ),
+      ),
+    );
   }
+}
 
-  /// Returns a short human-readable device / platform label.
-  String _deviceLabel() {
-    if (kIsWeb) return 'Web Browser';
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        return 'Android';
-      case TargetPlatform.iOS:
-        return 'iPhone / iPad';
-      case TargetPlatform.macOS:
-        return 'macOS';
-      case TargetPlatform.windows:
-        return 'Windows';
-      case TargetPlatform.linux:
-        return 'Linux';
-      default:
-        return 'Unknown';
-    }
+// ── Account ───────────────────────────────────────────────────────────────
+
+class _AccountSettingsPage extends StatelessWidget {
+  const _AccountSettingsPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final auth = context.watch<AuthProvider>();
+    return _CategoryPage(
+      title: 'Account',
+      children: [
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: Column(
+            children: [
+              _SecurityTile(
+                icon: Icons.alternate_email_rounded,
+                title: auth.username != null && auth.username!.isNotEmpty
+                    ? 'Change Username  (@${auth.username})'
+                    : 'Set your @username',
+                subtitle: auth.username != null && auth.username!.isNotEmpty
+                    ? 'Update your unique @handle.'
+                    : 'Pick a unique handle so friends can find you.',
+                colorScheme: colorScheme,
+                onTap: auth.isSignedIn
+                    ? () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const UsernameScreen(allowSkip: true),
+                          ),
+                        )
+                    : null,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: Column(
+            children: [
+              _SecurityTile(
+                icon: Icons.lock_reset_rounded,
+                title: 'Change Password',
+                subtitle: 'Send a password-reset email.',
+                colorScheme: colorScheme,
+                onTap: auth.isSignedIn && auth.email != null
+                    ? () => _sendPasswordReset(context, auth.email!)
+                    : null,
+              ),
+              Divider(
+                  height: 1,
+                  color: colorScheme.outlineVariant.withAlpha(100)),
+              _SecurityTile(
+                icon: Icons.verified_user_rounded,
+                title: 'Email Verification',
+                subtitle: auth.isEmailVerified
+                    ? 'Your email is verified \u2705'
+                    : 'Send a verification email.',
+                colorScheme: colorScheme,
+                onTap: auth.isSignedIn && !auth.isEmailVerified
+                    ? () => _sendVerification(context)
+                    : null,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (auth.isSignedIn)
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: FilledButton.icon(
+              onPressed: () => _confirmSignOut(context),
+              icon: const Icon(Icons.logout_rounded),
+              label: Text(
+                'Sign Out',
+                style: GoogleFonts.lexend(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: colorScheme.errorContainer,
+                foregroundColor: colorScheme.onErrorContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
   }
-
 
   Future<void> _sendPasswordReset(BuildContext context, String email) async {
     try {
@@ -670,13 +460,206 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.errorContainer,
+              foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
+            ),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      await context.read<AuthProvider>().signOut();
+      if (context.mounted) Navigator.of(context).pop();
+    }
+  }
+}
+
+// ── AI & Models ───────────────────────────────────────────────────────────
+
+class _AiModelsSettingsPage extends StatelessWidget {
+  const _AiModelsSettingsPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final chat = context.watch<ChatProvider>();
+    final security = context.watch<SecurityProvider>();
+    return _CategoryPage(
+      title: 'AI & Models',
+      children: [
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Model selector
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.psychology_rounded,
+                          color: colorScheme.onPrimaryContainer, size: 20),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('AI Model',
+                              style: textTheme.bodyLarge
+                                  ?.copyWith(fontWeight: FontWeight.w600)),
+                          Text('Choose the Gemini model to use.',
+                              style: textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant)),
+                        ],
+                      ),
+                    ),
+                    DropdownButton<AiModel>(
+                      value: chat.selectedModel,
+                      underline: const SizedBox.shrink(),
+                      items: AiModel.values.map((m) {
+                        return DropdownMenuItem(
+                          value: m,
+                          child: Text(m.label, style: textTheme.bodyMedium),
+                        );
+                      }).toList(),
+                      onChanged: (m) {
+                        if (m != null) {
+                          context.read<ChatProvider>().setModel(m);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              // BYOK key input -- only visible when Custom is selected
+              if (chat.selectedModel == AiModel.custom) ...[
+                Divider(
+                    height: 1,
+                    color: colorScheme.outlineVariant.withAlpha(100)),
+                _ByokKeyField(colorScheme: colorScheme),
+              ],
+              Divider(
+                  height: 1,
+                  color: colorScheme.outlineVariant.withAlpha(100)),
+              // AI Features toggle
+              SwitchListTile(
+                value: security.isAiEnabled,
+                onChanged: (v) =>
+                    context.read<SecurityProvider>().setAiEnabled(v),
+                contentPadding: EdgeInsets.zero,
+                secondary: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: security.isAiEnabled
+                        ? colorScheme.primaryContainer
+                        : colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.smart_toy_rounded,
+                    color: security.isAiEnabled
+                        ? colorScheme.onPrimaryContainer
+                        : colorScheme.onErrorContainer,
+                    size: 20,
+                  ),
+                ),
+                title: Text(
+                  'AI Features',
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  security.isAiEnabled
+                      ? 'AI Study Buddy is active.'
+                      : 'AI features have been revoked.',
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+              ),
+              Divider(
+                  height: 1,
+                  color: colorScheme.outlineVariant.withAlpha(100)),
+              // Ghost Mode
+              SwitchListTile(
+                value: !chat.isHistoryEnabled,
+                onChanged: (v) =>
+                    context.read<ChatProvider>().setHistoryEnabled(!v),
+                contentPadding: EdgeInsets.zero,
+                secondary: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: !chat.isHistoryEnabled
+                        ? colorScheme.secondaryContainer
+                        : colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: Text('👻', style: TextStyle(fontSize: 20)),
+                  ),
+                ),
+                title: Text(
+                  'Ghost Mode',
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  !chat.isHistoryEnabled
+                      ? 'New chats are not saved to history.'
+                      : 'Chat history is being recorded.',
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+              ),
+              Divider(
+                  height: 1,
+                  color: colorScheme.outlineVariant.withAlpha(100)),
+              // Clear Chat History
+              _SecurityTile(
+                icon: Icons.delete_sweep_rounded,
+                title: 'Clear Chat History',
+                subtitle: 'Erase all AI Study Buddy messages.',
+                colorScheme: colorScheme,
+                onTap: () => _confirmClearChat(context),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _confirmClearChat(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Clear Chat History?'),
         content: const Text(
             'This will erase all AI Study Buddy messages and start a fresh session.'),
@@ -710,87 +693,416 @@ class SettingsScreen extends StatelessWidget {
       }
     }
   }
+}
 
-  Future<void> _confirmSignOut(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+// ── Appearance ────────────────────────────────────────────────────────────
+
+class _AppearanceSettingsPage extends StatelessWidget {
+  const _AppearanceSettingsPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final themeProvider = context.watch<ThemeProvider>();
+    final socialProvider = context.watch<SocialProvider>();
+    return _CategoryPage(
+      title: 'Appearance',
+      children: [
+        Text(
+          'Choose a color palette that matches your mood.',
+          style: textTheme.bodySmall
+              ?.copyWith(color: colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 10),
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: Column(
+            children: AppVibe.values.map((vibe) {
+              final isSelected = themeProvider.vibe == vibe;
+              final vibeScheme = ColorScheme.fromSeed(
+                seedColor: vibe.seedColor,
+                brightness: Theme.of(context).brightness,
+              );
+              return _VibeRow(
+                vibe: vibe,
+                vibeScheme: vibeScheme,
+                isSelected: isSelected,
+                onTap: () => context.read<ThemeProvider>().setVibe(vibe),
+                showDivider: vibe != AppVibe.values.last,
+                colorScheme: colorScheme,
+              );
+            }).toList(),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor:
-                  Theme.of(context).colorScheme.errorContainer,
-              foregroundColor:
-                  Theme.of(context).colorScheme.onErrorContainer,
-            ),
-            child: const Text('Sign Out'),
+        ),
+        const SizedBox(height: 12),
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: Column(
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.visibility_rounded,
+                      color: colorScheme.onPrimaryContainer, size: 20),
+                ),
+                title: Text(
+                  'Profile Visibility',
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  _profileVisibilityLabel(socialProvider.profileVisibility),
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+                trailing: DropdownButton<ProfileVisibility>(
+                  value: socialProvider.profileVisibility,
+                  underline: const SizedBox.shrink(),
+                  items: ProfileVisibility.values.map((v) {
+                    return DropdownMenuItem(
+                      value: v,
+                      child: Text(_profileVisibilityLabel(v),
+                          style: textTheme.bodyMedium),
+                    );
+                  }).toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      context.read<SocialProvider>().setProfileVisibility(v);
+                    }
+                  },
+                ),
+              ),
+              Divider(
+                  height: 1,
+                  color: colorScheme.outlineVariant.withAlpha(100)),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.person_add_rounded,
+                      color: colorScheme.onSecondaryContainer, size: 20),
+                ),
+                title: Text(
+                  'Who Can Add Me',
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  _friendRequestsLabel(socialProvider.friendRequestsPrivacy),
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+                trailing: DropdownButton<FriendRequestsPrivacy>(
+                  value: socialProvider.friendRequestsPrivacy,
+                  underline: const SizedBox.shrink(),
+                  items: FriendRequestsPrivacy.values.map((v) {
+                    return DropdownMenuItem(
+                      value: v,
+                      child: Text(_friendRequestsLabel(v),
+                          style: textTheme.bodyMedium),
+                    );
+                  }).toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      context
+                          .read<SocialProvider>()
+                          .setFriendRequestsPrivacy(v);
+                    }
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
-    if (confirmed == true && context.mounted) {
-      await context.read<AuthProvider>().signOut();
-      if (context.mounted) Navigator.of(context).pop();
+  }
+
+  String _profileVisibilityLabel(ProfileVisibility v) {
+    switch (v) {
+      case ProfileVisibility.public:
+        return 'Public';
+      case ProfileVisibility.friendsOnly:
+        return 'Friends Only';
+      case ProfileVisibility.private:
+        return 'Private';
+    }
+  }
+
+  String _friendRequestsLabel(FriendRequestsPrivacy v) {
+    switch (v) {
+      case FriendRequestsPrivacy.everyone:
+        return 'Everyone';
+      case FriendRequestsPrivacy.nobody:
+        return 'Nobody';
     }
   }
 }
 
-// ── Shared sub-widgets ───────────────────────────────────────────────────────
+// ── Notifications ─────────────────────────────────────────────────────────
 
-/// Expandable category tile that wraps content in a themed ExpansionTile.
-class _CategoryTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final ColorScheme colorScheme;
-  final List<Widget> children;
-
-  const _CategoryTile({
-    required this.icon,
-    required this.label,
-    required this.colorScheme,
-    required this.children,
-  });
+class _NotificationsSettingsPage extends StatelessWidget {
+  const _NotificationsSettingsPage();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Theme(
-        data: Theme.of(context).copyWith(
-          dividerColor: Colors.transparent,
-        ),
-        child: ExpansionTile(
-          tilePadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          childrenPadding:
-              const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          leading: Icon(icon, color: colorScheme.primary),
-          title: Text(
-            label,
-            style: GoogleFonts.lexend(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: colorScheme.onSurface,
-            ),
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return _CategoryPage(
+      title: 'Notifications',
+      children: [
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: Column(
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.timer_rounded,
+                      color: colorScheme.onPrimaryContainer, size: 20),
+                ),
+                title: Text(
+                  'Focus Timer Alerts',
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  'Notify when a Pomodoro session ends.',
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+                trailing: Switch(
+                  value: true,
+                  onChanged: (_) =>
+                      ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content:
+                          Text('Notification settings coming soon.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  ),
+                ),
+              ),
+              Divider(
+                  height: 1,
+                  color: colorScheme.outlineVariant.withAlpha(100)),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.event_rounded,
+                      color: colorScheme.onSecondaryContainer, size: 20),
+                ),
+                title: Text(
+                  'Deadline Reminders',
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  'Get reminders before assignments are due.',
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+                trailing: Switch(
+                  value: true,
+                  onChanged: (_) =>
+                      ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content:
+                          Text('Notification settings coming soon.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          children: children,
         ),
-      ),
+      ],
     );
   }
 }
+
+// ── Privacy & Security ────────────────────────────────────────────────────
+
+class _PrivacySecuritySettingsPage extends StatelessWidget {
+  const _PrivacySecuritySettingsPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final socialProvider = context.watch<SocialProvider>();
+    return _CategoryPage(
+      title: 'Privacy & Security',
+      children: [
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: Column(
+            children: [
+              SwitchListTile(
+                value: socialProvider.showStudyActivity,
+                onChanged: (v) =>
+                    context.read<SocialProvider>().setShowStudyActivity(v),
+                contentPadding: EdgeInsets.zero,
+                secondary: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.people_rounded,
+                      color: colorScheme.onSecondaryContainer, size: 20),
+                ),
+                title: Text(
+                  'Show Study Activity to Friends',
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  'Let friends see when you are in a focus session.',
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+              ),
+              Divider(
+                  height: 1,
+                  color: colorScheme.outlineVariant.withAlpha(100)),
+              _SecurityTile(
+                icon: Icons.file_download_rounded,
+                title: 'Export My Data',
+                subtitle: 'Download a copy of your data.',
+                colorScheme: colorScheme,
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Data export coming soon.'),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: colorScheme.surfaceContainerHighest,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _BiometricsSection(colorScheme: colorScheme),
+      ],
+    );
+  }
+}
+
+// ── About ─────────────────────────────────────────────────────────────────
+
+class _AboutSettingsPage extends StatelessWidget {
+  const _AboutSettingsPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return _CategoryPage(
+      title: 'About',
+      children: [
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: Column(
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.menu_book_rounded,
+                    color: colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                title: Text(
+                  'Homework Helper',
+                  style: textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text('Version 2.5.0'),
+              ),
+              Divider(
+                  height: 1,
+                  color: colorScheme.outlineVariant.withAlpha(100)),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.phone_android_rounded,
+                    color: colorScheme.onSecondaryContainer,
+                  ),
+                ),
+                title: Text(
+                  'Device',
+                  style: textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(_deviceLabel()),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _deviceLabel() {
+    if (kIsWeb) return 'Web Browser';
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'Android';
+      case TargetPlatform.iOS:
+        return 'iPhone / iPad';
+      case TargetPlatform.macOS:
+        return 'macOS';
+      case TargetPlatform.windows:
+        return 'Windows';
+      case TargetPlatform.linux:
+        return 'Linux';
+      default:
+        return 'Unknown';
+    }
+  }
+}
+
+// ── Shared sub-widgets ────────────────────────────────────────────────────
 
 /// Text field widget for entering a custom BYOK API key.
 class _ByokKeyField extends StatefulWidget {
@@ -844,11 +1156,16 @@ class _ByokKeyFieldState extends State<_ByokKeyField> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Your Gemini API Key',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600)),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyLarge
+                            ?.copyWith(fontWeight: FontWeight.w600)),
                     Text('Paste your key from Google AI Studio.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant)),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(
+                                color: colorScheme.onSurfaceVariant)),
                   ],
                 ),
               ),
@@ -880,8 +1197,8 @@ class _ByokKeyFieldState extends State<_ByokKeyField> {
                         setState(() => _obscure = !_obscure),
                   ),
                   IconButton(
-                    icon:
-                        const Icon(Icons.check_circle_rounded, size: 20),
+                    icon: const Icon(
+                        Icons.check_circle_rounded, size: 20),
                     color: colorScheme.primary,
                     tooltip: 'Save key',
                     onPressed: () {
@@ -1042,21 +1359,23 @@ class _SecurityTile extends StatelessWidget {
         child: Icon(icon, color: colorScheme.onPrimaryContainer, size: 20),
       ),
       title: Text(title,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          style:
+              const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
       subtitle: Text(
         subtitle,
         style: TextStyle(
             fontSize: 12, color: colorScheme.onSurfaceVariant),
       ),
       trailing: onTap != null
-          ? Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant)
+          ? Icon(Icons.chevron_right,
+              color: colorScheme.onSurfaceVariant)
           : null,
       onTap: onTap,
     );
   }
 }
 
-/// Biometrics & Passkey section — stateful because it triggers async flows.
+/// Biometrics & Passkey section -- stateful because it triggers async flows.
 class _BiometricsSection extends StatefulWidget {
   final ColorScheme colorScheme;
   const _BiometricsSection({required this.colorScheme});
@@ -1072,14 +1391,12 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
   ColorScheme get cs => widget.colorScheme;
 
   Future<void> _setupPasskey(SecurityProvider security) async {
-    // First, prompt the user for their password so we can store credentials
-    // that will be used to re-authenticate with Firebase when using the Passkey.
     final passwordController = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24)),
         title: const Text('Confirm Your Password'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1138,9 +1455,7 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
 
     setState(() => _setupLoading = true);
 
-    // Verify the password with Firebase before registering the passkey.
-    final authProvider =
-        context.read<AuthProvider>();
+    final authProvider = context.read<AuthProvider>();
     try {
       await authProvider.verifyCurrentPassword(password);
     } catch (_) {
@@ -1148,7 +1463,8 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
       setState(() => _setupLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Incorrect password. Passkey setup cancelled.'),
+          content: const Text(
+              'Incorrect password. Passkey setup cancelled.'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: cs.errorContainer,
         ),
@@ -1315,7 +1631,8 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child:
+                          CircularProgressIndicator(strokeWidth: 2))
                   : Icon(Icons.chevron_right,
                       color: cs.onSurfaceVariant),
               onTap:
@@ -1335,7 +1652,7 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
                     color: cs.onTertiaryContainer, size: 20),
               ),
               title: Text(
-                'Passkey Active ✅',
+                'Passkey Active \u2705',
                 style: GoogleFonts.lexend(
                     fontWeight: FontWeight.w600, fontSize: 14),
               ),
@@ -1346,7 +1663,8 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
               ),
             ),
             Divider(
-                height: 1, color: cs.outlineVariant.withAlpha(100)),
+                height: 1,
+                color: cs.outlineVariant.withAlpha(100)),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Container(
@@ -1375,7 +1693,8 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child:
+                          CircularProgressIndicator(strokeWidth: 2))
                   : Icon(Icons.chevron_right,
                       color: cs.onSurfaceVariant),
               onTap: _deleteLoading

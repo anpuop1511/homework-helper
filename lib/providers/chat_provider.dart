@@ -52,7 +52,7 @@ enum AiModel {
       case AiModel.gemini25Flash:
         return 'Gemini 2.5 Flash';
       case AiModel.gemini30Flash:
-        return 'Gemini 3.0 Flash (Limited)';
+        return 'Gemini 3.0 Flash (Preview)';
       case AiModel.custom:
         return 'Custom / BYOK';
     }
