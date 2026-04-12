@@ -21,6 +21,7 @@ class NotificationService {
 
   // ── Notification channel / IDs ──────────────────────────────────────────
   static const int _timerDoneId = 1;
+  static const int _timerOngoingId = 2;
   static const int _deadlineBaseId = 100; // offset for deadline notifications
 
   static const AndroidNotificationDetails _androidTimer =
@@ -85,6 +86,50 @@ class NotificationService {
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
+
+  /// Shows (or updates) a persistent ongoing notification displaying the
+  /// remaining time while the focus timer is active.
+  Future<void> showTimerOngoing(String timeRemaining, {String? modeName}) async {
+    if (!_initialized) return;
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        'timer_ongoing_channel',
+        'Focus Timer Progress',
+        channelDescription: 'Live countdown shown while the focus timer runs.',
+        importance: Importance.low,
+        priority: Priority.low,
+        ongoing: true,
+        autoCancel: false,
+        icon: '@mipmap/ic_launcher',
+        subText: modeName,
+      );
+      await _plugin.show(
+        _timerOngoingId,
+        '⏱ ${modeName ?? 'Focus'} — $timeRemaining remaining',
+        'Tap to return to the timer.',
+        NotificationDetails(
+          android: androidDetails,
+          iOS: const DarwinNotificationDetails(
+            presentAlert: false,
+            presentBadge: false,
+            presentSound: false,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('[NotificationService] showTimerOngoing failed: $e');
+    }
+  }
+
+  /// Cancels the ongoing timer notification.
+  Future<void> cancelTimerOngoing() async {
+    if (!_initialized) return;
+    try {
+      await _plugin.cancel(_timerOngoingId);
+    } catch (e) {
+      debugPrint('[NotificationService] cancelTimerOngoing failed: $e');
+    }
+  }
 
   /// Shows an immediate notification that the focus timer has completed.
   Future<void> showTimerDone() async {

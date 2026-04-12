@@ -59,6 +59,21 @@ class DatabaseService {
     );
   }
 
+  /// Updates the user's display name and bio in their Firestore document.
+  Future<void> updateProfile(
+    String uid,
+    String displayName,
+    String bio,
+  ) async {
+    await _userDoc(uid).set(
+      {
+        'name': displayName,
+        'bio': bio,
+      },
+      SetOptions(merge: true),
+    );
+  }
+
   /// Saves the user's email to their document for friend-lookup purposes.
   Future<void> saveUserEmail(String uid, String email) async {
     await _userDoc(uid).set(
