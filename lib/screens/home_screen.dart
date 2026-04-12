@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/assignment.dart';
+import '../models/class_model.dart';
 import '../providers/assignments_provider.dart';
+import '../providers/classes_provider.dart';
 import '../widgets/assignment_card.dart';
 import '../widgets/add_task_sheet.dart';
 import 'subjects_screen.dart' show SubjectFolderSection;
@@ -102,6 +105,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(width: 8),
             ],
+          ),
+
+          // ── Classes Section ────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: _ClassesSection(colorScheme: colorScheme),
           ),
 
           // Subject Filter Chips
@@ -206,6 +214,432 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: const Icon(Icons.add),
         label: const Text('Add Task'),
       ),
+    );
+  }
+}
+
+// ── Classes Section ────────────────────────────────────────────────────────
+
+/// Horizontally-scrollable cards showing persistent classes on the Home screen.
+class _ClassesSection extends StatelessWidget {
+  final ColorScheme colorScheme;
+
+  const _ClassesSection({required this.colorScheme});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final classes = context.watch<ClassesProvider>().classes;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 0, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'My Classes',
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _showClassDialog(context),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 4),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Horizontal list
+          SizedBox(
+            height: 120,
+            child: classes.isEmpty
+                ? _EmptyClassesPlaceholder(colorScheme: colorScheme)
+                : ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(right: 16),
+                    itemCount: classes.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    itemBuilder: (context, i) => _ClassCard(
+                      schoolClass: classes[i],
+                      colorScheme: colorScheme,
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  void _showClassDialog(BuildContext context, {SchoolClass? existing}) {
+    showDialog(
+      context: context,
+      builder: (_) => _ClassEditDialog(existing: existing),
+    );
+  }
+}
+
+/// Empty state placeholder for the classes horizontal list.
+class _EmptyClassesPlaceholder extends StatelessWidget {
+  final ColorScheme colorScheme;
+
+  const _EmptyClassesPlaceholder({required this.colorScheme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        'No classes yet — tap Add to create one.',
+        style: GoogleFonts.outfit(
+          fontSize: 13,
+          color: colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
+/// A single class card in the horizontal scroll list.
+class _ClassCard extends StatelessWidget {
+  final SchoolClass schoolClass;
+  final ColorScheme colorScheme;
+
+  const _ClassCard({
+    required this.schoolClass,
+    required this.colorScheme,
+  });
+
+  Future<void> _launchUrl(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open link.')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final hasLink = (schoolClass.googleClassroomUrl ?? '').isNotEmpty;
+
+    return GestureDetector(
+      onLongPress: () => _showOptions(context),
+      child: Container(
+        width: 160,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withAlpha(80),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.school_rounded,
+                    size: 18, color: colorScheme.onPrimaryContainer),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => _showOptions(context),
+                  child: Icon(Icons.more_vert_rounded,
+                      size: 16, color: colorScheme.onPrimaryContainer),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              schoolClass.name,
+              style: textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onPrimaryContainer,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (schoolClass.description.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                schoolClass.description,
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onPrimaryContainer.withAlpha(180),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const Spacer(),
+            if (hasLink)
+              GestureDetector(
+                onTap: () => _launchUrl(context, schoolClass.googleClassroomUrl!),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.open_in_new_rounded,
+                          size: 12,
+                          color: colorScheme.onPrimary),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Open Classroom',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _ClassOptionsSheet(
+        schoolClass: schoolClass,
+        colorScheme: colorScheme,
+      ),
+    );
+  }
+}
+
+/// Bottom-sheet with edit / delete actions for a class.
+class _ClassOptionsSheet extends StatelessWidget {
+  final SchoolClass schoolClass;
+  final ColorScheme colorScheme;
+
+  const _ClassOptionsSheet({
+    required this.schoolClass,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.edit_rounded, color: colorScheme.primary),
+              title: const Text('Edit class'),
+              onTap: () {
+                Navigator.pop(context);
+                showDialog(
+                  context: context,
+                  builder: (_) => _ClassEditDialog(existing: schoolClass),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline_rounded,
+                  color: colorScheme.error),
+              title: Text('Delete class',
+                  style: TextStyle(color: colorScheme.error)),
+              onTap: () {
+                final provider = context.read<ClassesProvider>();
+                Navigator.pop(context);
+                provider.deleteClass(schoolClass.id);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Dialog for creating or editing a class.
+class _ClassEditDialog extends StatefulWidget {
+  final SchoolClass? existing;
+
+  const _ClassEditDialog({this.existing});
+
+  @override
+  State<_ClassEditDialog> createState() => _ClassEditDialogState();
+}
+
+class _ClassEditDialogState extends State<_ClassEditDialog> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _descCtrl;
+  late final TextEditingController _urlCtrl;
+  late final TextEditingController _subjectCtrl;
+  late List<String> _subjects;
+
+  @override
+  void initState() {
+    super.initState();
+    final c = widget.existing;
+    _nameCtrl = TextEditingController(text: c?.name ?? '');
+    _descCtrl = TextEditingController(text: c?.description ?? '');
+    _urlCtrl = TextEditingController(text: c?.googleClassroomUrl ?? '');
+    _subjectCtrl = TextEditingController();
+    _subjects = List<String>.from(c?.subjects ?? []);
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _descCtrl.dispose();
+    _urlCtrl.dispose();
+    _subjectCtrl.dispose();
+    super.dispose();
+  }
+
+  void _addSubject() {
+    final val = _subjectCtrl.text.trim();
+    if (val.isEmpty || _subjects.contains(val)) return;
+    setState(() => _subjects.add(val));
+    _subjectCtrl.clear();
+  }
+
+  void _save() {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
+    final classesProvider = context.read<ClassesProvider>();
+    final existing = widget.existing;
+
+    final url = _urlCtrl.text.trim();
+    final updated = SchoolClass(
+      id: existing?.id ?? '',
+      name: name,
+      description: _descCtrl.text.trim(),
+      subjects: List<String>.from(_subjects),
+      googleClassroomUrl: url.isEmpty ? null : url,
+    );
+
+    if (existing == null) {
+      classesProvider.addClass(updated);
+    } else {
+      classesProvider.updateClass(updated);
+    }
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isEditing = widget.existing != null;
+
+    return AlertDialog(
+      title: Text(isEditing ? 'Edit Class' : 'New Class'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Class name *',
+                hintText: 'e.g. AP Biology',
+              ),
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _descCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Teacher / description (optional)',
+                hintText: 'e.g. Mr. Smith',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _urlCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Google Classroom link (optional)',
+                hintText: 'https://classroom.google.com/…',
+              ),
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 16),
+            Text('Subjects',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 6),
+            // Subject chips
+            if (_subjects.isNotEmpty)
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: _subjects
+                    .map((s) => Chip(
+                          label: Text(s),
+                          onDeleted: () => setState(() => _subjects.remove(s)),
+                          visualDensity: VisualDensity.compact,
+                        ))
+                    .toList(),
+              ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _subjectCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Add subject…',
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) => _addSubject(),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.add_circle_rounded,
+                      color: colorScheme.primary),
+                  onPressed: _addSubject,
+                  tooltip: 'Add subject',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _save,
+          child: Text(isEditing ? 'Save' : 'Add'),
+        ),
+      ],
     );
   }
 }

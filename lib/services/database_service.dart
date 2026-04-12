@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:typed_data';
 import '../models/assignment.dart';
+import '../models/class_model.dart';
 import '../models/social_models.dart';
 import '../providers/theme_provider.dart';
 
@@ -434,5 +435,36 @@ class DatabaseService {
         .get();
     if (snap.docs.isEmpty) return null;
     return snap.docs.first.id;
+  }
+
+  // ── Classes ───────────────────────────────────────────────────────────────
+
+  CollectionReference<Map<String, dynamic>> _classesCol(String uid) =>
+      _userDoc(uid).collection('classes');
+
+  /// Returns a real-time stream of the user's classes, ordered by name.
+  Stream<List<SchoolClass>> watchClasses(String uid) {
+    return _classesCol(uid)
+        .orderBy('name')
+        .snapshots()
+        .map((snap) => snap.docs.map(SchoolClass.fromFirestore).toList());
+  }
+
+  /// Adds a new class and returns its generated ID.
+  Future<String> addClass(String uid, SchoolClass schoolClass) async {
+    final ref = await _classesCol(uid).add(schoolClass.toFirestore());
+    return ref.id;
+  }
+
+  /// Updates an existing class document (full overwrite of writable fields).
+  Future<void> updateClass(String uid, SchoolClass schoolClass) async {
+    await _classesCol(uid)
+        .doc(schoolClass.id)
+        .set(schoolClass.toFirestore(), SetOptions(merge: true));
+  }
+
+  /// Deletes a class and all its data.
+  Future<void> deleteClass(String uid, String classId) async {
+    await _classesCol(uid).doc(classId).delete();
   }
 }

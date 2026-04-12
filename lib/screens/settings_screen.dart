@@ -543,7 +543,30 @@ class _AiModelsSettingsPage extends StatelessWidget {
                       items: AiModel.values.map((m) {
                         return DropdownMenuItem(
                           value: m,
-                          child: Text(m.label, style: textTheme.bodyMedium),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(m.label, style: textTheme.bodyMedium),
+                              if (m == AiModel.gemini31FlashLitePreview) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.tertiaryContainer,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'Preview',
+                                    style: textTheme.labelSmall?.copyWith(
+                                      color: colorScheme.onTertiaryContainer,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         );
                       }).toList(),
                       onChanged: (m) {

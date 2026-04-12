@@ -27,11 +27,11 @@ class ChatMessage {
 /// Available AI model identifiers.
 ///
 /// - [gemini25Flash] – default, Gemini 2.5 Flash (fast & capable).
-/// - [gemini30Flash] – Gemini 3.0 Flash (cutting-edge, limited quota).
+/// - [gemini31FlashLitePreview] – AI Studio preview model (limited quota).
 /// - [custom] – Bring Your Own Key (BYOK); uses [ChatProvider.customApiKey].
 enum AiModel {
   gemini25Flash,
-  gemini30Flash,
+  gemini31FlashLitePreview,
   custom;
 
   /// The model string sent to the Generative AI SDK.
@@ -39,8 +39,8 @@ enum AiModel {
     switch (this) {
       case AiModel.gemini25Flash:
         return 'gemini-2.5-flash';
-      case AiModel.gemini30Flash:
-        return 'gemini-3.0-flash';
+      case AiModel.gemini31FlashLitePreview:
+        return 'gemini-3.1-flash-lite-preview';
       case AiModel.custom:
         return 'gemini-2.5-flash';
     }
@@ -51,8 +51,8 @@ enum AiModel {
     switch (this) {
       case AiModel.gemini25Flash:
         return 'Gemini 2.5 Flash';
-      case AiModel.gemini30Flash:
-        return 'Gemini 3.0 Flash (Preview)';
+      case AiModel.gemini31FlashLitePreview:
+        return 'AI Studio: 3.1 Flash Lite (Preview)';
       case AiModel.custom:
         return 'Custom / BYOK';
     }
