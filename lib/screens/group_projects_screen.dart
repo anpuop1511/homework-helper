@@ -711,7 +711,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
   void _showInviteSheet(BuildContext context, GroupProject project) {
     final colorScheme = Theme.of(context).colorScheme;
-    final link = 'homeworkhelper://project/${project.id}';
+    final link = 'https://homework-helper-web-dun.vercel.app/project/${project.id}';
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,

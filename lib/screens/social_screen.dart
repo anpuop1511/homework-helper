@@ -72,7 +72,7 @@ class _SocialScreenState extends State<SocialScreen> {
             ),
             const SizedBox(height: 24),
             QrImageView(
-              data: 'homeworkhelper://invite/$handle',
+              data: 'https://homework-helper-web-dun.vercel.app/invite/$handle',
               version: QrVersions.auto,
               size: 240,
               backgroundColor: Colors.white,

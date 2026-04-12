@@ -47,6 +47,9 @@ class _QrScanScreenState extends State<QrScanScreen> {
   /// Parses a QR value string and returns the appropriate destination widget.
   ///
   /// Supported formats:
+  ///   - `https://homework-helper-web-dun.vercel.app/project/<projectId>`
+  ///   - `https://homework-helper-web-dun.vercel.app/invite/<handle>`
+  ///   - `https://homework-helper-web-dun.vercel.app/u/<handle>`
   ///   - `homeworkhelper://profile/@handle` / `homeworkhelper://u/handle`
   ///   - `homeworkhelper://invite/<handle>`
   ///   - `homeworkhelper://project/<projectId>`
@@ -57,6 +60,35 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
     try {
       final uri = Uri.parse(trimmed);
+
+      // Handle HTTPS Vercel deep links.
+      if ((uri.scheme == 'https' || uri.scheme == 'http') &&
+          uri.host == 'homework-helper-web-dun.vercel.app') {
+        final segments = uri.pathSegments;
+        final type = segments.isNotEmpty ? segments[0] : '';
+        final id = segments.length > 1
+            ? segments[1].replaceFirst(RegExp(r'^@'), '')
+            : '';
+
+        switch (type) {
+          case 'project':
+            if (id.isNotEmpty) {
+              return JoinProjectScreen(projectId: id);
+            }
+            break;
+          case 'invite':
+            if (id.isNotEmpty) {
+              return JoinInviteScreen(inviteId: id);
+            }
+            break;
+          case 'u':
+            if (id.isNotEmpty) {
+              return PublicProfileScreen(handle: id);
+            }
+            break;
+        }
+      }
+
       if (uri.scheme == 'homeworkhelper') {
         final host = uri.host;
         final segments = uri.pathSegments;

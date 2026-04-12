@@ -60,7 +60,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _shareInviteLink(String username) {
-    final link = 'https://homeworkhelper.app/invite/@$username';
+    final link = 'https://homework-helper-web-dun.vercel.app/invite/$username';
     SharePlus.instance.share(
       ShareParams(
         text: 'Add me on Homework Helper! Tap to send a friend request: $link',
