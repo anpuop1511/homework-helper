@@ -126,7 +126,9 @@ class NotificationService {
     if (!_initialized) return;
     try {
       await _plugin.cancel(_timerOngoingId);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[NotificationService] cancelTimerOngoing failed: $e');
+    }
   }
 
   /// Shows an immediate notification that the focus timer has completed.

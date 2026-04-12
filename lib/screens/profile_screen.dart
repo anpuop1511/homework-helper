@@ -131,6 +131,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await DatabaseService.instance.updateProfile(uid, newName, newBio);
         if (mounted) {
           context.read<UserProvider>().setName(newName);
+          context.read<UserProvider>().setBio(newBio);
         }
       } catch (e) {
         if (mounted) {

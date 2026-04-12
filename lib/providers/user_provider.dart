@@ -226,6 +226,14 @@ class UserProvider extends ChangeNotifier {
     await _syncToCloud();
   }
 
+  /// Updates the in-memory bio and notifies listeners.
+  /// The caller is responsible for persisting the value to Firestore.
+  void setBio(String bio) {
+    if (_bio == bio) return;
+    _bio = bio;
+    notifyListeners();
+  }
+
   /// Signs the user out by resetting all local state and clearing persisted
   /// preferences.  The UI is responsible for navigating back to [LoginScreen].
   Future<void> logout() async {
