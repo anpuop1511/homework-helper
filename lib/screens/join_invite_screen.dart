@@ -162,7 +162,7 @@ class _JoinInviteScreenState extends State<JoinInviteScreen> {
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) =>
-                              PublicProfileScreen(username: handle),
+                              PublicProfileScreen(handle: handle),
                         ),
                       ),
                       icon: const Icon(Icons.person_rounded),
