@@ -287,6 +287,10 @@ class DatabaseService {
 
   /// Creates a pending friend request document.
   /// Returns the new document ID.
+  ///
+  /// The primary write to `friend_requests` is authoritative; the secondary
+  /// write to the target user's `friendRequests` subcollection is best-effort
+  /// and will not surface an error if it fails (e.g. due to permission rules).
   Future<String> sendFriendRequest({
     required String fromUid,
     required String toUid,
@@ -305,13 +309,19 @@ class DatabaseService {
       'status': 'pending',
       'timestamp': FieldValue.serverTimestamp(),
     });
-    // Also write to the target user's friendRequests subcollection (new model).
-    await _friendRequestsCol(toUid).doc(ref.id).set({
-      'fromUid': fromUid,
-      'fromHandle': fromUsername,
-      'createdAt': FieldValue.serverTimestamp(),
-      'requestId': ref.id,
-    });
+    // Best-effort secondary write to the target user's friendRequests subcollection.
+    // If this fails (e.g. due to permission rules) the primary write already
+    // succeeded and the request is live in friend_requests.
+    try {
+      await _friendRequestsCol(toUid).doc(ref.id).set({
+        'fromUid': fromUid,
+        'fromHandle': fromUsername,
+        'createdAt': FieldValue.serverTimestamp(),
+        'requestId': ref.id,
+      });
+    } catch (_) {
+      // Secondary write failure is non-fatal; the global request is already written.
+    }
     return ref.id;
   }
 
@@ -342,17 +352,22 @@ class DatabaseService {
         snap.docs.map((doc) => Friend.fromJson({'id': doc.id, ...doc.data()})).toList());
   }
 
-  /// Accepts a friend request:
-  ///   1. Updates the request status to 'accepted'.
-  ///   2. Adds each user to the other's friends sub-collection.
+  /// Accepts a friend request atomically:
+  ///   1. Updates the global request status to 'accepted'.
+  ///   2. Adds the sender to the accepter's friends sub-collection.
+  ///   3. Deletes the incoming subcollection entry (cleanup).
+  ///
+  /// Writing the reciprocal friend doc to the sender's collection is
+  /// best-effort (outside the batch) because Firestore rules only allow
+  /// each user to write their own `users/{uid}/friends/` sub-collection.
   Future<void> acceptFriendRequest(FriendRequest request,
       {required Map<String, dynamic> currentUserData}) async {
     final batch = _db.batch();
 
-    // Update request status.
+    // 1. Mark global request as accepted.
     batch.update(_requestsCol.doc(request.id), {'status': 'accepted'});
 
-    // Add sender to current user's friends.
+    // 2. Add sender to the accepter's friends (the accepter owns this doc).
     batch.set(
       _friendsCol(request.toUid).doc(request.fromUid),
       {
@@ -368,18 +383,19 @@ class DatabaseService {
       },
     );
 
-    // Add current user to sender's friends.
-    batch.set(
-      _friendsCol(request.fromUid).doc(request.toUid),
-      currentUserData,
-    );
+    // 3. Clean up the accepter's incoming subcollection entry.
+    batch.delete(_friendRequestsCol(request.toUid).doc(request.id));
 
     await batch.commit();
-    // Clean up the subcollection entry.
+
+    // Best-effort: add the accepter to the sender's friends collection.
+    // This may fail if Firestore rules restrict writes to another user's
+    // subcollection; that is acceptable — the core accept succeeded above.
     try {
-      await _friendRequestsCol(request.toUid).doc(request.id).delete();
+      await _friendsCol(request.fromUid).doc(request.toUid).set(currentUserData);
     } catch (_) {}
   }
+
   Future<void> declineFriendRequest(String requestId, {String? targetUid}) async {
     await _requestsCol.doc(requestId).delete();
     if (targetUid != null) {

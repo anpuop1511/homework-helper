@@ -45,11 +45,16 @@ class ProjectsProvider extends ChangeNotifier {
   }
 
   /// Creates a new project with the current user as owner and first member.
-  Future<String?> createProject({
+  ///
+  /// Returns `(id: projectId, error: null)` on success, or
+  /// `(id: null, error: humanReadableMessage)` on failure.
+  Future<({String? id, String? error})> createProject({
     required String name,
     String description = '',
   }) async {
-    if (_uid == null) return null;
+    if (_uid == null) {
+      return (id: null, error: 'You must be signed in to create a project.');
+    }
     try {
       final ref = await _db.collection('projects').add(
             GroupProject(
@@ -61,9 +66,18 @@ class ProjectsProvider extends ChangeNotifier {
               memberUids: [_uid!],
             ).toJson(),
           );
-      return ref.id;
+      return (id: ref.id, error: null);
+    } on FirebaseException catch (e) {
+      final msg = switch (e.code) {
+        'permission-denied' =>
+          'Permission denied. Check your Firestore security rules.',
+        'unavailable' || 'network-request-failed' =>
+          'Network error. Check your connection and try again.',
+        _ => 'Could not create project (${e.code}). Please try again.',
+      };
+      return (id: null, error: msg);
     } catch (_) {
-      return null;
+      return (id: null, error: 'Could not create project. Please try again.');
     }
   }
 

@@ -125,12 +125,16 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
           try {
             final ndef = Ndef.from(tag);
             if (ndef != null && ndef.isWritable) {
-              // Write our info to the tag.
-              final text = '$uid:$username';
+              // Write our info to the tag using the new HH1 format.
+              // Payload: uid and username separated by '|' to avoid ambiguity.
+              final text = 'HH1|$uid|$username';
               final langCode = utf8.encode('en');
+              // Status byte: UTF-8 (bit 7 = 0), no BOM (bit 6 = 0),
+              // lang code length in low 6 bits.
+              final statusByte = langCode.length & 0x3F;
               final textBytes = utf8.encode(text);
               final ndefPayload = Uint8List.fromList(
-                  [langCode.length, ...langCode, ...textBytes]);
+                  [statusByte, ...langCode, ...textBytes]);
               final record = NdefRecord(
                 typeNameFormat: TypeNameFormat.wellKnown,
                 type: Uint8List.fromList([0x54]),
@@ -157,20 +161,49 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
                 return;
               }
               for (final record in message.records) {
-                final text = String.fromCharCodes(record.payload.skip(3));
-                final parts = text.split(':');
-                if (parts.length >= 2) {
-                  final friendUsername = parts[1];
-                  final social = context.read<SocialProvider>();
-                  await social.sendFriendRequestByUsername(friendUsername);
-                  await NfcManager.instance.stopSession();
-                  _onSuccess('Friend request sent to @$friendUsername! 🎉');
-                  return;
+                final payload = record.payload;
+                if (payload.isEmpty) continue;
+                // NDEF Text record format:
+                //   Byte 0:   status byte (bit7=encoding, bit6=BOM, bits5-0=lang code length)
+                //   Bytes 1..(1+langLen-1): language code (e.g. 'en')
+                //   Bytes (1+langLen)..: text content (UTF-8 or UTF-16)
+                final statusByte = payload[0];
+                final langLen = statusByte & 0x3F;
+                final headerLen = 1 + langLen;
+                if (payload.length <= headerLen) continue;
+                final text = utf8.decode(payload.sublist(headerLen));
+
+                // Try the new format first: HH1|uid|username
+                if (text.startsWith('HH1|')) {
+                  final parts = text.split('|');
+                  if (parts.length >= 3) {
+                    final friendUsername = parts[2];
+                    if (friendUsername.isNotEmpty) {
+                      final social = context.read<SocialProvider>();
+                      await social.sendFriendRequestByUsername(friendUsername);
+                      await NfcManager.instance.stopSession();
+                      _onSuccess('Friend request sent to @$friendUsername! 🎉');
+                      return;
+                    }
+                  }
+                }
+
+                // Fall back to legacy format: uid:username
+                final colonIdx = text.indexOf(':');
+                if (colonIdx > 0 && colonIdx < text.length - 1) {
+                  final friendUsername = text.substring(colonIdx + 1);
+                  if (friendUsername.isNotEmpty) {
+                    final social = context.read<SocialProvider>();
+                    await social.sendFriendRequestByUsername(friendUsername);
+                    await NfcManager.instance.stopSession();
+                    _onSuccess('Friend request sent to @$friendUsername! 🎉');
+                    return;
+                  }
                 }
               }
             }
             await NfcManager.instance.stopSession();
-            _onError('Could not read the tag. Please try again.');
+            _onError('Tag found but could not identify a Homework Helper user. Make sure both phones are using this app.');
           } catch (_) {
             await NfcManager.instance.stopSession();
             _onError('Could not read the tag. Please try again.');
