@@ -185,6 +185,29 @@ class DatabaseService {
     return data?['username'] as String?;
   }
 
+  /// Streams the username for [uid], filtering out stale cache-only null
+  /// snapshots that can occur on web page-refresh before Firestore has synced.
+  ///
+  /// Only emits when:
+  /// - the snapshot already has a non-null handle (safe to use immediately
+  ///   whether from cache or server), OR
+  /// - the snapshot comes from the Firestore server (authoritative result,
+  ///   even if the username is null — meaning the user genuinely has none).
+  ///
+  /// This prevents the "Choose a Handle" screen from flashing when a signed-in
+  /// user's handle exists on the server but the local cache is empty or stale.
+  Stream<String?> usernameStream(String uid) {
+    return _userDoc(uid)
+        .snapshots(includeMetadataChanges: true)
+        .where((snap) {
+          final handle = snap.data()?['username'] as String?;
+          // Accept immediately when the cache already has the handle.
+          // Otherwise wait for the server-confirmed snapshot.
+          return handle != null || !snap.metadata.isFromCache;
+        })
+        .map((snap) => snap.data()?['username'] as String?);
+  }
+
   /// Looks up the UID for a given @[handle].  Returns null if not found.
   Future<String?> lookupUidByUsername(String handle) async {
     final snap = await _usernameDoc(handle).get();

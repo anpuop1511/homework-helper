@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -24,12 +23,11 @@ String _avatarInitialFor(String displayName) {
 
 /// The root scaffold of the app with adaptive navigation.
 ///
-/// On **mobile (Android/iOS, portrait)**: shows a [NavigationBar] at the
-/// bottom (thumb-friendly).
+/// On **mobile (Android/iOS/web, width < 600 px)**: shows a [NavigationBar]
+/// at the bottom (thumb-friendly).
 ///
-/// On **web / desktop / tablet (landscape, width ≥ 600 px)**: shows a
-/// [NavigationRail] on the left side so the layout feels like a dashboard
-/// rather than a stretched phone.
+/// On **desktop / tablet (width ≥ 600 px)**: shows a [NavigationRail] on the
+/// left side so the layout feels like a dashboard rather than a stretched phone.
 ///
 /// Profile and Settings are accessible via the top-right [CircleAvatar]
 /// User Hub button.
@@ -51,9 +49,10 @@ class _MainScaffoldState extends State<MainScaffold> {
   ];
 
   /// Use a NavigationRail instead of a BottomNavigationBar on wide screens
-  /// (web, desktop, or any screen wider than 600 logical pixels).
-  bool get _useRail =>
-      kIsWeb || MediaQuery.of(context).size.width >= 600;
+  /// (desktop / tablet, width ≥ 600 logical pixels).
+  /// On mobile web (narrow viewport) we still want the BottomNavigationBar,
+  /// so we check only the screen width rather than `kIsWeb`.
+  bool get _useRail => MediaQuery.of(context).size.width >= 600;
 
   void _openUserHub() {
     showModalBottomSheet<void>(
