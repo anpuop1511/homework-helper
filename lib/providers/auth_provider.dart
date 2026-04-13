@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../services/database_service.dart';
@@ -18,6 +20,10 @@ class AuthProvider extends ChangeNotifier {
   User? _user;
   String? _username;
   bool _usernameLoaded = false;
+
+  /// Active subscription to the Firestore username stream.
+  /// Cancelled whenever the UID changes or the provider is disposed.
+  StreamSubscription<String?>? _usernameStreamSub;
 
   User? get currentUser => _user;
   bool get isSignedIn => _user != null;
@@ -43,7 +49,9 @@ class AuthProvider extends ChangeNotifier {
           _loadUsername(user.uid);
         } else {
           _username = null;
-          _usernameLoaded = false;
+          _usernameLoaded = true;
+          _usernameStreamSub?.cancel();
+          _usernameStreamSub = null;
         }
         notifyListeners();
       });
@@ -59,16 +67,28 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Loads the @handle from Firestore (non-blocking; notifies when done).
+  /// Subscribes to the Firestore username stream for [uid].
+  ///
+  /// Uses [DatabaseService.usernameStream] which filters out stale
+  /// cache-only null snapshots, preventing the "Choose a Handle" screen
+  /// from flashing on web page-refresh while Firestore is still syncing.
+  /// Only the first authoritative result is consumed (`.take(1)`).
   void _loadUsername(String uid) {
-    DatabaseService.instance.getUsernameForUid(uid).then((handle) {
-      _username = handle;
-      _usernameLoaded = true;
-      notifyListeners();
-    }).catchError((_) {
-      _usernameLoaded = true;
-      notifyListeners();
-    });
+    _usernameStreamSub?.cancel();
+    _usernameStreamSub = DatabaseService.instance
+        .usernameStream(uid)
+        .take(1)
+        .listen(
+          (handle) {
+            _username = handle;
+            _usernameLoaded = true;
+            notifyListeners();
+          },
+          onError: (_) {
+            _usernameLoaded = true;
+            notifyListeners();
+          },
+        );
   }
 
   /// Sets the username directly in memory without a Firestore round-trip.
@@ -76,9 +96,17 @@ class AuthProvider extends ChangeNotifier {
   /// router navigates away from the handle screen without waiting for
   /// Firestore to propagate the write.
   void setUsernameDirectly(String handle) {
+    _usernameStreamSub?.cancel();
+    _usernameStreamSub = null;
     _username = handle.toLowerCase().trim();
     _usernameLoaded = true;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _usernameStreamSub?.cancel();
+    super.dispose();
   }
 
   /// Refreshes the in-memory username from Firestore.  Call after the user
