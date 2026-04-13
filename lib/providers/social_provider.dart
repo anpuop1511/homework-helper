@@ -426,13 +426,17 @@ class SocialProvider extends ChangeNotifier {
 
   /// Removes [friend] from the friends list.
   Future<void> removeFriend(String id) async {
+    // Optimistically remove from local state immediately for instant UI feedback.
+    _friends.removeWhere((f) => f.id == id);
+    notifyListeners();
+
     if (_uid != null) {
       try {
         await DatabaseService.instance.removeFriend(_uid!, id);
-      } catch (_) {}
+      } catch (_) {
+        // If the removal fails, the Firestore stream will restore the correct state.
+      }
     } else {
-      _friends.removeWhere((f) => f.id == id);
-      notifyListeners();
       await _save();
     }
   }
