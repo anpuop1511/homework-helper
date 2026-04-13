@@ -381,6 +381,18 @@ class _SocialScreenState extends State<SocialScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final social = context.watch<SocialProvider>();
     final auth = context.watch<AuthProvider>();
+
+    // Wait for the global auth state to finish loading the username from
+    // Firestore before rendering the full Social screen.  Without this guard,
+    // a hard web page-refresh can show the screen while auth.username is still
+    // null, making it appear as though the user has no username.
+    if (!auth.usernameLoaded) {
+      return Scaffold(
+        backgroundColor: colorScheme.surface,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final myHandle = auth.username;
 
     return Scaffold(
