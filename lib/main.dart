@@ -2,12 +2,11 @@ import 'dart:async';
 import 'package:animate_do/animate_do.dart';
 import 'package:app_links/app_links.dart';
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'firebase_options.dart';
+import 'bootstrap/firebase_bootstrap.dart';
 import 'providers/assignments_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
@@ -32,23 +31,14 @@ Future<void> main() async {
 
   await NotificationService.instance.init();
 
-  // Initialise Firebase.  If the placeholder firebase_options.dart has not
-  // been replaced yet, Firebase.initializeApp() will throw; the app will then
-  // run in offline / guest-only mode.
-  bool firebaseReady = false;
-  String? firebaseInitError;
-  try {
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    }
-    firebaseReady = true;
-  } catch (e) {
-    // Firebase not yet configured — offline mode only.
-    firebaseInitError = e.toString();
-    debugPrint('Firebase initialization failed: $e');
-  }
+  // Initialise Firebase via the single-source-of-truth bootstrap helper.
+  // FirebaseBootstrap.ensureInitialized() is idempotent: it handles the
+  // [core/duplicate-app] error that occurs when the native Android SDK
+  // (google-services.json) initializes Firebase before Flutter's Dart layer,
+  // and is also safe across Flutter hot restarts in development.
+  await FirebaseBootstrap.ensureInitialized();
+  final bool firebaseReady = FirebaseBootstrap.isReady;
+  final String? firebaseInitError = FirebaseBootstrap.error;
 
   runApp(
     MultiProvider(
