@@ -161,11 +161,11 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  void _navigateAsGuest() {
+  Future<void> _navigateAsGuest() async {
+    await context.read<app_auth.AuthProvider>().setGuestMode(true);
+    if (!mounted) return;
     context.read<UserProvider>().recordActivity();
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainScaffold()),
-    );
+    // _AuthGate will now see isGuest == true and route to MainScaffold.
   }
 
   void _showError(String message) {
@@ -611,16 +611,20 @@ class _LoginScreenState extends State<LoginScreen>
                        width: double.infinity,
                        height: 54,
                        child: OutlinedButton.icon(
-                         onPressed: _navigateAsGuest,
-                         icon: const Icon(Icons.person_outline),
+                         onPressed: _isLoading ? null : _navigateAsGuest,
+                         icon: const Icon(Icons.person_outline_rounded),
                          label: Text(
                            'Continue as Guest',
                            style: GoogleFonts.lexend(
                              fontSize: 15,
-                             fontWeight: FontWeight.w500,
+                             fontWeight: FontWeight.w600,
                            ),
                          ),
                          style: OutlinedButton.styleFrom(
+                           foregroundColor: colorScheme.secondary,
+                           side: BorderSide(
+                             color: colorScheme.secondary.withAlpha(128),
+                           ),
                            shape: RoundedRectangleBorder(
                              borderRadius: BorderRadius.circular(_kButtonRadius),
                            ),

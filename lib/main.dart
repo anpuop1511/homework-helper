@@ -148,8 +148,14 @@ class _AuthGateState extends State<_AuthGate> {
       }
     }
 
-    if (!auth.isSignedIn) {
+    if (!auth.isSignedIn && !auth.isGuest) {
       return const LoginScreen();
+    }
+
+    // Guests get routed directly to the app without any Firestore username
+    // loading (they have no UID), so skip the loading splash for them.
+    if (auth.isGuest && !auth.isSignedIn) {
+      return const MainScaffold();
     }
 
     // Show a minimal splash while the username is still being fetched from

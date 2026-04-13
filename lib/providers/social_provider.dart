@@ -254,14 +254,21 @@ class SocialProvider extends ChangeNotifier {
   /// Sends a friend request to the user with [@handle].
   ///
   /// When a Firebase UID is available, looks up the target user by username in
-  /// Firestore and writes a `friend_requests` document.  In guest/offline
-  /// mode, falls back to a local placeholder entry.
+  /// Firestore and writes a `friend_requests` document.  If the input looks
+  /// like an email address (contains `@`), it falls back to an email-based
+  /// lookup automatically.  In guest/offline mode, falls back to a local
+  /// placeholder entry.
   ///
   /// Returns an error string on failure, or null on success.
   Future<String?> sendFriendRequestByUsername(String handle) async {
     // Strip leading @ if user typed it.
     final trimmed = handle.trim().replaceFirst(RegExp(r'^@'), '').toLowerCase();
     if (trimmed.isEmpty) return 'Please enter a @username.';
+
+    // If the input looks like an email address, delegate to email lookup.
+    if (trimmed.contains('@')) {
+      return sendFriendRequest(trimmed);
+    }
 
     if (_uid != null) {
       // Check not adding yourself.

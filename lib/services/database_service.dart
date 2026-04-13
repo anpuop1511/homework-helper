@@ -99,9 +99,18 @@ class DatabaseService {
     );
   }
 
-  /// Fetches a public profile for a given @handle.
-  /// Returns null if the user doesn't exist.
+  /// Fetches a public profile for a given @handle or email address.
+  ///
+  /// When [handle] looks like an email address (contains `@`) the lookup is
+  /// done by email; otherwise the username mapping in `usernames/{handle}` is
+  /// used.  Returns null if the user doesn't exist.
   Future<Map<String, dynamic>?> getPublicProfile(String handle) async {
+    // Email-based lookup.
+    if (handle.contains('@')) {
+      final userData = await lookupUserByEmail(handle.toLowerCase());
+      return userData; // already contains 'uid' + document fields
+    }
+    // Username-based lookup.
     final uid = await lookupUidByUsername(handle.toLowerCase());
     if (uid == null) return null;
     final data = await getUserData(uid);
