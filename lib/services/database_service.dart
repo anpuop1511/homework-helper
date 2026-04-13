@@ -430,11 +430,58 @@ class DatabaseService {
     }
   }
 
-  /// Removes a friend from both users' friends sub-collections.
+  /// Removes a friend atomically from both users' friends sub-collections and
+  /// cleans up all related friend-request documents between the two users.
+  ///
+  /// Steps (single batch commit):
+  ///   1. Delete `users/{currentUid}/friends/{friendUid}`.
+  ///   2. Delete `users/{friendUid}/friends/{currentUid}`.
+  ///   3. Delete any global `friend_requests` docs in either direction.
+  ///   4. Delete the corresponding per-user `friendRequests` subcollection
+  ///      entries (the incoming-notification copies).
+  ///
+  /// Safe to call multiple times – extra deletes on non-existent docs are
+  /// no-ops in Firestore batches (idempotent).
   Future<void> removeFriend(String currentUid, String friendUid) async {
+    // Pre-fetch request IDs in both directions so we can include them in the
+    // batch (Firestore batches are write-only and cannot execute queries).
+    final results = await Future.wait([
+      _requestsCol
+          .where('from', isEqualTo: currentUid)
+          .where('to', isEqualTo: friendUid)
+          .get(),
+      _requestsCol
+          .where('from', isEqualTo: friendUid)
+          .where('to', isEqualTo: currentUid)
+          .get(),
+    ]);
+    final currentToFriendDocs = results[0].docs; // currentUid → friendUid requests
+    final friendToCurrentDocs = results[1].docs; // friendUid → currentUid requests
+
     final batch = _db.batch();
+
+    // 1 & 2 – Remove friendship from both sides.
     batch.delete(_friendsCol(currentUid).doc(friendUid));
     batch.delete(_friendsCol(friendUid).doc(currentUid));
+
+    // 3 – Delete all global friend-request docs between the two users.
+    for (final doc in currentToFriendDocs) {
+      batch.delete(doc.reference);
+    }
+    for (final doc in friendToCurrentDocs) {
+      batch.delete(doc.reference);
+    }
+
+    // 4 – Delete per-user friendRequests subcollection entries (notification
+    //     copies).  currentToFriendDocs were delivered to friendUid;
+    //     friendToCurrentDocs were delivered to currentUid.
+    for (final doc in currentToFriendDocs) {
+      batch.delete(_friendRequestsCol(friendUid).doc(doc.id));
+    }
+    for (final doc in friendToCurrentDocs) {
+      batch.delete(_friendRequestsCol(currentUid).doc(doc.id));
+    }
+
     await batch.commit();
   }
 
