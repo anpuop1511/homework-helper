@@ -345,32 +345,33 @@ class _AccountSettingsPage extends StatelessWidget {
     return _CategoryPage(
       title: 'Account',
       children: [
-        _SquircleCard(
-          colorScheme: colorScheme,
-          child: Column(
-            children: [
-              _SecurityTile(
-                icon: Icons.alternate_email_rounded,
-                title: auth.username != null && auth.username!.isNotEmpty
-                    ? 'Change Username  (@${auth.username})'
-                    : 'Set your @username',
-                subtitle: auth.username != null && auth.username!.isNotEmpty
-                    ? 'Update your unique @handle.'
-                    : 'Pick a unique handle so friends can find you.',
-                colorScheme: colorScheme,
-                onTap: auth.isSignedIn
-                    ? () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                const UsernameScreen(allowSkip: true),
-                          ),
-                        )
-                    : null,
-              ),
-            ],
+        // Only show the username card when the user already has a handle.
+        // Handle creation is handled exclusively during sign-up, so there
+        // is nothing to "set" afterwards — only to change an existing one.
+        if (auth.username != null && auth.username!.isNotEmpty) ...[
+          _SquircleCard(
+            colorScheme: colorScheme,
+            child: Column(
+              children: [
+                _SecurityTile(
+                  icon: Icons.alternate_email_rounded,
+                  title: 'Change Username  (@${auth.username})',
+                  subtitle: 'Update your unique @handle.',
+                  colorScheme: colorScheme,
+                  onTap: auth.isSignedIn
+                      ? () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const UsernameScreen(allowSkip: true),
+                            ),
+                          )
+                      : null,
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
+        ],
         _SquircleCard(
           colorScheme: colorScheme,
           child: Column(
