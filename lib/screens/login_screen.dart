@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -168,7 +168,9 @@ class _LoginScreenState extends State<LoginScreen>
     // recordActivity is best-effort; do not let it block or crash guest entry.
     try {
       context.read<UserProvider>().recordActivity();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[LoginScreen] recordActivity failed during guest entry: $e');
+    }
     // _AuthGate will now see isGuest == true and route to MainScaffold.
   }
 
@@ -182,13 +184,17 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _copyToClipboard(BuildContext ctx, String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(ctx).showSnackBar(
-      const SnackBar(
-        content: Text('Error copied to clipboard!'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    try {
+      Clipboard.setData(ClipboardData(text: text));
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        const SnackBar(
+          content: Text('Error copied to clipboard!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[LoginScreen] Failed to copy to clipboard: $e');
+    }
   }
 
   Future<void> _signInWithPasskey() async {
@@ -359,7 +365,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    '🔥 Firebase Init Error',
+                                    'Firebase Init Error',
                                     style: GoogleFonts.lexend(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
