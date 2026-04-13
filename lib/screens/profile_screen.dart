@@ -59,8 +59,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _shareInviteLink(String username) {
-    final link = 'https://homework-helper-web-dun.vercel.app/invite/$username';
+  void _shareInviteLink(String identifier) {
+    final link = 'https://homework-helper-web-dun.vercel.app/invite/${Uri.encodeComponent(identifier)}';
     SharePlus.instance.share(
       ShareParams(
         text: 'Add me on Homework Helper! Tap to send a friend request: $link',
@@ -316,25 +316,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
 
             // ── Share Invite Link ─────────────────────────────────────
-            if (auth.isSignedIn && username != null && username.isNotEmpty) ...[
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: () => _shareInviteLink(username),
-                  icon: const Icon(Icons.share_rounded, size: 18),
-                  label: Text(
-                    'Share Invite Link',
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
+            if (auth.isSignedIn) ...[
+              Builder(
+                builder: (context) {
+                  final shareIdentifier =
+                      (username != null && username.isNotEmpty)
+                          ? username
+                          : auth.email;
+                  if (shareIdentifier == null || shareIdentifier.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _shareInviteLink(shareIdentifier),
+                          icon: const Icon(Icons.share_rounded, size: 18),
+                          label: Text(
+                            'Share Invite Link',
+                            style:
+                                GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  );
+                },
               ),
-              const SizedBox(height: 20),
             ],
 
             // ── Level + XP Card ───────────────────────────────────────

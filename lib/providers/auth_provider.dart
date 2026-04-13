@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_service.dart';
 
 /// Manages Firebase Email/Password authentication state.
@@ -13,6 +14,8 @@ import '../services/database_service.dart';
 /// the placeholder `firebase_options.dart` has not been replaced), all auth
 /// operations are no-ops and the user is treated as a guest.
 class AuthProvider extends ChangeNotifier {
+  static const _prefGuestMode = 'auth_guest_mode';
+
   final bool _firebaseReady;
   FirebaseAuth? get _auth =>
       _firebaseReady ? FirebaseAuth.instance : null;
@@ -20,6 +23,10 @@ class AuthProvider extends ChangeNotifier {
   User? _user;
   String? _username;
   bool _usernameLoaded = false;
+
+  /// True when the user chose "Continue as Guest". Persisted to SharedPreferences
+  /// so the guest session survives app restarts. Cleared on sign-in or sign-out.
+  bool _isGuest = false;
 
   /// Set to true by [AuthProvider.forTesting] to simulate a signed-in user
   /// without a real Firebase [User] object.  Never set in production.
@@ -41,6 +48,11 @@ class AuthProvider extends ChangeNotifier {
   String? get currentUserEmail => _user?.email;
   bool get isEmailVerified => _user?.emailVerified ?? false;
 
+  /// True when the user is browsing as a guest (no Firebase account).
+  /// [_AuthGate] routes to [MainScaffold] when this is true even without
+  /// a signed-in Firebase user.
+  bool get isGuest => _isGuest;
+
   /// The user's @handle, or null if not yet chosen.
   String? get username => _username;
 
@@ -49,12 +61,19 @@ class AuthProvider extends ChangeNotifier {
   bool get usernameLoaded => _usernameLoaded;
 
   AuthProvider({bool firebaseReady = true}) : _firebaseReady = firebaseReady {
+    _loadGuestMode();
     if (_firebaseReady) {
       // Keep _user in sync with Firebase's auth state stream.
       FirebaseAuth.instance.authStateChanges().listen((user) {
         final prevUid = _user?.uid;
         _user = user;
         if (user != null) {
+          // Clear guest mode when a real account signs in.
+          if (_isGuest) {
+            _isGuest = false;
+            SharedPreferences.getInstance()
+                .then((p) => p.remove(_prefGuestMode));
+          }
           if (user.uid != prevUid) {
             // Different (or newly confirmed) UID — reset and reload.
             _username = null;
@@ -108,6 +127,36 @@ class AuthProvider extends ChangeNotifier {
     _testSignedIn = isSignedIn;
     _username = username;
     _usernameLoaded = usernameLoaded;
+  }
+
+  /// Loads the persisted guest-mode flag from [SharedPreferences].
+  ///
+  /// Called once from the constructor; updates state asynchronously.
+  /// If the user is already signed in when this resolves, the flag is ignored.
+  Future<void> _loadGuestMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final wasGuest = prefs.getBool(_prefGuestMode) ?? false;
+    if (wasGuest && _user == null && !_testSignedIn) {
+      _isGuest = wasGuest;
+      notifyListeners();
+    }
+  }
+
+  /// Enables or disables guest mode and persists the choice.
+  ///
+  /// When [value] is true, [_AuthGate] will route to [MainScaffold] even
+  /// without a signed-in Firebase user, giving guests a fully functioning
+  /// (but read-only / offline) app experience.
+  Future<void> setGuestMode(bool value) async {
+    if (_isGuest == value) return;
+    _isGuest = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    if (value) {
+      await prefs.setBool(_prefGuestMode, true);
+    } else {
+      await prefs.remove(_prefGuestMode);
+    }
   }
 
   /// Subscribes to the Firestore username stream for [uid].
@@ -264,6 +313,12 @@ class AuthProvider extends ChangeNotifier {
 
   /// Signs the current user out.
   Future<void> signOut() async {
+    // Clear guest mode so the next launch shows the login screen.
+    if (_isGuest) {
+      _isGuest = false;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefGuestMode);
+    }
     await _auth?.signOut();
   }
 

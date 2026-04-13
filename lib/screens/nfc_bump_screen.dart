@@ -110,7 +110,10 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
 
     final auth = context.read<AuthProvider>();
     final uid = auth.uid ?? '';
-    final username = auth.username ?? '';
+    // Use username for the NFC tag; fall back to email when no username is set.
+    final username = auth.username?.isNotEmpty == true
+        ? auth.username!
+        : (auth.email ?? '');
 
     try {
       await NfcManager.instance.startSession(
@@ -173,16 +176,19 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
                 if (payload.length <= headerLen) continue;
                 final text = utf8.decode(payload.sublist(headerLen));
 
-                // Try the new format first: HH1|uid|username
+                // Try the new format first: HH1|uid|username_or_email
                 if (text.startsWith('HH1|')) {
                   final parts = text.split('|');
                   if (parts.length >= 3) {
-                    final friendUsername = parts[2];
-                    if (friendUsername.isNotEmpty) {
+                    final friendIdentifier = parts[2];
+                    if (friendIdentifier.isNotEmpty) {
                       final social = context.read<SocialProvider>();
-                      await social.sendFriendRequestByUsername(friendUsername);
+                      await social.sendFriendRequestByUsername(friendIdentifier);
                       await NfcManager.instance.stopSession();
-                      _onSuccess('Friend request sent to @$friendUsername! 🎉');
+                      final display = friendIdentifier.contains('@')
+                          ? friendIdentifier
+                          : '@$friendIdentifier';
+                      _onSuccess('Friend request sent to $display! 🎉');
                       return;
                     }
                   }
@@ -191,12 +197,15 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
                 // Fall back to legacy format: uid:username
                 final colonIdx = text.indexOf(':');
                 if (colonIdx > 0 && colonIdx < text.length - 1) {
-                  final friendUsername = text.substring(colonIdx + 1);
-                  if (friendUsername.isNotEmpty) {
+                  final friendIdentifier = text.substring(colonIdx + 1);
+                  if (friendIdentifier.isNotEmpty) {
                     final social = context.read<SocialProvider>();
-                    await social.sendFriendRequestByUsername(friendUsername);
+                    await social.sendFriendRequestByUsername(friendIdentifier);
                     await NfcManager.instance.stopSession();
-                    _onSuccess('Friend request sent to @$friendUsername! 🎉');
+                    final display = friendIdentifier.contains('@')
+                        ? friendIdentifier
+                        : '@$friendIdentifier';
+                    _onSuccess('Friend request sent to $display! 🎉');
                     return;
                   }
                 }
@@ -252,8 +261,12 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final auth = context.watch<AuthProvider>();
-    final username = auth.username ?? auth.currentUser?.displayName ?? 'you';
-    final profileUrl = 'https://homeworkhelper.app/invite/@$username';
+    final username = auth.username?.isNotEmpty == true ? auth.username : null;
+    // Fall back to email when no username has been set yet.
+    final identifier = username ?? auth.email ?? '';
+    final profileUrl = identifier.isNotEmpty
+        ? 'https://homework-helper-web-dun.vercel.app/invite/${Uri.encodeComponent(identifier)}'
+        : 'https://homework-helper-web-dun.vercel.app';
 
     return Scaffold(
       backgroundColor: colorScheme.surface,

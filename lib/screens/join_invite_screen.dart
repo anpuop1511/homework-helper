@@ -7,12 +7,14 @@ import 'public_profile_screen.dart';
 /// Shown when the user opens a `homeworkhelper://invite/<inviteId>` deep link.
 ///
 /// The inviteId for social invites is the username/handle of the person who
-/// generated the QR code. This screen lets the user send a friend request to
-/// that person or view their public profile.
+/// generated the QR code, or their email address when no username is set.
+/// This screen lets the user send a friend request to that person or view
+/// their public profile.
 class JoinInviteScreen extends StatefulWidget {
   /// The invite identifier extracted from the deep link path.
   ///
-  /// For social profile invites this is the @handle (without the '@' prefix).
+  /// For social profile invites this is the @handle (without the '@' prefix)
+  /// or an email address when the sender has no username.
   final String inviteId;
 
   const JoinInviteScreen({super.key, required this.inviteId});
@@ -26,17 +28,26 @@ class _JoinInviteScreenState extends State<JoinInviteScreen> {
   String? _error;
   bool _sent = false;
 
+  /// Normalised invite identifier (leading '@' stripped, lower-cased).
+  String get _identifier {
+    final raw = widget.inviteId.startsWith('@')
+        ? widget.inviteId.substring(1)
+        : widget.inviteId;
+    return raw.toLowerCase();
+  }
+
+  /// True when the invite identifier is an email address.
+  bool get _isEmail => _identifier.contains('@');
+
   Future<void> _sendRequest() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     final social = context.read<SocialProvider>();
-    // Remove any leading '@' that might be present in the invite ID.
-    final handle = widget.inviteId.startsWith('@')
-        ? widget.inviteId.substring(1)
-        : widget.inviteId;
-    final error = await social.sendFriendRequestByUsername(handle);
+    // sendFriendRequestByUsername auto-detects email input and does the right
+    // lookup, so we can pass the identifier directly regardless of type.
+    final error = await social.sendFriendRequestByUsername(_identifier);
     if (!mounted) return;
     setState(() {
       _loading = false;
@@ -48,9 +59,6 @@ class _JoinInviteScreenState extends State<JoinInviteScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final handle = widget.inviteId.startsWith('@')
-        ? widget.inviteId.substring(1)
-        : widget.inviteId;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -73,7 +81,7 @@ class _JoinInviteScreenState extends State<JoinInviteScreen> {
                   radius: 40,
                   backgroundColor: const Color(0xFF007FFF).withAlpha(30),
                   child: Text(
-                    handle.isNotEmpty ? handle[0].toUpperCase() : '?',
+                    _identifier.isNotEmpty ? _identifier[0].toUpperCase() : '?',
                     style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w800,
@@ -83,13 +91,25 @@ class _JoinInviteScreenState extends State<JoinInviteScreen> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  '@$handle',
+                  _isEmail ? _identifier : '@$_identifier',
                   style: GoogleFonts.lexend(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
                     color: colorScheme.onSurface,
                   ),
                 ),
+                if (_isEmail)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '(shared via email)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colorScheme.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 8),
                 Text(
                   'wants to connect on Homework Helper',
@@ -162,7 +182,7 @@ class _JoinInviteScreenState extends State<JoinInviteScreen> {
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) =>
-                              PublicProfileScreen(handle: handle),
+                              PublicProfileScreen(handle: _identifier),
                         ),
                       ),
                       icon: const Icon(Icons.person_rounded),

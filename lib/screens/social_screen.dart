@@ -34,8 +34,10 @@ class _SocialScreenState extends State<SocialScreen> {
     super.dispose();
   }
 
-  void _showMyQr(BuildContext context, String handle) {
+  void _showMyQr(BuildContext context, String identifier, {bool isEmail = false}) {
     final colorScheme = Theme.of(context).colorScheme;
+    // Use an encoded invite URL that works for both username and email.
+    final qrData = 'https://homework-helper-web-dun.vercel.app/invite/${Uri.encodeComponent(identifier)}';
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -68,12 +70,24 @@ class _SocialScreenState extends State<SocialScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              '@$handle',
+              isEmail ? identifier : '@$identifier',
               style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
+            if (isEmail)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Using email as fallback (no username set)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
             const SizedBox(height: 24),
             QrImageView(
-              data: 'https://homework-helper-web-dun.vercel.app/invite/$handle',
+              data: qrData,
               version: QrVersions.auto,
               size: 240,
               backgroundColor: Colors.white,
@@ -173,7 +187,7 @@ class _SocialScreenState extends State<SocialScreen> {
                       controller: _handleController,
                       autofocus: true,
                       decoration: InputDecoration(
-                        hintText: '@username',
+                        hintText: '@username or email',
                         prefixIcon:
                             const Icon(Icons.alternate_email_rounded),
                         contentPadding: const EdgeInsets.symmetric(
@@ -503,8 +517,21 @@ class _SocialScreenState extends State<SocialScreen> {
                 onScanQr: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const QrScanScreen()),
                 ),
-                onMyQr: myHandle != null && myHandle.isNotEmpty
-                    ? () => _showMyQr(context, myHandle)
+                // Show QR tile when username is set OR when email is available
+                // as a fallback identifier.
+                onMyQr: (myHandle != null && myHandle.isNotEmpty) ||
+                        (auth.email?.isNotEmpty == true)
+                    ? () {
+                        final identifier =
+                            (myHandle != null && myHandle.isNotEmpty)
+                                ? myHandle!
+                                : auth.email!;
+                        _showMyQr(
+                          context,
+                          identifier,
+                          isEmail: myHandle == null || myHandle.isEmpty,
+                        );
+                      }
                     : null,
                 onNfcBump: () => Navigator.of(context).push(
                   MaterialPageRoute(

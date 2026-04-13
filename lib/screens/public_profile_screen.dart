@@ -41,6 +41,9 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
   String get _cleanHandle =>
       widget.handle.replaceFirst(RegExp(r'^@'), '').toLowerCase();
 
+  /// True when the handle is an email address (email-based fallback).
+  bool get _isEmail => _cleanHandle.contains('@');
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -52,7 +55,9 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
       if (profile == null) {
         setState(() {
           _loading = false;
-          _error = 'No user found with @$_cleanHandle';
+          _error = _isEmail
+              ? 'No user found with email $_cleanHandle'
+              : 'No user found with @$_cleanHandle';
         });
         return;
       }
@@ -242,8 +247,8 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
     final profile = _profile!;
     final displayName = (profile['name'] as String?)?.isNotEmpty == true
         ? profile['name'] as String
-        : '@$_cleanHandle';
-    final username = profile['username'] as String? ?? _cleanHandle;
+        : _isEmail ? _cleanHandle : '@$_cleanHandle';
+    final username = profile['username'] as String? ?? (_isEmail ? '' : _cleanHandle);
     final level = profile['level'] as int? ?? 1;
     final totalXp = profile['xp'] as int? ?? 0;
     final streak = profile['streak'] as int? ?? 0;
