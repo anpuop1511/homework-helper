@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -162,9 +162,15 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _navigateAsGuest() async {
+    // Set guest mode first — this is the only Firebase-free step needed.
     await context.read<app_auth.AuthProvider>().setGuestMode(true);
     if (!mounted) return;
-    context.read<UserProvider>().recordActivity();
+    // recordActivity is best-effort; do not let it block or crash guest entry.
+    try {
+      context.read<UserProvider>().recordActivity();
+    } catch (e) {
+      debugPrint('[LoginScreen] recordActivity failed during guest entry: $e');
+    }
     // _AuthGate will now see isGuest == true and route to MainScaffold.
   }
 
@@ -175,6 +181,20 @@ class _LoginScreenState extends State<LoginScreen>
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  void _copyToClipboard(BuildContext ctx, String text) {
+    try {
+      Clipboard.setData(ClipboardData(text: text));
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        const SnackBar(
+          content: Text('Error copied to clipboard!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[LoginScreen] Failed to copy to clipboard: $e');
+    }
   }
 
   Future<void> _signInWithPasskey() async {
@@ -313,6 +333,99 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ),
                   const SizedBox(height: 28),
+                  // ── Firebase init error diagnostic box ──────────────────
+                  Builder(builder: (context) {
+                    final initError =
+                        context.watch<app_auth.AuthProvider>().firebaseInitError;
+                    if (initError == null) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade900.withAlpha(230),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.red.shade400,
+                            width: 2,
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(
+                                  Icons.error_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Firebase Init Error',
+                                    style: GoogleFonts.lexend(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () =>
+                                      _copyToClipboard(context, initError),
+                                  icon: const Icon(
+                                    Icons.copy_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  tooltip: 'Copy error',
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            SelectableText(
+                              initError,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontFamily: 'monospace',
+                                color: Colors.white,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                onPressed: () =>
+                                    _copyToClipboard(context, initError),
+                                icon: const Icon(Icons.copy_rounded, size: 18),
+                                label: Text(
+                                  'Copy Error',
+                                  style: GoogleFonts.lexend(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.red.shade700,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
                   // Sign In / Sign Up toggle
                   FadeInUp(
                     delay: const Duration(milliseconds: 300),

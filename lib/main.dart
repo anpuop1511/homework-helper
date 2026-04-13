@@ -36,6 +36,7 @@ Future<void> main() async {
   // been replaced yet, Firebase.initializeApp() will throw; the app will then
   // run in offline / guest-only mode.
   bool firebaseReady = false;
+  String? firebaseInitError;
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -43,6 +44,7 @@ Future<void> main() async {
     firebaseReady = true;
   } catch (e) {
     // Firebase not yet configured — offline mode only.
+    firebaseInitError = e.toString();
     debugPrint('Firebase initialization failed: $e');
   }
 
@@ -54,7 +56,10 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => SecurityProvider()),
         ChangeNotifierProvider(create: (_) => ClassroomProvider()),
         ChangeNotifierProvider(
-          create: (_) => AuthProvider(firebaseReady: firebaseReady),
+          create: (_) => AuthProvider(
+            firebaseReady: firebaseReady,
+            firebaseInitError: firebaseInitError,
+          ),
         ),
         // C-2: UserProvider is wired to AuthProvider so setUid() is called
         // whenever the user signs in or out, enabling cloud XP/level/streak sync.

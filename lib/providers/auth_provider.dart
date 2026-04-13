@@ -17,8 +17,14 @@ class AuthProvider extends ChangeNotifier {
   static const _prefGuestMode = 'auth_guest_mode';
 
   final bool _firebaseReady;
+  final String? _firebaseInitError;
   FirebaseAuth? get _auth =>
       _firebaseReady ? FirebaseAuth.instance : null;
+
+  /// The raw exception string captured when [Firebase.initializeApp] threw
+  /// during app startup.  Non-null only when Firebase failed to initialise.
+  /// Used by [LoginScreen] to display a diagnostic error box.
+  String? get firebaseInitError => _firebaseInitError;
 
   User? _user;
   String? _username;
@@ -67,7 +73,9 @@ class AuthProvider extends ChangeNotifier {
   bool _initialStateReady = false;
   bool get initialStateReady => _initialStateReady;
 
-  AuthProvider({bool firebaseReady = true}) : _firebaseReady = firebaseReady {
+  AuthProvider({bool firebaseReady = true, String? firebaseInitError})
+      : _firebaseReady = firebaseReady,
+        _firebaseInitError = firebaseInitError {
     _loadGuestMode();
     if (_firebaseReady) {
       // Keep _user in sync with Firebase's auth state stream.
@@ -130,7 +138,8 @@ class AuthProvider extends ChangeNotifier {
     bool isSignedIn = false,
     String? username,
     bool usernameLoaded = true,
-  }) : _firebaseReady = false {
+  }) : _firebaseReady = false,
+       _firebaseInitError = null {
     _testSignedIn = isSignedIn;
     _username = username;
     _usernameLoaded = usernameLoaded;
