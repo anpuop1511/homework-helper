@@ -283,15 +283,15 @@ class NotificationService {
     icon: '@mipmap/ic_launcher',
   );
 
-  /// Shows a notification for an incoming friend request from [fromHandle].
+  /// Shows a notification for an incoming friend request from [fromUsername].
   /// On web this is a no-op since flutter_local_notifications is not supported.
-  Future<void> showFriendRequestNotification(String fromHandle) async {
+  Future<void> showFriendRequestNotification(String fromUsername) async {
     if (!_initialized) return;
     try {
       await _plugin.show(
         id: _friendRequestId,
         title: '👋 New Friend Request',
-        body: '@$fromHandle wants to be your study buddy!',
+        body: '@$fromUsername wants to be your study buddy!',
         notificationDetails: const NotificationDetails(
           android: _androidFriendRequest,
           iOS: DarwinNotificationDetails(),

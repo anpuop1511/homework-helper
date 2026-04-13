@@ -63,21 +63,21 @@ class GroupProject {
 class BulletinPost {
   final String id;
   final String authorUid;
-  final String authorHandle;
+  final String authorUsername;
   final String text;
   final DateTime createdAt;
 
   const BulletinPost({
     required this.id,
     required this.authorUid,
-    required this.authorHandle,
+    required this.authorUsername,
     required this.text,
     required this.createdAt,
   });
 
   Map<String, dynamic> toJson() => {
         'authorUid': authorUid,
-        'authorHandle': authorHandle,
+        'authorUsername': authorUsername,
         'text': text,
         'createdAt': Timestamp.fromDate(createdAt),
       };
@@ -86,7 +86,9 @@ class BulletinPost {
       BulletinPost(
         id: id,
         authorUid: json['authorUid'] as String? ?? '',
-        authorHandle: json['authorHandle'] as String? ?? '',
+        authorUsername: json['authorUsername'] as String? ??
+            json['authorHandle'] as String? ??
+            '',
         text: json['text'] as String? ?? '',
         createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       );
