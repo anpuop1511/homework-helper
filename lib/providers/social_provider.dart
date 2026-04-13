@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/social_models.dart';
 import '../services/database_service.dart';
+import '../services/notification_service.dart';
 
 // Re-export models so existing import sites still work.
 export '../models/social_models.dart';
@@ -98,6 +99,10 @@ class SocialProvider extends ChangeNotifier {
   ProfileVisibility get profileVisibility => _profileVisibility;
   FriendRequestsPrivacy get friendRequestsPrivacy => _friendRequestsPrivacy;
 
+  /// True when the user has at least one pending incoming friend request.
+  /// Use this to show an attention indicator on the Social tab.
+  bool get hasPendingRequests => _pendingRequests.isNotEmpty;
+
   SocialProvider() {
     _loadLocal();
   }
@@ -146,13 +151,23 @@ class SocialProvider extends ChangeNotifier {
       );
 
       // Subscribe to incoming requests stream.
+      // Track the previous count so we can trigger a notification only when
+      // a *new* request arrives (not on the initial load).
+      int? prevRequestCount;
       _requestsSub =
           DatabaseService.instance.pendingRequestsStream(uid).listen(
         (list) {
+          final newCount = list.length;
+          final hadNew = prevRequestCount != null && newCount > prevRequestCount!;
           _pendingRequests
             ..clear()
             ..addAll(list);
+          prevRequestCount = newCount;
           notifyListeners();
+          // Show an in-app notification when a new friend request arrives.
+          if (hadNew) {
+            _onNewFriendRequest(list.last);
+          }
         },
         onError: (_) {/* keep existing list */},
       );
@@ -176,6 +191,16 @@ class SocialProvider extends ChangeNotifier {
   }
 
   // ── Local persistence ────────────────────────────────────────────────────
+
+  /// Fires a local notification when a new friend request arrives.
+  void _onNewFriendRequest(FriendRequest request) {
+    final handle = request.fromUsername.isNotEmpty
+        ? request.fromUsername
+        : request.fromEmail.split('@').first;
+    NotificationService.instance
+        .showFriendRequestNotification(handle)
+        .ignore();
+  }
 
   Future<void> _loadLocal() async {
     final prefs = await SharedPreferences.getInstance();

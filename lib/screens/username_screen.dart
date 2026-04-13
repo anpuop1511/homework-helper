@@ -59,8 +59,9 @@ class _UsernameScreenState extends State<UsernameScreen> {
       return;
     }
 
-    // Refresh the in-memory username so the rest of the app reflects it.
-    await context.read<AuthProvider>().refreshUsername();
+    // Immediately update in-memory state so _AuthGate navigates away without
+    // waiting for a Firestore round-trip (which can return stale cached data).
+    context.read<AuthProvider>().setUsernameDirectly(handle);
     if (!mounted) return;
 
     if (widget.allowSkip) {
@@ -68,6 +69,8 @@ class _UsernameScreenState extends State<UsernameScreen> {
     }
     // When launched from _AuthGate (allowSkip == false), the gate will rebuild
     // automatically now that AuthProvider.username is set – no manual push needed.
+    // Fire-and-forget refresh to keep Firestore in sync (non-blocking).
+    context.read<AuthProvider>().refreshUsername().ignore();
   }
 
   @override

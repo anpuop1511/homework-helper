@@ -71,6 +71,16 @@ class AuthProvider extends ChangeNotifier {
     });
   }
 
+  /// Sets the username directly in memory without a Firestore round-trip.
+  /// Use this immediately after a successful [claimUsername] call so the
+  /// router navigates away from the handle screen without waiting for
+  /// Firestore to propagate the write.
+  void setUsernameDirectly(String handle) {
+    _username = handle.toLowerCase().trim();
+    _usernameLoaded = true;
+    notifyListeners();
+  }
+
   /// Refreshes the in-memory username from Firestore.  Call after the user
   /// successfully claims a new handle.
   Future<void> refreshUsername() async {
