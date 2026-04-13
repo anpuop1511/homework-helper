@@ -27,6 +27,9 @@ class FirebaseBootstrap {
 
   // ── Cached result ──────────────────────────────────────────────────────
 
+  /// The name of the default Firebase app, as defined by the Firebase SDK.
+  static const String _defaultAppName = '[DEFAULT]';
+
   static bool _ready = false;
   static String? _error;
   static bool _attempted = false;
@@ -59,7 +62,7 @@ class FirebaseBootstrap {
     // Fast path: default app already registered in the Dart layer.
     // Covers the case where ensureInitialized() is called more than once
     // within the same Dart isolate (e.g. during testing).
-    if (Firebase.apps.any((app) => app.name == '[DEFAULT]')) {
+    if (Firebase.apps.any((app) => app.name == _defaultAppName)) {
       _ready = true;
       _attempted = true;
       debugPrint('[FirebaseBootstrap] Default app already initialized — reusing.');
