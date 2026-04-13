@@ -523,7 +523,7 @@ void main() {
     });
 
     testWidgets(
-        'authenticated + missing handle after load => shows handle setup',
+        'authenticated + missing handle after load => shows main app',
         (WidgetTester tester) async {
       await tester.pumpWidget(_buildAuthTestApp(
         AuthProvider.forTesting(
@@ -531,9 +531,9 @@ void main() {
       ));
       await tester.pump();
 
-      expect(find.byType(UsernameScreen), findsOneWidget);
+      expect(find.byType(MainScaffold), findsOneWidget);
       expect(find.byType(SplashScreen), findsNothing);
-      expect(find.byType(MainScaffold), findsNothing);
+      expect(find.byType(UsernameScreen), findsNothing);
     });
 
     testWidgets(
