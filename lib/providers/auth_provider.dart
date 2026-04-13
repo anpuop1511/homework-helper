@@ -60,14 +60,21 @@ class AuthProvider extends ChangeNotifier {
             _username = null;
             _usernameLoaded = false;
             _loadUsername(user.uid);
-          } else if (!_usernameLoaded) {
-            // Same UID but username not yet loaded — continue loading.
+          } else if (!_usernameLoaded && _usernameStreamSub == null) {
+            // Same UID, not yet loaded, and no active subscription —
+            // start (or restart) the Firestore fetch.  We guard on
+            // _usernameStreamSub != null so that rapid re-fires of
+            // authStateChanges() (common on Flutter Web) cannot cancel
+            // an in-flight subscription before it receives its first
+            // value, which is the core cause of the race condition that
+            // showed the "Choose a Handle" prompt on page-refresh.
             _loadUsername(user.uid);
           }
-          // Same UID and already loaded — keep existing state to avoid a
-          // spurious loading-screen flash on web page-refresh where
-          // authStateChanges() re-fires with the same user after the
-          // synchronous currentUser path already resolved the username.
+          // Same UID and already loaded (or subscription in progress) —
+          // keep existing state to avoid a spurious loading-screen flash
+          // on web page-refresh where authStateChanges() re-fires with
+          // the same user after the synchronous currentUser path already
+          // started resolving the username.
         } else {
           _username = null;
           _usernameLoaded = true;
@@ -109,6 +116,11 @@ class AuthProvider extends ChangeNotifier {
   /// cache-only null snapshots, preventing the "Choose a Handle" screen
   /// from flashing on web page-refresh while Firestore is still syncing.
   /// Only the first authoritative result is consumed (`.take(1)`).
+  ///
+  /// Note: `_usernameLoaded = true` is always set **before** clearing
+  /// `_usernameStreamSub`, so the guard in the `authStateChanges()` listener
+  /// (`!_usernameLoaded && _usernameStreamSub == null`) can never
+  /// accidentally trigger a redundant reload after completion.
   void _loadUsername(String uid) {
     _usernameStreamSub?.cancel();
     _usernameStreamSub = DatabaseService.instance
@@ -117,11 +129,13 @@ class AuthProvider extends ChangeNotifier {
         .listen(
           (handle) {
             _username = handle;
-            _usernameLoaded = true;
+            _usernameLoaded = true; // Set before clearing subscription ref.
+            _usernameStreamSub = null;
             notifyListeners();
           },
           onError: (_) {
-            _usernameLoaded = true;
+            _usernameLoaded = true; // Set before clearing subscription ref.
+            _usernameStreamSub = null;
             notifyListeners();
           },
         );

@@ -260,7 +260,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  // @username display or Pick a Handle CTA.
+                  // @username display (tappable to change).
                   if (username != null && username.isNotEmpty)
                     GestureDetector(
                       onTap: () => Navigator.of(context).push(
@@ -283,20 +283,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: colorScheme.onPrimaryContainer,
                           ),
                         ),
-                      ),
-                    )
-                  else if (auth.isSignedIn)
-                    TextButton.icon(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) =>
-                                const UsernameScreen(allowSkip: true)),
-                      ),
-                      icon: const Icon(Icons.alternate_email_rounded,
-                          size: 16),
-                      label: const Text('Pick a @handle'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: colorScheme.primary,
                       ),
                     ),
                   Text(
