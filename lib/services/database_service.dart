@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:typed_data';
 import '../models/assignment.dart';
 import '../models/class_model.dart';
@@ -482,7 +483,12 @@ class DatabaseService {
       batch.delete(_friendRequestsCol(currentUid).doc(doc.id));
     }
 
-    await batch.commit();
+    try {
+      await batch.commit();
+    } catch (e) {
+      debugPrint('[DatabaseService] removeFriend batch commit failed: $e');
+      rethrow;
+    }
   }
 
   /// Returns the relationship status between [currentUid] and [targetUid].
