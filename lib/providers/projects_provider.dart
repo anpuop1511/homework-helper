@@ -184,7 +184,7 @@ class ProjectsProvider extends ChangeNotifier {
 
   Future<void> addPost({
     required String projectId,
-    required String authorHandle,
+    required String authorUsername,
     required String text,
   }) async {
     if (_uid == null) return;
@@ -195,7 +195,7 @@ class ProjectsProvider extends ChangeNotifier {
         .add(BulletinPost(
           id: '',
           authorUid: _uid!,
-          authorHandle: authorHandle,
+          authorUsername: authorUsername,
           text: text.trim(),
           createdAt: DateTime.now(),
         ).toJson());

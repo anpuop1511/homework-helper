@@ -339,7 +339,7 @@ class DatabaseService {
     try {
       await _friendRequestsCol(toUid).doc(ref.id).set({
         'fromUid': fromUid,
-        'fromHandle': fromUsername,
+        'fromUsername': fromUsername,
         'createdAt': FieldValue.serverTimestamp(),
         'requestId': ref.id,
       });

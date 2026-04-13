@@ -965,7 +965,7 @@ class _BulletinTabState extends State<_BulletinTab> {
     final handle = auth.username ?? 'anonymous';
     await context.read<ProjectsProvider>().addPost(
           projectId: widget.projectId,
-          authorHandle: handle,
+          authorUsername: handle,
           text: text,
         );
     _postController.clear();
@@ -1071,8 +1071,8 @@ class _PostCard extends StatelessWidget {
                 radius: 14,
                 backgroundColor: _kBlue.withAlpha(30),
                 child: Text(
-                  post.authorHandle.isNotEmpty
-                      ? post.authorHandle[0].toUpperCase()
+                  post.authorUsername.isNotEmpty
+                      ? post.authorUsername[0].toUpperCase()
                       : '?',
                   style: const TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w700, color: _kBlue),
@@ -1081,7 +1081,7 @@ class _PostCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '@${post.authorHandle}',
+                  '@${post.authorUsername}',
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
               ),
