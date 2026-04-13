@@ -116,6 +116,11 @@ class AuthProvider extends ChangeNotifier {
   /// cache-only null snapshots, preventing the "Choose a Handle" screen
   /// from flashing on web page-refresh while Firestore is still syncing.
   /// Only the first authoritative result is consumed (`.take(1)`).
+  ///
+  /// Note: `_usernameLoaded = true` is always set **before** clearing
+  /// `_usernameStreamSub`, so the guard in the `authStateChanges()` listener
+  /// (`!_usernameLoaded && _usernameStreamSub == null`) can never
+  /// accidentally trigger a redundant reload after completion.
   void _loadUsername(String uid) {
     _usernameStreamSub?.cancel();
     _usernameStreamSub = DatabaseService.instance
@@ -124,12 +129,12 @@ class AuthProvider extends ChangeNotifier {
         .listen(
           (handle) {
             _username = handle;
-            _usernameLoaded = true;
+            _usernameLoaded = true; // Set before clearing subscription ref.
             _usernameStreamSub = null;
             notifyListeners();
           },
           onError: (_) {
-            _usernameLoaded = true;
+            _usernameLoaded = true; // Set before clearing subscription ref.
             _usernameStreamSub = null;
             notifyListeners();
           },
