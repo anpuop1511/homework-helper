@@ -38,9 +38,11 @@ Future<void> main() async {
   bool firebaseReady = false;
   String? firebaseInitError;
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
     firebaseReady = true;
   } catch (e) {
     // Firebase not yet configured — offline mode only.
