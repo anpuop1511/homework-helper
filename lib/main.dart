@@ -32,15 +32,9 @@ import 'screens/username_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables.
-  const geminiKey = String.fromEnvironment('GEMINI_API_KEY');
-  await dotenv.load(
-    fileName: '.env',
-    isOptional: true,
-    mergeWith: geminiKey.isNotEmpty
-        ? {'GEMINI_API_KEY': geminiKey}
-        : const {},
-  );
+  // Load environment variables (optional – used for local development and
+  // Android CI; the .env file is not required for web builds).
+  await dotenv.load(fileName: '.env', isOptional: true);
 
   await NotificationService.instance.init();
 

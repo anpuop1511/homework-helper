@@ -34,9 +34,13 @@ class DefaultFirebaseOptions {
   }
 
   // Replace every 'REPLACE_WITH_...' value with the ones from your Firebase
-  // project (Project Settings → General → Your apps).
+  // project (Project Settings → General → Your apps), or supply the web API
+  // key at build time via `--dart-define=FIREBASE_WEB_API_KEY=<value>`.
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_WEB_API_KEY',
+    apiKey: String.fromEnvironment(
+      'FIREBASE_WEB_API_KEY',
+      defaultValue: 'REPLACE_WITH_WEB_API_KEY',
+    ),
     appId: 'REPLACE_WITH_WEB_APP_ID',
     messagingSenderId: 'REPLACE_WITH_SENDER_ID',
     projectId: 'REPLACE_WITH_PROJECT_ID',
