@@ -125,6 +125,7 @@ class SocialProvider extends ChangeNotifier {
       _userEmail = email;
       _userName = name;
       _userUsername = username;
+      notifyListeners();
       return;
     }
     _uid = uid;
