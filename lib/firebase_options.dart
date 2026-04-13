@@ -23,11 +23,10 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: String.fromEnvironment(
-      'FIREBASE_WEB_API_KEY',
-      defaultValue: 'AIzaSyA4KoQWIUyoDZYte4pWUu46K-YXzIzLZRA',
-    ),
+  static final FirebaseOptions web = FirebaseOptions(
+    apiKey: const String.fromEnvironment('FIREBASE_WEB_API_KEY').isEmpty
+        ? 'AIzaSyA4KoQWIUyoDZYte4pWUu46K-YXzIzLZRA'
+        : const String.fromEnvironment('FIREBASE_WEB_API_KEY'),
     appId: '1:911283793659:web:202e8c9f1de4db4f270a5e',
     messagingSenderId: '911283793659',
     projectId: 'hwhelp-9390f',
@@ -36,11 +35,10 @@ class DefaultFirebaseOptions {
     measurementId: 'G-006YK5TCNQ',
   );
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: String.fromEnvironment(
-      'FIREBASE_ANDROID_API_KEY',
-      defaultValue: 'AIzaSyAnmpl7UtVbtvf6jROV_9xL1j4luv36X9o',
-    ),
+  static final FirebaseOptions android = FirebaseOptions(
+    apiKey: const String.fromEnvironment('FIREBASE_ANDROID_API_KEY').isEmpty
+        ? 'AIzaSyA4KoQWIUyoDZYte4pWUu46K-YXzIzLZRA'
+        : const String.fromEnvironment('FIREBASE_ANDROID_API_KEY'),
     appId: '1:911283793659:android:aa8131111c319b0a270a5e',
     messagingSenderId: '911283793659',
     projectId: 'hwhelp-9390f',
