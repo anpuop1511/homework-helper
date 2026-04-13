@@ -426,6 +426,9 @@ class SocialProvider extends ChangeNotifier {
 
   /// Removes [friend] from the friends list.
   Future<void> removeFriend(String id) async {
+    // Save a snapshot for rollback in case the backend call fails.
+    final snapshot = List<Friend>.from(_friends);
+
     // Optimistically remove from local state immediately for instant UI feedback.
     _friends.removeWhere((f) => f.id == id);
     notifyListeners();
@@ -434,7 +437,13 @@ class SocialProvider extends ChangeNotifier {
       try {
         await DatabaseService.instance.removeFriend(_uid!, id);
       } catch (_) {
-        // If the removal fails, the Firestore stream will restore the correct state.
+        // Roll back to the pre-removal snapshot so the UI stays consistent
+        // with the server state.  The Firestore real-time stream will also
+        // re-emit the unchanged friends list once connectivity is restored.
+        _friends
+          ..clear()
+          ..addAll(snapshot);
+        notifyListeners();
       }
     } else {
       await _save();

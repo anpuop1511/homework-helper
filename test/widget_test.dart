@@ -408,6 +408,106 @@ void main() {
     });
   });
 
+  group('SocialProvider', () {
+    test('starts with empty friends list', () async {
+      final provider = SocialProvider();
+      await Future.delayed(Duration.zero); // allow _loadLocal to complete
+      expect(provider.friends.isEmpty, true);
+    });
+
+    test('hasPendingRequests is false when no pending requests', () {
+      final provider = SocialProvider();
+      expect(provider.hasPendingRequests, false);
+    });
+
+    test('removeFriend in offline mode removes friend from list', () async {
+      SharedPreferences.setMockInitialValues({});
+      final provider = SocialProvider();
+      await Future.delayed(Duration.zero);
+
+      // Add a friend via the offline/guest path.
+      await provider.sendFriendRequestByUsername('testuser');
+      expect(provider.friends.length, 1);
+      expect(provider.friends.first.username, 'testuser');
+
+      final id = provider.friends.first.id;
+      await provider.removeFriend(id);
+      expect(provider.friends.isEmpty, true);
+    });
+
+    test('removeFriend is idempotent for unknown id', () async {
+      SharedPreferences.setMockInitialValues({});
+      final provider = SocialProvider();
+      await Future.delayed(Duration.zero);
+
+      // Removing a non-existent id should be a no-op.
+      await provider.removeFriend('non-existent-id');
+      expect(provider.friends.isEmpty, true);
+    });
+
+    test('removeFriend does not affect other friends', () async {
+      SharedPreferences.setMockInitialValues({});
+      final provider = SocialProvider();
+      await Future.delayed(Duration.zero);
+
+      await provider.sendFriendRequestByUsername('alice');
+      await provider.sendFriendRequestByUsername('bob');
+      expect(provider.friends.length, 2);
+
+      final aliceId = provider.friends.firstWhere((f) => f.username == 'alice').id;
+      await provider.removeFriend(aliceId);
+      expect(provider.friends.length, 1);
+      expect(provider.friends.first.username, 'bob');
+    });
+
+    test('Friend model serializes and deserializes correctly', () {
+      const friend = Friend(
+        id: 'uid-1',
+        name: 'Alice',
+        email: 'alice@example.com',
+        username: 'alice',
+        level: 3,
+        totalXp: 250,
+        streak: 7,
+      );
+      final json = friend.toJson();
+      final restored = Friend.fromJson({'id': friend.id, ...json});
+      expect(restored.id, friend.id);
+      expect(restored.name, friend.name);
+      expect(restored.email, friend.email);
+      expect(restored.username, friend.username);
+      expect(restored.level, friend.level);
+      expect(restored.totalXp, friend.totalXp);
+      expect(restored.streak, friend.streak);
+    });
+
+    test('Friend.displayHandle returns @handle when username is set', () {
+      const friend = Friend(
+        id: 'uid-2',
+        name: 'Bob',
+        email: 'bob@example.com',
+        username: 'bob',
+        level: 1,
+        totalXp: 0,
+        streak: 0,
+      );
+      expect(friend.displayHandle, '@bob');
+    });
+
+    test('Friend.displayHandle falls back to name when username is empty', () {
+      const friend = Friend(
+        id: 'uid-3',
+        name: 'Carol',
+        email: 'carol@example.com',
+        username: '',
+        level: 1,
+        totalXp: 0,
+        streak: 0,
+      );
+      expect(friend.displayHandle, 'Carol');
+    });
+  });
+
   group('_AuthGate tri-state routing', () {
     testWidgets(
         'authenticated + profile loading => shows SplashScreen, not handle setup',
