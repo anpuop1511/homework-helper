@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart' as app_auth;
 import '../providers/security_provider.dart';
 import '../providers/user_provider.dart';
+import '../services/database_service.dart';
 import 'main_scaffold.dart';
 
 // Squircle / Expressive radius constants — 24.0 throughout.
@@ -40,6 +41,7 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
+  final _handleController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
 
@@ -66,6 +68,7 @@ class _LoginScreenState extends State<LoginScreen>
     _emailController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
+    _handleController.dispose();
     super.dispose();
   }
 
@@ -92,6 +95,20 @@ class _LoginScreenState extends State<LoginScreen>
           _passwordController.text,
           displayName: _nameController.text.trim(),
         );
+        // Claim the chosen handle immediately so the user never sees the
+        // standalone "Choose Handle" screen.
+        final handle = _handleController.text.trim().toLowerCase();
+        final uid = auth.uid;
+        if (uid != null) {
+          final handleError =
+              await DatabaseService.instance.claimUsername(uid, handle);
+          if (!mounted) return;
+          if (handleError != null) {
+            _showError(handleError);
+            return;
+          }
+          auth.setUsernameDirectly(handle);
+        }
       }
       if (!mounted) return;
       final name = _nameController.text.trim();
@@ -102,8 +119,7 @@ class _LoginScreenState extends State<LoginScreen>
       // Notify the platform's autofill service that the user has signed in so
       // that it can prompt to save the credentials.
       TextInput.finishAutofillContext();
-      // _AuthGate in main.dart now handles routing to UsernameScreen for any
-      // signed-in user without a handle (new sign-up or existing account).
+      // _AuthGate in main.dart now handles routing to the main app.
     } on FirebaseAuthException catch (e) {
       debugPrint('[LoginScreen] FirebaseAuthException: ${e.code} - ${e.message}');
       if (!mounted) return;
@@ -383,6 +399,50 @@ class _LoginScreenState extends State<LoginScreen>
                                           (v == null || v.trim().isEmpty)
                                               ? 'Please enter your name'
                                               : null,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Handle',
+                                      style: GoogleFonts.lexend(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TextFormField(
+                                      controller: _handleController,
+                                      keyboardType: TextInputType.text,
+                                      textInputAction: TextInputAction.next,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(
+                                            RegExp(r'[a-zA-Z0-9_]')),
+                                        LengthLimitingTextInputFormatter(20),
+                                      ],
+                                      decoration: InputDecoration(
+                                        hintText: 'yourhandle',
+                                        prefixText: '@',
+                                        prefixIcon: const Icon(
+                                            Icons.alternate_email_rounded),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                              _kInputRadius),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        filled: true,
+                                        fillColor: colorScheme.surface,
+                                      ),
+                                      validator: (v) {
+                                        if (v == null || v.trim().isEmpty) {
+                                          return 'Please choose a handle';
+                                        }
+                                        final h = v.trim();
+                                        if (!RegExp(r'^[a-zA-Z][a-zA-Z0-9_]{2,19}$')
+                                            .hasMatch(h)) {
+                                          return 'Handle must start with a letter, 3–20 chars, letters/digits/underscores only';
+                                        }
+                                        return null;
+                                      },
                                     ),
                                     const SizedBox(height: 16),
                                   ],
