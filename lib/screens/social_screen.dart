@@ -651,17 +651,29 @@ class _QuickActionsGrid extends StatelessWidget {
       ),
     ];
 
-    return GridView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.55,
-      ),
-      itemCount: tiles.length,
-      itemBuilder: (_, i) => _QsTile(data: tiles[i]),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // On wider screens the tiles would become disproportionately large;
+        // cap the available width and use more columns when space allows.
+        final availableWidth = constraints.maxWidth;
+        final crossAxisCount = availableWidth >= 500 ? 3 : 2;
+        // Keep tiles square-ish: wider screens need a larger ratio because
+        // each tile is narrower relative to its fixed-height content.
+        final aspectRatio = crossAxisCount == 3 ? 1.6 : 1.55;
+
+        return GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: aspectRatio,
+          ),
+          itemCount: tiles.length,
+          itemBuilder: (_, i) => _QsTile(data: tiles[i]),
+        );
+      },
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/security_provider.dart';
+import '../providers/social_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/assignments_provider.dart';
@@ -54,29 +55,6 @@ class _MainScaffoldState extends State<MainScaffold> {
   bool get _useRail =>
       kIsWeb || MediaQuery.of(context).size.width >= 600;
 
-  static const List<NavigationRailDestination> _railDestinations = [
-    NavigationRailDestination(
-      icon: Icon(Icons.home_outlined),
-      selectedIcon: Icon(Icons.home_rounded),
-      label: Text('Home'),
-    ),
-    NavigationRailDestination(
-      icon: Icon(Icons.timer_outlined),
-      selectedIcon: Icon(Icons.timer_rounded),
-      label: Text('Focus'),
-    ),
-    NavigationRailDestination(
-      icon: Icon(Icons.auto_awesome_outlined),
-      selectedIcon: Icon(Icons.auto_awesome_rounded),
-      label: Text('Helper'),
-    ),
-    NavigationRailDestination(
-      icon: Icon(Icons.people_outline_rounded),
-      selectedIcon: Icon(Icons.people_rounded),
-      label: Text('Social'),
-    ),
-  ];
-
   void _openUserHub() {
     showModalBottomSheet<void>(
       context: context,
@@ -124,6 +102,8 @@ class _MainScaffoldState extends State<MainScaffold> {
     final colorScheme = Theme.of(context).colorScheme;
     final user = context.watch<UserProvider>();
     final auth = context.watch<AuthProvider>();
+    final social = context.watch<SocialProvider>();
+    final hasPendingRequests = social.hasPendingRequests;
 
     if (_useRail) {
       // ── Wide screen: NavigationRail layout ─────────────────────────
@@ -135,7 +115,34 @@ class _MainScaffoldState extends State<MainScaffold> {
               onDestinationSelected: (index) =>
                   setState(() => _currentIndex = index),
               labelType: NavigationRailLabelType.all,
-              destinations: _railDestinations,
+              destinations: [
+                const NavigationRailDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home_rounded),
+                  label: Text('Home'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.timer_outlined),
+                  selectedIcon: Icon(Icons.timer_rounded),
+                  label: Text('Focus'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.auto_awesome_outlined),
+                  selectedIcon: Icon(Icons.auto_awesome_rounded),
+                  label: Text('Helper'),
+                ),
+                NavigationRailDestination(
+                  icon: Badge(
+                    isLabelVisible: hasPendingRequests,
+                    child: const Icon(Icons.people_outline_rounded),
+                  ),
+                  selectedIcon: Badge(
+                    isLabelVisible: hasPendingRequests,
+                    child: const Icon(Icons.people_rounded),
+                  ),
+                  label: const Text('Social'),
+                ),
+              ],
               trailing: Expanded(
                 child: Align(
                   alignment: Alignment.bottomCenter,
@@ -182,25 +189,31 @@ class _MainScaffoldState extends State<MainScaffold> {
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) =>
             setState(() => _currentIndex = index),
-        destinations: const [
-          NavigationDestination(
+        destinations: [
+          const NavigationDestination(
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home_rounded),
             label: 'Home',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.timer_outlined),
             selectedIcon: Icon(Icons.timer_rounded),
             label: 'Focus',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.auto_awesome_outlined),
             selectedIcon: Icon(Icons.auto_awesome_rounded),
             label: 'Helper',
           ),
           NavigationDestination(
-            icon: Icon(Icons.people_outline_rounded),
-            selectedIcon: Icon(Icons.people_rounded),
+            icon: Badge(
+              isLabelVisible: hasPendingRequests,
+              child: const Icon(Icons.people_outline_rounded),
+            ),
+            selectedIcon: Badge(
+              isLabelVisible: hasPendingRequests,
+              child: const Icon(Icons.people_rounded),
+            ),
             label: 'Social',
           ),
         ],

@@ -19,6 +19,19 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Homework Helper - AI-powered homework assistant">
+  <!-- viewport-fit=cover + fixed body prevents mobile browser URL bars
+       from resizing the Flutter canvas and pushing the bottom nav bar up. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <style>
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">

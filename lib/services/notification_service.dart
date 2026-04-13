@@ -271,6 +271,38 @@ class NotificationService {
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
+  static const int _friendRequestId = 50;
+
+  static const AndroidNotificationDetails _androidFriendRequest =
+      AndroidNotificationDetails(
+    'friend_request_channel',
+    'Friend Requests',
+    channelDescription: 'Alerts when someone sends you a friend request.',
+    importance: Importance.high,
+    priority: Priority.high,
+    icon: '@mipmap/ic_launcher',
+  );
+
+  /// Shows a notification for an incoming friend request from [fromHandle].
+  /// On web this is a no-op since flutter_local_notifications is not supported.
+  Future<void> showFriendRequestNotification(String fromHandle) async {
+    if (!_initialized) return;
+    try {
+      await _plugin.show(
+        id: _friendRequestId,
+        title: '👋 New Friend Request',
+        body: '@$fromHandle wants to be your study buddy!',
+        notificationDetails: const NotificationDetails(
+          android: _androidFriendRequest,
+          iOS: DarwinNotificationDetails(),
+          macOS: DarwinNotificationDetails(),
+        ),
+      );
+    } catch (e) {
+      debugPrint('[NotificationService] showFriendRequestNotification failed: $e');
+    }
+  }
+
   String _formatTime(DateTime dt) {
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');

@@ -355,11 +355,14 @@ class DatabaseService {
   /// Accepts a friend request atomically:
   ///   1. Updates the global request status to 'accepted'.
   ///   2. Adds the sender to the accepter's friends sub-collection.
-  ///   3. Deletes the incoming subcollection entry (cleanup).
+  ///   3. Adds the accepter to the sender's friends sub-collection (two-way).
+  ///   4. Deletes the incoming subcollection entry (cleanup).
   ///
-  /// Writing the reciprocal friend doc to the sender's collection is
-  /// best-effort (outside the batch) because Firestore rules only allow
-  /// each user to write their own `users/{uid}/friends/` sub-collection.
+  /// Both friend writes are included in the same batch so the relationship
+  /// is always symmetric.  Firestore security rules must permit each user to
+  /// write to the other's `users/{uid}/friends/` sub-collection when
+  /// accepting a request (e.g. allow write if the writer owns the *other*
+  /// document in the request).
   Future<void> acceptFriendRequest(FriendRequest request,
       {required Map<String, dynamic> currentUserData}) async {
     final batch = _db.batch();
@@ -383,17 +386,16 @@ class DatabaseService {
       },
     );
 
-    // 3. Clean up the accepter's incoming subcollection entry.
+    // 3. Add accepter to sender's friends (two-way sync in the same batch).
+    batch.set(
+      _friendsCol(request.fromUid).doc(request.toUid),
+      currentUserData,
+    );
+
+    // 4. Clean up the accepter's incoming subcollection entry.
     batch.delete(_friendRequestsCol(request.toUid).doc(request.id));
 
     await batch.commit();
-
-    // Best-effort: add the accepter to the sender's friends collection.
-    // This may fail if Firestore rules restrict writes to another user's
-    // subcollection; that is acceptable — the core accept succeeded above.
-    try {
-      await _friendsCol(request.fromUid).doc(request.toUid).set(currentUserData);
-    } catch (_) {}
   }
 
   Future<void> declineFriendRequest(String requestId, {String? targetUid}) async {
