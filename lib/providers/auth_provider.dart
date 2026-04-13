@@ -60,6 +60,13 @@ class AuthProvider extends ChangeNotifier {
   /// Use this to distinguish "still loading" from "user has no handle yet".
   bool get usernameLoaded => _usernameLoaded;
 
+  /// True once the initial auth state (including the guest-mode flag) has been
+  /// read from persistent storage.  [_AuthGate] uses this to avoid flashing
+  /// [LoginScreen] for a single frame before [_isGuest] is restored from
+  /// [SharedPreferences] on cold start.
+  bool _initialStateReady = false;
+  bool get initialStateReady => _initialStateReady;
+
   AuthProvider({bool firebaseReady = true}) : _firebaseReady = firebaseReady {
     _loadGuestMode();
     if (_firebaseReady) {
@@ -127,19 +134,23 @@ class AuthProvider extends ChangeNotifier {
     _testSignedIn = isSignedIn;
     _username = username;
     _usernameLoaded = usernameLoaded;
+    _initialStateReady = true; // Preset state is fully ready for tests.
   }
 
   /// Loads the persisted guest-mode flag from [SharedPreferences].
   ///
   /// Called once from the constructor; updates state asynchronously.
   /// If the user is already signed in when this resolves, the flag is ignored.
+  /// Always marks [_initialStateReady] true when complete so [_AuthGate] can
+  /// distinguish "still loading" from "confirmed not a guest".
   Future<void> _loadGuestMode() async {
     final prefs = await SharedPreferences.getInstance();
     final wasGuest = prefs.getBool(_prefGuestMode) ?? false;
     if (wasGuest && _user == null && !_testSignedIn) {
       _isGuest = wasGuest;
-      notifyListeners();
     }
+    _initialStateReady = true;
+    notifyListeners();
   }
 
   /// Enables or disables guest mode and persists the choice.

@@ -398,12 +398,27 @@ class DatabaseService {
   /// document in the request).
   Future<void> acceptFriendRequest(FriendRequest request,
       {required Map<String, dynamic> currentUserData}) async {
+    // Fetch the sender's actual stats so we write real level/XP/streak instead
+    // of hardcoded defaults.  If the fetch fails we fall back to zeros.
+    Map<String, dynamic>? senderData;
+    try {
+      senderData = await getUserData(request.fromUid);
+    } catch (_) {
+      // Firestore unavailable — fallback values will be used below.
+    }
+    // Compute totalXp from the stored per-level xp and level fields using the
+    // same formula as UserProvider (baseXp=100, totalXp = 100*(L-1)*L/2 + xp).
+    const baseXp = 100;
+    final senderLevel = senderData?['level'] as int? ?? 1;
+    final senderXp = senderData?['xp'] as int? ?? 0;
+    final senderTotalXp = baseXp * (senderLevel - 1) * senderLevel ~/ 2 + senderXp;
+
     final batch = _db.batch();
 
     // 1. Mark global request as accepted.
     batch.update(_requestsCol.doc(request.id), {'status': 'accepted'});
 
-    // 2. Add sender to the accepter's friends (the accepter owns this doc).
+    // 2. Add sender to the accepter's friends with their actual stats.
     batch.set(
       _friendsCol(request.toUid).doc(request.fromUid),
       {
@@ -413,9 +428,9 @@ class DatabaseService {
             : request.fromEmail.split('@').first,
         'email': request.fromEmail,
         'username': request.fromUsername,
-        'level': 1,
-        'totalXp': 0,
-        'streak': 0,
+        'level': senderLevel,
+        'totalXp': senderTotalXp,
+        'streak': senderData?['streak'] as int? ?? 0,
       },
     );
 

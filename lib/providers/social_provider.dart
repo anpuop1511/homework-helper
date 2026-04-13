@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../models/social_models.dart';
 import '../services/database_service.dart';
 import '../services/notification_service.dart';
+import 'user_provider.dart';
 
 // Re-export models so existing import sites still work.
 export '../models/social_models.dart';
@@ -79,6 +80,11 @@ class SocialProvider extends ChangeNotifier {
   String? _userName;
   String? _userUsername;
 
+  /// Injected by [ChangeNotifierProxyProvider2] so [acceptRequest] can write
+  /// the current user's real level / XP / streak to Firestore instead of
+  /// hardcoded defaults.
+  UserProvider? _userProvider;
+
   final List<Friend> _friends = [];
   final List<FriendRequest> _pendingRequests = [];
   final List<ActivityItem> _activity = [];
@@ -108,6 +114,12 @@ class SocialProvider extends ChangeNotifier {
   }
 
   // ── UID wiring ───────────────────────────────────────────────────────────
+
+  /// Called by [ChangeNotifierProxyProvider2] to inject the current user's
+  /// gamification state so [acceptRequest] can write real stats to Firestore.
+  void updateUserProvider(UserProvider userProvider) {
+    _userProvider = userProvider;
+  }
 
   /// Called when the user signs in or out.
   ///
@@ -421,9 +433,9 @@ class SocialProvider extends ChangeNotifier {
           'name': _userName ?? _userEmail?.split('@').first ?? 'Student',
           'email': _userEmail ?? '',
           'username': _userUsername ?? '',
-          'level': 1,
-          'totalXp': 0,
-          'streak': 0,
+          'level': _userProvider?.level ?? 1,
+          'totalXp': _userProvider?.totalXp ?? 0,
+          'streak': _userProvider?.streak ?? 0,
         },
       );
     } catch (_) {

@@ -33,10 +33,13 @@ Widget _buildTestApp(Widget child) {
       ChangeNotifierProvider(create: (_) => SocialProvider()),
       ChangeNotifierProvider(create: (_) => ClassesProvider()),
       ChangeNotifierProvider(create: (_) => ProjectsProvider()),
-      ChangeNotifierProxyProvider<UserProvider, AssignmentsProvider>(
+      ChangeNotifierProxyProvider2<AuthProvider, UserProvider,
+          AssignmentsProvider>(
         create: (_) => AssignmentsProvider(),
-        update: (_, userProvider, prev) =>
-            (prev ?? AssignmentsProvider())..updateUserProvider(userProvider),
+        update: (_, auth, userProvider, prev) =>
+            (prev ?? AssignmentsProvider())
+              ..setUid(auth.uid)
+              ..updateUserProvider(userProvider),
       ),
     ],
     child: MaterialApp(home: child),
@@ -56,10 +59,13 @@ Widget _buildFullApp() {
       ChangeNotifierProvider(create: (_) => SocialProvider()),
       ChangeNotifierProvider(create: (_) => ClassesProvider()),
       ChangeNotifierProvider(create: (_) => ProjectsProvider()),
-      ChangeNotifierProxyProvider<UserProvider, AssignmentsProvider>(
+      ChangeNotifierProxyProvider2<AuthProvider, UserProvider,
+          AssignmentsProvider>(
         create: (_) => AssignmentsProvider(),
-        update: (_, userProvider, prev) =>
-            (prev ?? AssignmentsProvider())..updateUserProvider(userProvider),
+        update: (_, auth, userProvider, prev) =>
+            (prev ?? AssignmentsProvider())
+              ..setUid(auth.uid)
+              ..updateUserProvider(userProvider),
       ),
     ],
     child: const HomeworkHelperApp(),
@@ -79,10 +85,13 @@ Widget _buildAuthTestApp(AuthProvider auth) {
       ChangeNotifierProvider(create: (_) => SocialProvider()),
       ChangeNotifierProvider(create: (_) => ClassesProvider()),
       ChangeNotifierProvider(create: (_) => ProjectsProvider()),
-      ChangeNotifierProxyProvider<UserProvider, AssignmentsProvider>(
+      ChangeNotifierProxyProvider2<AuthProvider, UserProvider,
+          AssignmentsProvider>(
         create: (_) => AssignmentsProvider(),
-        update: (_, userProvider, prev) =>
-            (prev ?? AssignmentsProvider())..updateUserProvider(userProvider),
+        update: (_, a, userProvider, prev) =>
+            (prev ?? AssignmentsProvider())
+              ..setUid(a.uid)
+              ..updateUserProvider(userProvider),
       ),
     ],
     child: const HomeworkHelperApp(),

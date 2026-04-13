@@ -514,9 +514,22 @@ class _SocialScreenState extends State<SocialScreen> {
               child: _QuickActionsGrid(
                 colorScheme: colorScheme,
                 onAddFriend: () => _showAddFriendSheet(context),
-                onScanQr: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const QrScanScreen()),
-                ),
+                onScanQr: () {
+                  if (kIsWeb) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'QR scanning is not supported on web. '
+                          'Share your profile link instead.',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const QrScanScreen()),
+                  );
+                },
                 // Show QR tile when username is set OR when email is available
                 // as a fallback identifier.
                 onMyQr: (myHandle != null && myHandle.isNotEmpty) ||
