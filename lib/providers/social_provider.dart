@@ -119,7 +119,14 @@ class SocialProvider extends ChangeNotifier {
     String? name,
     String? username,
   }) async {
-    if (_uid == uid) return;
+    // When only the profile fields (email, name, username) change for the
+    // same UID, update them without restarting the Firestore subscriptions.
+    if (_uid == uid) {
+      _userEmail = email;
+      _userName = name;
+      _userUsername = username;
+      return;
+    }
     _uid = uid;
     _userEmail = email;
     _userName = name;
