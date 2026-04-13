@@ -21,12 +21,21 @@ class AuthProvider extends ChangeNotifier {
   String? _username;
   bool _usernameLoaded = false;
 
+  /// Set to true by [AuthProvider.forTesting] to simulate a signed-in user
+  /// without a real Firebase [User] object.  Never set in production.
+  ///
+  /// This flag lives in the production class (rather than a subclass) so that
+  /// the real `_AuthGate` widget tree can be exercised in widget tests without
+  /// needing to replace every `AuthProvider` consumer with a mock.  The flag is
+  /// only ever non-false when the provider is created via [AuthProvider.forTesting].
+  bool _testSignedIn = false;
+
   /// Active subscription to the Firestore username stream.
   /// Cancelled whenever the UID changes or the provider is disposed.
   StreamSubscription<String?>? _usernameStreamSub;
 
   User? get currentUser => _user;
-  bool get isSignedIn => _user != null;
+  bool get isSignedIn => _user != null || _testSignedIn;
   String? get uid => _user?.uid;
   String? get email => _user?.email;
   String? get currentUserEmail => _user?.email;
@@ -43,10 +52,22 @@ class AuthProvider extends ChangeNotifier {
     if (_firebaseReady) {
       // Keep _user in sync with Firebase's auth state stream.
       FirebaseAuth.instance.authStateChanges().listen((user) {
+        final prevUid = _user?.uid;
         _user = user;
         if (user != null) {
-          _usernameLoaded = false;
-          _loadUsername(user.uid);
+          if (user.uid != prevUid) {
+            // Different (or newly confirmed) UID — reset and reload.
+            _username = null;
+            _usernameLoaded = false;
+            _loadUsername(user.uid);
+          } else if (!_usernameLoaded) {
+            // Same UID but username not yet loaded — continue loading.
+            _loadUsername(user.uid);
+          }
+          // Same UID and already loaded — keep existing state to avoid a
+          // spurious loading-screen flash on web page-refresh where
+          // authStateChanges() re-fires with the same user after the
+          // synchronous currentUser path already resolved the username.
         } else {
           _username = null;
           _usernameLoaded = true;
@@ -65,6 +86,21 @@ class AuthProvider extends ChangeNotifier {
     } else {
       _usernameLoaded = true;
     }
+  }
+
+  /// Creates an [AuthProvider] with preset state for widget tests.
+  ///
+  /// Does not connect to Firebase.  The [isSignedIn] flag simulates an
+  /// authenticated user without requiring a real [User] object.
+  @visibleForTesting
+  AuthProvider.forTesting({
+    bool isSignedIn = false,
+    String? username,
+    bool usernameLoaded = true,
+  }) : _firebaseReady = false {
+    _testSignedIn = isSignedIn;
+    _username = username;
+    _usernameLoaded = usernameLoaded;
   }
 
   /// Subscribes to the Firestore username stream for [uid].

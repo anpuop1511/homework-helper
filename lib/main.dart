@@ -26,6 +26,7 @@ import 'screens/join_invite_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_scaffold.dart';
 import 'screens/splash_screen.dart';
+import 'screens/username_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -185,6 +186,11 @@ class _AuthGateState extends State<_AuthGate> {
     // Loading finished – cancel any pending retry timer.
     _loadTimer?.cancel();
     _loadTimer = null;
+
+    // Tri-state routing: needsHandle → handle setup; ready → main app.
+    if (auth.username?.isEmpty ?? true) {
+      return const UsernameScreen();
+    }
 
     return const MainScaffold();
   }

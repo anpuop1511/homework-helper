@@ -15,6 +15,9 @@ import 'package:homework_helper/providers/user_provider.dart';
 import 'package:homework_helper/providers/theme_provider.dart';
 import 'package:homework_helper/screens/login_screen.dart';
 import 'package:homework_helper/screens/home_screen.dart';
+import 'package:homework_helper/screens/main_scaffold.dart';
+import 'package:homework_helper/screens/splash_screen.dart';
+import 'package:homework_helper/screens/username_screen.dart';
 import 'package:homework_helper/widgets/assignment_card.dart';
 
 /// Wraps [child] with all required providers and a [MaterialApp].
@@ -50,6 +53,29 @@ Widget _buildFullApp() {
       ChangeNotifierProvider(create: (_) => SecurityProvider()),
       ChangeNotifierProvider(
           create: (_) => AuthProvider(firebaseReady: false)),
+      ChangeNotifierProvider(create: (_) => SocialProvider()),
+      ChangeNotifierProvider(create: (_) => ClassesProvider()),
+      ChangeNotifierProvider(create: (_) => ProjectsProvider()),
+      ChangeNotifierProxyProvider<UserProvider, AssignmentsProvider>(
+        create: (_) => AssignmentsProvider(),
+        update: (_, userProvider, prev) =>
+            (prev ?? AssignmentsProvider())..updateUserProvider(userProvider),
+      ),
+    ],
+    child: const HomeworkHelperApp(),
+  );
+}
+
+/// Wraps [HomeworkHelperApp] with a pre-built [AuthProvider] so tests can
+/// exercise [_AuthGate] routing without a live Firebase connection.
+Widget _buildAuthTestApp(AuthProvider auth) {
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ChangeNotifierProvider(create: (_) => UserProvider()),
+      ChangeNotifierProvider(create: (_) => ChatProvider()),
+      ChangeNotifierProvider(create: (_) => SecurityProvider()),
+      ChangeNotifierProvider.value(value: auth),
       ChangeNotifierProvider(create: (_) => SocialProvider()),
       ChangeNotifierProvider(create: (_) => ClassesProvider()),
       ChangeNotifierProvider(create: (_) => ProjectsProvider()),
@@ -379,6 +405,51 @@ void main() {
 
       await tester.tap(find.text('Toggle Me'));
       expect(toggled, true);
+    });
+  });
+
+  group('_AuthGate tri-state routing', () {
+    testWidgets(
+        'authenticated + profile loading => shows SplashScreen, not handle setup',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(_buildAuthTestApp(
+        AuthProvider.forTesting(isSignedIn: true, usernameLoaded: false),
+      ));
+      await tester.pump();
+
+      expect(find.byType(SplashScreen), findsOneWidget);
+      expect(find.byType(UsernameScreen), findsNothing);
+      expect(find.byType(MainScaffold), findsNothing);
+    });
+
+    testWidgets(
+        'authenticated + missing handle after load => shows handle setup',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(_buildAuthTestApp(
+        AuthProvider.forTesting(
+            isSignedIn: true, username: null, usernameLoaded: true),
+      ));
+      await tester.pump();
+
+      expect(find.byType(UsernameScreen), findsOneWidget);
+      expect(find.byType(SplashScreen), findsNothing);
+      expect(find.byType(MainScaffold), findsNothing);
+    });
+
+    testWidgets(
+        'authenticated + valid handle after load => shows main app',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(_buildAuthTestApp(
+        AuthProvider.forTesting(
+            isSignedIn: true,
+            username: 'testhandle',
+            usernameLoaded: true),
+      ));
+      await tester.pump();
+
+      expect(find.byType(MainScaffold), findsOneWidget);
+      expect(find.byType(SplashScreen), findsNothing);
+      expect(find.byType(UsernameScreen), findsNothing);
     });
   });
 }
