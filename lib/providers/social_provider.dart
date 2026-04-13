@@ -436,7 +436,8 @@ class SocialProvider extends ChangeNotifier {
     if (_uid != null) {
       try {
         await DatabaseService.instance.removeFriend(_uid!, id);
-      } catch (_) {
+      } catch (e) {
+        debugPrint('[SocialProvider] removeFriend error: $e');
         // Roll back to the pre-removal snapshot so the UI stays consistent
         // with the server state.  The Firestore real-time stream will also
         // re-emit the unchanged friends list once connectivity is restored.
