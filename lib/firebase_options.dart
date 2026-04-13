@@ -1,14 +1,4 @@
 // ignore_for_file: lines_longer_than_80_chars, avoid_classes_with_only_static_members
-//
-// ⚠️  IMPORTANT: This file is a placeholder.
-//
-// To generate your real Firebase options, install the FlutterFire CLI and run:
-//   dart pub global activate flutterfire_cli
-//   flutterfire configure
-//
-// That will overwrite this file with values tied to your Firebase project.
-// Until you do, the app will run in offline/guest-only mode because Firebase
-// cannot be initialised with placeholder credentials.
 
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
@@ -33,19 +23,17 @@ class DefaultFirebaseOptions {
     }
   }
 
-  // Replace every 'REPLACE_WITH_...' value with the ones from your Firebase
-  // project (Project Settings → General → Your apps), or supply the web API
-  // key at build time via `--dart-define=FIREBASE_WEB_API_KEY=<value>`.
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: String.fromEnvironment(
       'FIREBASE_WEB_API_KEY',
-      defaultValue: 'REPLACE_WITH_WEB_API_KEY',
+      defaultValue: 'AIzaSyA4KoQWIUyoDZYte4pWUu46K-YXzIzLZRA',
     ),
-    appId: 'REPLACE_WITH_WEB_APP_ID',
-    messagingSenderId: 'REPLACE_WITH_SENDER_ID',
-    projectId: 'REPLACE_WITH_PROJECT_ID',
-    authDomain: 'REPLACE_WITH_PROJECT_ID.firebaseapp.com',
-    storageBucket: 'REPLACE_WITH_PROJECT_ID.firebasestorage.app',
+    appId: '1:911283793659:web:202e8c9f1de4db4f270a5e',
+    messagingSenderId: '911283793659',
+    projectId: 'hwhelp-9390f',
+    authDomain: 'hwhelp-9390f.firebaseapp.com',
+    storageBucket: 'hwhelp-9390f.firebasestorage.app',
+    measurementId: 'G-006YK5TCNQ',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
