@@ -24,6 +24,8 @@ jobs:
 
       - name: 4. Build Flutter Web (Securely Injecting Keys)
         run: |
+          flutter config --enable-web
+          flutter create . --platforms web
           flutter build web --release --base-href "/app/" \
             --dart-define="FIREBASE_WEB_API_KEY=${{ secrets.FIREBASE_WEB_API_KEY }}" \
             --dart-define="GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"
