@@ -50,18 +50,27 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => SecurityProvider()),
         ChangeNotifierProvider(create: (_) => ClassroomProvider()),
         ChangeNotifierProvider(
           create: (_) => AuthProvider(firebaseReady: firebaseReady),
         ),
-        // SocialProvider is wired to AuthProvider so it receives the UID
-        // whenever the user signs in or out.
-        ChangeNotifierProxyProvider<AuthProvider, SocialProvider>(
-          create: (_) => SocialProvider(),
+        // C-2: UserProvider is wired to AuthProvider so setUid() is called
+        // whenever the user signs in or out, enabling cloud XP/level/streak sync.
+        ChangeNotifierProxyProvider<AuthProvider, UserProvider>(
+          create: (_) => UserProvider(),
           update: (_, auth, prev) {
+            final provider = prev ?? UserProvider();
+            provider.setUid(auth.uid);
+            return provider;
+          },
+        ),
+        // SocialProvider is wired to both AuthProvider and UserProvider so it
+        // receives the UID on auth changes and real user stats for friend-accept.
+        ChangeNotifierProxyProvider2<AuthProvider, UserProvider, SocialProvider>(
+          create: (_) => SocialProvider(),
+          update: (_, auth, userProvider, prev) {
             final provider = prev ?? SocialProvider();
             provider.setUid(
               auth.uid,
@@ -69,6 +78,7 @@ Future<void> main() async {
               name: auth.currentUser?.displayName,
               username: auth.username,
             );
+            provider.updateUserProvider(userProvider);
             return provider;
           },
         ),
@@ -90,10 +100,17 @@ Future<void> main() async {
             return provider;
           },
         ),
-        ChangeNotifierProxyProvider<UserProvider, AssignmentsProvider>(
+        // C-1: AssignmentsProvider is wired to both AuthProvider (for UID /
+        // Firestore sync) and UserProvider (for awarding XP on completion).
+        ChangeNotifierProxyProvider2<AuthProvider, UserProvider,
+            AssignmentsProvider>(
           create: (_) => AssignmentsProvider(),
-          update: (_, userProvider, prev) =>
-              (prev ?? AssignmentsProvider())..updateUserProvider(userProvider),
+          update: (_, auth, userProvider, prev) {
+            final provider = prev ?? AssignmentsProvider();
+            provider.setUid(auth.uid);
+            provider.updateUserProvider(userProvider);
+            return provider;
+          },
         ),
       ],
       child: const HomeworkHelperApp(),
@@ -149,6 +166,13 @@ class _AuthGateState extends State<_AuthGate> {
     }
 
     if (!auth.isSignedIn && !auth.isGuest) {
+      // H-2: Wait for the initial auth state (including the persisted guest-mode
+      // flag) to be loaded from SharedPreferences before routing.  Without this
+      // guard a brief flash of LoginScreen appears on cold start for users who
+      // were in guest mode, before _isGuest is restored asynchronously.
+      if (!auth.initialStateReady) {
+        return const SplashScreen();
+      }
       return const LoginScreen();
     }
 

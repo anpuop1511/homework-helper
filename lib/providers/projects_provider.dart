@@ -10,7 +10,10 @@ import '../models/group_project.dart';
 class ProjectsProvider extends ChangeNotifier {
   String? _uid;
 
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  // Lazy getter — only accesses FirebaseFirestore.instance when a method
+  // actually needs it, preventing a crash when Firebase is not initialised
+  // (offline / guest mode on cold start).
+  FirebaseFirestore get _db => FirebaseFirestore.instance;
 
   List<GroupProject> _projects = [];
   List<GroupProject> get projects => List.unmodifiable(_projects);
