@@ -23,6 +23,11 @@ class AuthProvider extends ChangeNotifier {
 
   /// Set to true by [AuthProvider.forTesting] to simulate a signed-in user
   /// without a real Firebase [User] object.  Never set in production.
+  ///
+  /// This flag lives in the production class (rather than a subclass) so that
+  /// the real `_AuthGate` widget tree can be exercised in widget tests without
+  /// needing to replace every `AuthProvider` consumer with a mock.  The flag is
+  /// only ever non-false when the provider is created via [AuthProvider.forTesting].
   bool _testSignedIn = false;
 
   /// Active subscription to the Firestore username stream.

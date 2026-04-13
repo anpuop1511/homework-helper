@@ -188,7 +188,7 @@ class _AuthGateState extends State<_AuthGate> {
     _loadTimer = null;
 
     // Tri-state routing: needsHandle → handle setup; ready → main app.
-    if (auth.username == null || auth.username!.isEmpty) {
+    if (auth.username?.isEmpty ?? true) {
       return const UsernameScreen();
     }
 
