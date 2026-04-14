@@ -204,7 +204,8 @@ class _CosmeticsBody extends StatelessWidget {
     _CosmeticInfo cosmetic,
   ) {
     // Safety: only owned items can be equipped.
-    if (!user.unlockedCosmetics.contains(cosmetic.id)) {
+    // Use _isOwned to handle both direct IDs and legacy battle-pass prefixed IDs.
+    if (!_isOwned(user.unlockedCosmetics, cosmetic)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('You don\'t own this item yet. Buy it in the Season Shop!')),

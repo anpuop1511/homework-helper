@@ -476,13 +476,13 @@ class _ItemPreview extends StatelessWidget {
       );
     }
     if (item.cosmeticType == _CosmeticType.nameColor) {
-      final col = nameColorValue(item.id);
+      final nameColor = nameColorValue(item.id);
       return Text(
         'Aa',
         style: TextStyle(
           fontSize: 26,
           fontWeight: FontWeight.w800,
-          color: col ?? Theme.of(context).colorScheme.primary,
+          color: nameColor ?? Theme.of(context).colorScheme.primary,
         ),
       );
     }
