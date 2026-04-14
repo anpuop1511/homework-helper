@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/assignments_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
@@ -1117,8 +1120,138 @@ class _PrivacySecuritySettingsPage extends StatelessWidget {
 
 // ── About ─────────────────────────────────────────────────────────────────
 
-class _AboutSettingsPage extends StatelessWidget {
+const String _kCurrentVersion = '2.7.0';
+const String _kGithubReleasesApi =
+    'https://api.github.com/repos/anpuop1511/homework-helper/releases/latest';
+
+class _AboutSettingsPage extends StatefulWidget {
   const _AboutSettingsPage();
+
+  @override
+  State<_AboutSettingsPage> createState() => _AboutSettingsPageState();
+}
+
+class _AboutSettingsPageState extends State<_AboutSettingsPage> {
+  bool _checkingUpdate = false;
+  String? _updateResult; // null = not checked, '' = up to date, else = new version tag
+
+  Future<void> _checkForUpdates() async {
+    setState(() {
+      _checkingUpdate = true;
+      _updateResult = null;
+    });
+    try {
+      final response = await http
+          .get(
+            Uri.parse(_kGithubReleasesApi),
+            headers: {'Accept': 'application/vnd.github+json'},
+          )
+          .timeout(const Duration(seconds: 10));
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final tag = (data['tag_name'] as String? ?? '').replaceFirst('v', '');
+        final htmlUrl = data['html_url'] as String? ?? '';
+        final body = data['body'] as String? ?? '';
+        if (_isNewerVersion(tag, _kCurrentVersion)) {
+          // Show update dialog.
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.system_update_rounded,
+                      color: Color(0xFF2E7D32)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Update Available 🎉',
+                    style: GoogleFonts.lexend(
+                        fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'v$tag is available (you have v$_kCurrentVersion)',
+                      style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    if (body.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        body.length > 400
+                            ? '${body.substring(0, 400)}…'
+                            : body,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Later'),
+                ),
+                FilledButton.icon(
+                  onPressed: htmlUrl.isNotEmpty
+                      ? () async {
+                          Navigator.pop(ctx);
+                          final uri = Uri.parse(htmlUrl);
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri,
+                                mode: LaunchMode.externalApplication);
+                          }
+                        }
+                      : null,
+                  icon: const Icon(Icons.download_rounded, size: 18),
+                  label: const Text('View Release'),
+                ),
+              ],
+            ),
+          );
+          if (mounted) setState(() => _updateResult = tag);
+        } else {
+          if (mounted) setState(() => _updateResult = '');
+        }
+      } else {
+        if (mounted) setState(() => _updateResult = null);
+        _showSnack('Could not reach GitHub (${response.statusCode})');
+      }
+    } catch (e) {
+      if (mounted) setState(() => _updateResult = null);
+      _showSnack('Update check failed. Check your connection.');
+    } finally {
+      if (mounted) setState(() => _checkingUpdate = false);
+    }
+  }
+
+  /// Returns true when [latest] is a strictly newer semver string than [current].
+  bool _isNewerVersion(String latest, String current) {
+    final l = _parseVersion(latest);
+    final c = _parseVersion(current);
+    for (int i = 0; i < 3; i++) {
+      if (l[i] > c[i]) return true;
+      if (l[i] < c[i]) return false;
+    }
+    return false;
+  }
+
+  List<int> _parseVersion(String v) {
+    final parts = v.split('.');
+    return List.generate(
+        3, (i) => i < parts.length ? (int.tryParse(parts[i]) ?? 0) : 0);
+  }
+
+  void _showSnack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1150,7 +1283,7 @@ class _AboutSettingsPage extends StatelessWidget {
                   style: textTheme.titleSmall
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                subtitle: const Text('Version 2.5.0'),
+                subtitle: const Text('Version $_kCurrentVersion'),
               ),
               Divider(
                   height: 1,
@@ -1177,6 +1310,60 @@ class _AboutSettingsPage extends StatelessWidget {
                 subtitle: Text(_deviceLabel()),
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // ── Check for Updates card ────────────────────────────────────────
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: _updateResult != null && _updateResult!.isNotEmpty
+                    ? const Color(0xFF2E7D32).withAlpha(30)
+                    : colorScheme.tertiaryContainer,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: _checkingUpdate
+                  ? Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: colorScheme.tertiary,
+                      ),
+                    )
+                  : Icon(
+                      _updateResult != null && _updateResult!.isNotEmpty
+                          ? Icons.system_update_rounded
+                          : Icons.update_rounded,
+                      color: _updateResult != null && _updateResult!.isNotEmpty
+                          ? const Color(0xFF2E7D32)
+                          : colorScheme.onTertiaryContainer,
+                    ),
+            ),
+            title: Text(
+              'Check for Updates',
+              style: textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            subtitle: Text(
+              _checkingUpdate
+                  ? 'Checking GitHub releases…'
+                  : _updateResult == null
+                      ? 'Tap to check for a newer version'
+                      : _updateResult!.isEmpty
+                          ? 'You\'re up to date ✓'
+                          : 'v${_updateResult!} available — tap to view',
+              style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+            ),
+            trailing: _checkingUpdate
+                ? null
+                : Icon(Icons.chevron_right_rounded,
+                    color: colorScheme.onSurfaceVariant),
+            onTap: _checkingUpdate ? null : _checkForUpdates,
           ),
         ),
       ],

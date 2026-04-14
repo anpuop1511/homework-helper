@@ -11,6 +11,7 @@ import '../services/database_service.dart';
 import '../widgets/nameplate_widget.dart';
 import '../widgets/squircle_avatar.dart';
 import 'cosmetics_screen.dart';
+import 'login_screen.dart';
 import 'settings_screen.dart';
 import 'username_screen.dart';
 
@@ -203,6 +204,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
 
             // ── Avatar + Name ─────────────────────────────────────────
+            // ── Guest Sign-In Banner ──────────────────────────────────
+            if (!auth.isSignedIn)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.account_circle_outlined,
+                        color: colorScheme.onPrimaryContainer, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'You\'re browsing as a guest',
+                            style: GoogleFonts.lexend(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                          Text(
+                            'Sign in to save your progress and sync data.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.onPrimaryContainer
+                                  .withAlpha(200),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const LoginScreen()),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Sign In',
+                        style: GoogleFonts.lexend(
+                            fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Center(
               child: Column(
                 children: [

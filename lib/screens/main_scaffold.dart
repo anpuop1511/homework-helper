@@ -9,6 +9,7 @@ import '../providers/user_provider.dart';
 import '../providers/assignments_provider.dart';
 import '../widgets/nameplate_widget.dart';
 import 'battle_pass_screen.dart';
+import 'login_screen.dart';
 import 'season_shop_screen.dart';
 import 'home_screen.dart';
 import 'timer_screen.dart';
@@ -517,6 +518,35 @@ class _UserHubSheet extends StatelessWidget {
               },
             ),
 
+            // ── Sign In (guest only) ──────────────────────────────────
+            if (!auth.isSignedIn)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const LoginScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.login_rounded, size: 18),
+                    label: const Text(
+                      'Sign In',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 15),
+                    ),
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             // ── Full Settings ─────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
