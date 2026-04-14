@@ -1152,9 +1152,13 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
           .get(Uri.parse(_kGithubReleasesApi), headers: headers)
           .timeout(const Duration(seconds: 10));
       if (!mounted) return;
+      debugPrint('[UpdateChecker] status=${response.statusCode}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final tag = (data['tag_name'] as String? ?? '').replaceFirst('v', '');
+        // Strip a leading 'v' (e.g. "v2.7.0" → "2.7.0") using an anchored
+        // regex so only a leading 'v' is removed, not any 'v' in the middle.
+        final tag =
+            (data['tag_name'] as String? ?? '').replaceFirst(RegExp(r'^v'), '');
         final htmlUrl = data['html_url'] as String? ?? '';
         final body = data['body'] as String? ?? '';
         if (_isNewerVersion(tag, _kCurrentVersion)) {
@@ -1223,8 +1227,28 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
           if (mounted) setState(() => _updateResult = '');
         }
       } else {
+        // Parse the GitHub error message (if any) to give a more specific hint.
+        String ghMessage = '';
+        try {
+          final errData = jsonDecode(response.body) as Map<String, dynamic>;
+          ghMessage = errData['message'] as String? ?? '';
+        } catch (_) {}
+        debugPrint(
+            '[UpdateChecker] GitHub returned ${response.statusCode}: ${response.body}');
         if (mounted) setState(() => _updateResult = null);
-        _showSnack('Could not reach GitHub (${response.statusCode})');
+        final String snackMsg;
+        if (response.statusCode == 404) {
+          snackMsg = 'No releases published on GitHub yet.';
+        } else if (response.statusCode == 403) {
+          snackMsg = ghMessage.isNotEmpty
+              ? 'GitHub: $ghMessage'
+              : 'GitHub rate limit reached — try again later.';
+        } else {
+          snackMsg = ghMessage.isNotEmpty
+              ? 'GitHub error (${response.statusCode}): $ghMessage'
+              : 'GitHub returned status ${response.statusCode}.';
+        }
+        _showSnack(snackMsg);
       }
     } catch (e, st) {
       debugPrint('[UpdateChecker] _checkForUpdates error: $e\n$st');
