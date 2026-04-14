@@ -391,6 +391,7 @@ class DatabaseService {
     required String toEmail,
     String fromUsername = '',
     String fromName = '',
+    String toUsername = '',
   }) async {
     final ref = await _requestsCol.add({
       'from': fromUid,
@@ -399,6 +400,7 @@ class DatabaseService {
       'toEmail': toEmail,
       'fromUsername': fromUsername,
       'fromName': fromName,
+      'toUsername': toUsername,
       'status': 'pending',
       'timestamp': FieldValue.serverTimestamp(),
     });
@@ -437,6 +439,30 @@ class DatabaseService {
                     DateTime.now(),
               );
             }).toList());
+  }
+
+  /// Returns a real-time stream of pending outgoing (sent) friend requests.
+  Stream<List<SentRequest>> sentRequestsStream(String uid) {
+    return _requestsCol
+        .where('from', isEqualTo: uid)
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) {
+              final d = doc.data();
+              return SentRequest(
+                id: doc.id,
+                toUid: d['to'] as String,
+                toEmail: d['toEmail'] as String? ?? '',
+                toUsername: d['toUsername'] as String? ?? '',
+                timestamp: (d['timestamp'] as Timestamp?)?.toDate() ??
+                    DateTime.now(),
+              );
+            }).toList());
+  }
+
+  /// Cancels an outgoing friend request by deleting the global document.
+  Future<void> cancelSentRequest(String requestId) async {
+    await _requestsCol.doc(requestId).delete();
   }
 
   /// Returns a real-time stream of the user's accepted friends.

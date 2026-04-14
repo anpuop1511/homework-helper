@@ -86,3 +86,26 @@ class FriendRequest {
     required this.timestamp,
   });
 }
+
+/// Represents an outgoing (sent) friend request that is still pending.
+class SentRequest {
+  final String id;
+  final String toUid;
+  final String toEmail;
+
+  /// @username of the recipient if known, otherwise empty.
+  final String toUsername;
+  final DateTime timestamp;
+
+  const SentRequest({
+    required this.id,
+    required this.toUid,
+    required this.toEmail,
+    this.toUsername = '',
+    required this.timestamp,
+  });
+
+  /// Display label shown in the Pending tab – @handle if available, else email.
+  String get displayHandle =>
+      toUsername.isNotEmpty ? '@$toUsername' : toEmail;
+}

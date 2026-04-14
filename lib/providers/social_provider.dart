@@ -87,6 +87,7 @@ class SocialProvider extends ChangeNotifier {
 
   final List<Friend> _friends = [];
   final List<FriendRequest> _pendingRequests = [];
+  final List<SentRequest> _sentRequests = [];
   final List<ActivityItem> _activity = [];
   bool _isLoading = false;
   bool _showStudyActivity = true;
@@ -95,10 +96,12 @@ class SocialProvider extends ChangeNotifier {
 
   StreamSubscription<List<Friend>>? _friendsSub;
   StreamSubscription<List<FriendRequest>>? _requestsSub;
+  StreamSubscription<List<SentRequest>>? _sentRequestsSub;
 
   List<Friend> get friends => List.unmodifiable(_friends);
   List<FriendRequest> get pendingRequests =>
       List.unmodifiable(_pendingRequests);
+  List<SentRequest> get sentRequests => List.unmodifiable(_sentRequests);
   List<ActivityItem> get activity => List.unmodifiable(_activity);
   bool get isLoading => _isLoading;
   bool get showStudyActivity => _showStudyActivity;
@@ -150,10 +153,13 @@ class SocialProvider extends ChangeNotifier {
     _friendsSub = null;
     await _requestsSub?.cancel();
     _requestsSub = null;
+    await _sentRequestsSub?.cancel();
+    _sentRequestsSub = null;
 
     if (uid == null) {
       _friends.clear();
       _pendingRequests.clear();
+      _sentRequests.clear();
       await _loadLocal();
       return;
     }
@@ -190,6 +196,19 @@ class SocialProvider extends ChangeNotifier {
           for (final newReq in newRequests) {
             _onNewFriendRequest(newReq);
           }
+        },
+        onError: (_) {/* keep existing list */},
+      );
+
+      // Subscribe to outgoing (sent) requests stream so the Pending tab
+      // updates in real-time without requiring a manual refresh.
+      _sentRequestsSub =
+          DatabaseService.instance.sentRequestsStream(uid).listen(
+        (list) {
+          _sentRequests
+            ..clear()
+            ..addAll(list);
+          notifyListeners();
         },
         onError: (_) {/* keep existing list */},
       );
@@ -341,6 +360,7 @@ class SocialProvider extends ChangeNotifier {
           toEmail: toEmail,
           fromUsername: _userUsername ?? '',
           fromName: _userName ?? '',
+          toUsername: trimmed,
         );
         _isLoading = false;
         notifyListeners();
@@ -500,6 +520,21 @@ class SocialProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// Cancels an outgoing (sent) friend request.
+  ///
+  /// Optimistically removes the request from the local [_sentRequests] list for
+  /// instant UI feedback; the Firestore stream will confirm the deletion.
+  Future<void> cancelSentRequest(SentRequest request) async {
+    if (_uid == null) return;
+    _sentRequests.removeWhere((r) => r.id == request.id);
+    notifyListeners();
+    try {
+      await DatabaseService.instance.cancelSentRequest(request.id);
+    } catch (_) {
+      // The stream will restore the request if the delete fails.
+    }
+  }
+
   /// Removes [friend] from the friends list.
   Future<void> removeFriend(String id) async {
     // Save a snapshot for rollback in case the backend call fails.
@@ -599,6 +634,7 @@ class SocialProvider extends ChangeNotifier {
   void dispose() {
     _friendsSub?.cancel();
     _requestsSub?.cancel();
+    _sentRequestsSub?.cancel();
     super.dispose();
   }
 }
