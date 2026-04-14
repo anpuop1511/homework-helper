@@ -63,6 +63,8 @@ class DatabaseService {
     required List<String> unlockedCosmetics,
     required String activeNameplate,
     required List<int> claimedTiers,
+    String equippedBadge = '',
+    String equippedNameColor = '',
   }) async {
     await _userDoc(uid).set(
       {
@@ -73,6 +75,8 @@ class DatabaseService {
         'bp_unlockedCosmetics': unlockedCosmetics,
         'bp_activeNameplate': activeNameplate,
         'bp_claimedTiers': claimedTiers,
+        'bp_equippedBadge': equippedBadge,
+        'bp_equippedNameColor': equippedNameColor,
       },
       SetOptions(merge: true),
     );

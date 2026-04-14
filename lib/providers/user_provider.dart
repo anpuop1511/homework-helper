@@ -24,6 +24,8 @@ class UserProvider extends ChangeNotifier {
   static const _prefBpUnlockedCosmetics = 'bp_unlocked_cosmetics';
   static const _prefBpActiveNameplate = 'bp_active_nameplate';
   static const _prefBpClaimedTiers = 'bp_claimed_tiers';
+  static const _prefBpEquippedBadge = 'bp_equipped_badge';
+  static const _prefBpEquippedNameColor = 'bp_equipped_name_color';
 
   /// XP required to advance from level N to N+1 = baseXp * N.
   static const int _baseXp = 100;
@@ -43,6 +45,8 @@ class UserProvider extends ChangeNotifier {
   List<String> _unlockedCosmetics = [];
   String _activeNameplate = '';
   List<int> _claimedTiers = [];
+  String _equippedBadge = '';
+  String _equippedNameColor = '';
 
   /// UID of the currently signed-in Firebase user, or null for guest mode.
   String? _uid;
@@ -61,6 +65,8 @@ class UserProvider extends ChangeNotifier {
   List<String> get unlockedCosmetics => List.unmodifiable(_unlockedCosmetics);
   String get activeNameplate => _activeNameplate;
   List<int> get claimedTiers => List.unmodifiable(_claimedTiers);
+  String get equippedBadge => _equippedBadge;
+  String get equippedNameColor => _equippedNameColor;
 
   /// XP needed to reach the next level from the current one.
   int get xpForNextLevel => _baseXp * _level;
@@ -104,6 +110,8 @@ class UserProvider extends ChangeNotifier {
         (prefs.getStringList(_prefBpClaimedTiers) ?? [])
             .map(int.parse)
             .toList();
+    _equippedBadge = prefs.getString(_prefBpEquippedBadge) ?? '';
+    _equippedNameColor = prefs.getString(_prefBpEquippedNameColor) ?? '';
     _updateStreak();
     notifyListeners();
   }
@@ -127,6 +135,8 @@ class UserProvider extends ChangeNotifier {
     await prefs.setString(_prefBpActiveNameplate, _activeNameplate);
     await prefs.setStringList(
         _prefBpClaimedTiers, _claimedTiers.map((t) => t.toString()).toList());
+    await prefs.setString(_prefBpEquippedBadge, _equippedBadge);
+    await prefs.setString(_prefBpEquippedNameColor, _equippedNameColor);
   }
 
   // ── Cloud (Firestore) sync ───────────────────────────────────────────────
@@ -213,6 +223,9 @@ class UserProvider extends ChangeNotifier {
     if (rawTiers is List) {
       _claimedTiers = rawTiers.cast<int>();
     }
+    _equippedBadge = (data['bp_equippedBadge'] as String?) ?? _equippedBadge;
+    _equippedNameColor =
+        (data['bp_equippedNameColor'] as String?) ?? _equippedNameColor;
     notifyListeners();
     updateStudyWidget(streak: _streak, level: _level);
   }
@@ -237,6 +250,8 @@ class UserProvider extends ChangeNotifier {
         unlockedCosmetics: _unlockedCosmetics,
         activeNameplate: _activeNameplate,
         claimedTiers: _claimedTiers,
+        equippedBadge: _equippedBadge,
+        equippedNameColor: _equippedNameColor,
       );
     } catch (_) {
       // Firestore unavailable — local data already saved.
@@ -340,6 +355,25 @@ class UserProvider extends ChangeNotifier {
     _syncToCloud();
   }
 
+  /// Equips a nameplate (alias for [setActiveNameplate]).
+  void equipNameplate(String id) => setActiveNameplate(id);
+
+  /// Equips a badge cosmetic. Only owned items may be equipped.
+  void equipBadge(String id) {
+    _equippedBadge = id;
+    notifyListeners();
+    _saveLocal();
+    _syncToCloud();
+  }
+
+  /// Equips a name color cosmetic. Only owned items may be equipped.
+  void equipNameColor(String id) {
+    _equippedNameColor = id;
+    notifyListeners();
+    _saveLocal();
+    _syncToCloud();
+  }
+
   /// Adds a cosmetic to the unlocked list.
   void unlockCosmetic(String cosmetic) {
     if (!_unlockedCosmetics.contains(cosmetic)) {
@@ -413,6 +447,8 @@ class UserProvider extends ChangeNotifier {
     _unlockedCosmetics = [];
     _activeNameplate = '';
     _claimedTiers = [];
+    _equippedBadge = '';
+    _equippedNameColor = '';
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefXp);
@@ -427,6 +463,8 @@ class UserProvider extends ChangeNotifier {
     await prefs.remove(_prefBpUnlockedCosmetics);
     await prefs.remove(_prefBpActiveNameplate);
     await prefs.remove(_prefBpClaimedTiers);
+    await prefs.remove(_prefBpEquippedBadge);
+    await prefs.remove(_prefBpEquippedNameColor);
   }
 
   static DateTime _dateOnly(DateTime dt) =>

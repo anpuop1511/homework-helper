@@ -8,8 +8,9 @@ import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/assignments_provider.dart';
 import '../services/database_service.dart';
+import '../widgets/nameplate_widget.dart';
 import '../widgets/squircle_avatar.dart';
-import 'season_shop_screen.dart';
+import 'cosmetics_screen.dart';
 import 'settings_screen.dart';
 import 'username_screen.dart';
 
@@ -288,7 +289,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   if (user.activeNameplate.isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    _NameplateDisplay(nameplate: user.activeNameplate),
+                    NameplateWidget(
+                      username: username ?? displayName,
+                      nameplateId: user.activeNameplate,
+                      fontSize: 13,
+                    ),
                   ],
                   Text(
                     'Level ${user.level} Scholar',
@@ -298,21 +303,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   if (auth.isSignedIn) ...[
                     const SizedBox(height: 10),
-                    OutlinedButton.icon(
-                      onPressed: () => _showEditProfileDialog(
-                        context,
-                        displayName,
-                        user.bio,
-                      ),
-                      icon: const Icon(Icons.edit_rounded, size: 16),
-                      label: const Text('Edit Profile'),
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => _showEditProfileDialog(
+                            context,
+                            displayName,
+                            user.bio,
+                          ),
+                          icon: const Icon(Icons.edit_rounded, size: 16),
+                          label: const Text('Edit Profile'),
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                      ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const CosmeticsScreen()),
+                          ),
+                          icon: const Icon(Icons.palette_rounded, size: 16),
+                          label: const Text('Cosmetics'),
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ],
@@ -733,109 +759,6 @@ class _XpRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Displays the user's active nameplate with visual flair.
-class _NameplateDisplay extends StatefulWidget {
-  final String nameplate;
-  const _NameplateDisplay({required this.nameplate});
-
-  @override
-  State<_NameplateDisplay> createState() => _NameplateDisplayState();
-}
-
-class _NameplateDisplayState extends State<_NameplateDisplay>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _glowController;
-  late final Animation<double> _glowAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _glowController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-    _glowAnim = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _glowController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isAnimated =
-        widget.nameplate == 'animated_golden_cherry_blossom';
-
-    if (isAnimated) {
-      return AnimatedBuilder(
-        animation: _glowAnim,
-        builder: (context, child) => Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFFD700), Color(0xFFFF69B4)],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFFD700)
-                    .withAlpha((_glowAnim.value * 180).toInt()),
-                blurRadius: 12 * _glowAnim.value,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Text(
-            '✨ ${widget.nameplate.replaceAll('_', ' ')}',
-            style: GoogleFonts.outfit(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const SeasonShopScreen()),
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: BoxDecoration(
-          color: colorScheme.tertiaryContainer,
-          borderRadius: BorderRadius.circular(20),
-          border:
-              Border.all(color: colorScheme.tertiary.withAlpha(100)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              widget.nameplate,
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onTertiaryContainer,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Icon(Icons.edit_rounded,
-                size: 12, color: colorScheme.onTertiaryContainer),
-          ],
-        ),
-      ),
     );
   }
 }
