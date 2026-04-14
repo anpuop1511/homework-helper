@@ -7,6 +7,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../providers/auth_provider.dart';
 import '../providers/projects_provider.dart';
 import '../providers/social_provider.dart';
+import '../widgets/nameplate_widget.dart';
 import 'group_projects_screen.dart';
 import 'nfc_bump_screen.dart';
 import 'public_profile_screen.dart';
@@ -1065,23 +1066,13 @@ class _FriendCard extends StatelessWidget {
                 ),
                 if (friend.activeNameplate.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: colorScheme.tertiaryContainer,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        friend.activeNameplate,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onTertiaryContainer,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    padding: const EdgeInsets.only(top: 3),
+                    child: NameplateWidget(
+                      username: friend.username.isNotEmpty
+                          ? '@${friend.username}'
+                          : friend.name,
+                      nameplateId: friend.activeNameplate,
+                      fontSize: 10,
                     ),
                   ),
                 if (friend.username.isNotEmpty && friend.name.isNotEmpty)
