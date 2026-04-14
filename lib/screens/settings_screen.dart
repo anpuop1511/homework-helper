@@ -1144,7 +1144,10 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
       final response = await http
           .get(
             Uri.parse(_kGithubReleasesApi),
-            headers: {'Accept': 'application/vnd.github+json'},
+            headers: {
+              'Accept': 'application/vnd.github+json',
+              'User-Agent': 'homework-helper-app',
+            },
           )
           .timeout(const Duration(seconds: 10));
       if (!mounted) return;
@@ -1224,7 +1227,10 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
       }
     } catch (e) {
       if (mounted) setState(() => _updateResult = null);
-      _showSnack('Update check failed. Check your connection.');
+      final msg = kIsWeb
+          ? 'Update check unavailable on web — visit GitHub to see the latest release.'
+          : 'Update check failed. Check your connection.';
+      _showSnack(msg);
     } finally {
       if (mounted) setState(() => _checkingUpdate = false);
     }
