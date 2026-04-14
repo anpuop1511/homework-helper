@@ -1139,6 +1139,7 @@ class _QsTile extends StatelessWidget {
             ? LinearGradient(
                 colors: [
                   data.color,
+                  // Blend 14% toward the foreground for a subtle sheen gradient
                   Color.lerp(data.color, data.foreground, 0.14)!,
                 ],
                 begin: Alignment.topLeft,

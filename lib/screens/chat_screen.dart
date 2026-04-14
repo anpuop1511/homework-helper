@@ -1046,6 +1046,8 @@ class _TypingIndicatorState extends State<_TypingIndicator>
             builder: (_, __) => CustomPaint(
               painter: _DotsPainter(
                 progress: _controller.value,
+                // Electric Blue is the consistent AI accent color; it contrasts
+                // well against surfaceContainerHighest in all M3 theme tones.
                 color: _kElectricBlue,
               ),
             ),
