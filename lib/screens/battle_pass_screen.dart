@@ -281,7 +281,8 @@ class _TierRow extends StatelessWidget {
   });
 
   bool get _isReached => user.seasonTier >= tier;
-  bool get _isClaimed => user.claimedTiers.contains(tier);
+  bool get _isFreeClaimed => user.isTierRewardClaimed(tier, side: 'free');
+  bool get _isPremiumClaimed => user.isTierRewardClaimed(tier, side: 'premium');
   bool get _isCurrent => user.seasonTier == tier;
 
   // Free reward for each tier
@@ -353,7 +354,7 @@ class _TierRow extends StatelessWidget {
               child: _RewardCell(
                 reward: _freeReward,
                 isReached: _isReached,
-                isClaimed: _isClaimed,
+                isClaimed: _isFreeClaimed,
                 passRequired: 'free',
                 userPassType: user.passType,
                 onClaim: () => _claimFree(context),
@@ -392,7 +393,7 @@ class _TierRow extends StatelessWidget {
               child: _RewardCell(
                 reward: _premiumReward,
                 isReached: _isReached,
-                isClaimed: _isClaimed,
+                isClaimed: _isPremiumClaimed,
                 passRequired: isTier50 ? 'premium' : 'plus',
                 userPassType: user.passType,
                 onClaim: () => _claimPremium(context),
@@ -418,13 +419,13 @@ class _TierRow extends StatelessWidget {
             : (tier % 5 == 0 ? CupRarity.rare : CupRarity.rare),
         onClaimed: (coins) {
           user.awardCoins(coins);
-          user.claimTierReward(tier);
+          user.claimTierReward(tier, side: 'free');
         },
       );
     } else if (reward.type == _RewardType.nameplate) {
       user.setActiveNameplate(reward.value);
       user.unlockCosmetic('nameplate_${reward.value}');
-      user.claimTierReward(tier);
+      user.claimTierReward(tier, side: 'free');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('🌸 ${reward.label} equipped!')),
       );
@@ -456,13 +457,13 @@ class _TierRow extends StatelessWidget {
         initialRarity: tier % 10 == 0 ? CupRarity.epic : CupRarity.rare,
         onClaimed: (coins) {
           user.awardCoins(coins);
-          user.claimTierReward(tier);
+          user.claimTierReward(tier, side: 'premium');
         },
       );
     } else if (reward.type == _RewardType.nameplate) {
       user.setActiveNameplate(reward.value);
       user.unlockCosmetic('nameplate_${reward.value}');
-      user.claimTierReward(tier);
+      user.claimTierReward(tier, side: 'premium');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('✨ ${reward.label} equipped!')),
       );

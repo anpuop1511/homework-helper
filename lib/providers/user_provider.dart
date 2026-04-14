@@ -350,14 +350,25 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  /// Marks a Battle Pass tier as claimed.
-  void claimTierReward(int tier) {
-    if (!_claimedTiers.contains(tier)) {
-      _claimedTiers = [..._claimedTiers, tier];
+  /// Marks a Battle Pass tier reward as claimed.
+  ///
+  /// [side] should be 'free' or 'premium' to track each track independently.
+  /// This allows claiming both the free and premium reward for the same tier.
+  /// The key is stored as a cosmetic entry: 'claimed_free_5' or 'claimed_premium_10'.
+  void claimTierReward(int tier, {String side = 'free'}) {
+    final cosmeticKey = 'claimed_${side}_$tier';
+    if (!_unlockedCosmetics.contains(cosmeticKey)) {
+      _unlockedCosmetics = [..._unlockedCosmetics, cosmeticKey];
       notifyListeners();
       _saveLocal();
       _syncToCloud();
     }
+  }
+
+  /// Returns true if a specific tier+side reward has been claimed.
+  bool isTierRewardClaimed(int tier, {String side = 'free'}) {
+    final cosmeticKey = 'claimed_${side}_$tier';
+    return _unlockedCosmetics.contains(cosmeticKey);
   }
 
   /// Records activity for the day (call when user opens the app or completes a task).
