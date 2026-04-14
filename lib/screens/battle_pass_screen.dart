@@ -5,6 +5,13 @@ import '../providers/user_provider.dart';
 import '../widgets/coin_cup_reveal_widget.dart';
 import 'season_shop_screen.dart';
 
+// ── Design constants ────────────────────────────────────────────────────────
+const _kPink = Color(0xFFFF6B9D);
+const _kOrange = Color(0xFFFFB347);
+const _kGoldDark = Color(0xFFB8860B);
+const _kPremiumGradient = [Color(0xFFFFD700), Color(0xFFFF8C00)];
+const _kFreeGradient = [Color(0xFF64B5F6), Color(0xFF1976D2)];
+
 /// The Homework Battle Pass screen — Season 1: Spring Bloomin' 🌸
 class BattlePassScreen extends StatelessWidget {
   const BattlePassScreen({super.key});
@@ -29,44 +36,80 @@ class _BattlePassBody extends StatelessWidget {
       slivers: [
         // ── Header ──────────────────────────────────────────────────
         SliverAppBar(
-          expandedHeight: 160,
+          expandedHeight: 200,
           pinned: true,
           flexibleSpace: FlexibleSpaceBar(
             collapseMode: CollapseMode.pin,
             background: Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFFFF6B9D),
-                    const Color(0xFFFFB347),
-                  ],
+                  colors: [Color(0xFFFF6B9D), Color(0xFFFFB347)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
               child: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "Season 1: Spring Bloomin' 🌸",
-                        style: GoogleFonts.lexend(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
+                      Row(
+                        children: [
+                          const Text('🌸', style: TextStyle(fontSize: 28)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Season 1: Spring Bloomin'",
+                                  style: GoogleFonts.lexend(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  'April 13 – May 1',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 13,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Coin balance pill
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(30),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                  color: Colors.white.withAlpha(60), width: 1),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('🪙',
+                                    style: TextStyle(fontSize: 14)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${user.coins}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'April 13 – May 1',
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          color: Colors.white70,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 16),
                       // Season XP bar
                       _SeasonXpBar(user: user),
                     ],
@@ -75,12 +118,64 @@ class _BattlePassBody extends StatelessWidget {
               ),
             ),
           ),
-          backgroundColor: const Color(0xFFFF6B9D),
+          backgroundColor: _kPink,
+        ),
+
+        // ── Track header labels ──────────────────────────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Row(
+              children: [
+                // Free track label
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: _kFreeGradient),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        '🆓  Free Track',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 48), // tier circle space
+                // Plus/Premium track label
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: _kPremiumGradient),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        '⭐  Plus / 🏆 Premium',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
 
         // ── Pass purchase buttons ────────────────────────────────────
         SliverToBoxAdapter(
-          child: _PassPurchaseSection(user: user, colorScheme: colorScheme),
+          child: _PassPurchaseSection(user: user, colorScheme: Theme.of(context).colorScheme),
         ),
 
         // ── Season Shop banner ───────────────────────────────────────
@@ -110,10 +205,23 @@ class _BattlePassBody extends StatelessWidget {
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final tier = index + 1;
+                // Milestone marker every 10 tiers
+                if (tier > 1 && (tier - 1) % 10 == 0) {
+                  return Column(
+                    children: [
+                      _MilestoneMarker(tier: tier - 1),
+                      _TierRow(
+                        tier: tier,
+                        user: user,
+                        colorScheme: Theme.of(context).colorScheme,
+                      ),
+                    ],
+                  );
+                }
                 return _TierRow(
                   tier: tier,
                   user: user,
-                  colorScheme: colorScheme,
+                  colorScheme: Theme.of(context).colorScheme,
                 );
               },
               childCount: 50,
@@ -121,6 +229,49 @@ class _BattlePassBody extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Milestone Marker ──────────────────────────────────────────────────────
+
+class _MilestoneMarker extends StatelessWidget {
+  final int tier;
+  const _MilestoneMarker({required this.tier});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Divider(
+                color: colorScheme.outlineVariant.withAlpha(120), height: 1),
+          ),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              'Tier $tier milestone! 🎉',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Divider(
+                color: colorScheme.outlineVariant.withAlpha(120), height: 1),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -140,27 +291,63 @@ class _SeasonXpBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Tier ${user.seasonTier} / 50',
-              style: const TextStyle(
-                  color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(30),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Tier ${user.seasonTier} / 50',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
             ),
             Text(
-              '${user.seasonXp} / 100 season XP',
+              '${user.seasonXp} / 100 XP',
               style: const TextStyle(color: Colors.white70, fontSize: 11),
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(
-            value: progress.clamp(0.0, 1.0),
-            minHeight: 8,
-            backgroundColor: Colors.white24,
-            valueColor:
-                const AlwaysStoppedAnimation<Color>(Colors.white),
-          ),
+        const SizedBox(height: 6),
+        Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: progress.clamp(0.0, 1.0),
+                minHeight: 12,
+                backgroundColor: Colors.white24,
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            // Glow overlay on the filled portion
+            if (progress > 0)
+              Positioned.fill(
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: progress.clamp(0.0, 1.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withAlpha(60),
+                          Colors.white.withAlpha(0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ],
     );
@@ -648,80 +835,134 @@ class _TierRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isTier50 = tier == 50;
+    final isMilestone = tier % 10 == 0;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
+        gradient: _isReached && !_isCurrent
+            ? LinearGradient(
+                colors: [
+                  colorScheme.primaryContainer.withAlpha(60),
+                  colorScheme.surfaceContainerLow,
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              )
+            : null,
         color: _isCurrent
-            ? colorScheme.primaryContainer.withAlpha(80)
-            : colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
+            ? null
+            : (_isReached ? null : colorScheme.surfaceContainerLow),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: _isCurrent
               ? colorScheme.primary
-              : colorScheme.outlineVariant.withAlpha(80),
-          width: _isCurrent ? 1.5 : 1,
+              : isMilestone
+                  ? _kOrange.withAlpha(120)
+                  : colorScheme.outlineVariant.withAlpha(60),
+          width: _isCurrent ? 2 : (isMilestone ? 1.5 : 0.8),
         ),
+        boxShadow: _isCurrent
+            ? [
+                BoxShadow(
+                  color: colorScheme.primary.withAlpha(40),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            // Left: free reward
-            Expanded(
-              child: _RewardCell(
-                reward: _freeReward,
-                isReached: _isReached,
-                isClaimed: _isFreeClaimed,
-                passRequired: 'free',
-                userPassType: user.passType,
-                onClaim: () => _claimFree(context),
-                colorScheme: colorScheme,
-                isTier50: isTier50,
-              ),
-            ),
-
-            // Middle: tier number
-            Container(
-              width: 40,
-              height: 40,
-              margin: const EdgeInsets.symmetric(horizontal: 8),
+      child: _isCurrent
+          ? Container(
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _isReached
-                    ? colorScheme.primary
-                    : colorScheme.surfaceContainerHigh,
+                gradient: LinearGradient(
+                  colors: [
+                    colorScheme.primaryContainer.withAlpha(100),
+                    colorScheme.primaryContainer.withAlpha(40),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(17),
               ),
-              child: Center(
-                child: Text(
-                  '$tier',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: _isReached
-                        ? colorScheme.onPrimary
-                        : colorScheme.onSurfaceVariant,
-                  ),
+              child: _rowContent(context, isTier50),
+            )
+          : _rowContent(context, isTier50),
+    );
+  }
+
+  Widget _rowContent(BuildContext context, bool isTier50) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      child: Row(
+        children: [
+          // Left: free reward
+          Expanded(
+            child: _RewardCell(
+              reward: _freeReward,
+              isReached: _isReached,
+              isClaimed: _isFreeClaimed,
+              passRequired: 'free',
+              userPassType: user.passType,
+              onClaim: () => _claimFree(context),
+              colorScheme: colorScheme,
+              isTier50: isTier50,
+            ),
+          ),
+
+          // Middle: tier number
+          Container(
+            width: 42,
+            height: 42,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: _isReached
+                  ? const LinearGradient(
+                      colors: [Color(0xFFFF6B9D), Color(0xFFFFB347)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: _isReached ? null : colorScheme.surfaceContainerHigh,
+              boxShadow: _isReached
+                  ? [
+                      BoxShadow(
+                        color: _kPink.withAlpha(60),
+                        blurRadius: 6,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Center(
+              child: Text(
+                '$tier',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: _isReached
+                      ? Colors.white
+                      : colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
+          ),
 
-            // Right: plus/premium reward
-            Expanded(
-              child: _RewardCell(
-                reward: _premiumReward,
-                isReached: _isReached,
-                isClaimed: _isPremiumClaimed,
-                passRequired: isTier50 ? 'premium' : 'plus',
-                userPassType: user.passType,
-                onClaim: () => _claimPremium(context),
-                colorScheme: colorScheme,
-                isTier50: isTier50,
-                alignRight: true,
-              ),
+          // Right: plus/premium reward
+          Expanded(
+            child: _RewardCell(
+              reward: _premiumReward,
+              isReached: _isReached,
+              isClaimed: _isPremiumClaimed,
+              passRequired: isTier50 ? 'premium' : 'plus',
+              userPassType: user.passType,
+              onClaim: () => _claimPremium(context),
+              colorScheme: colorScheme,
+              isTier50: isTier50,
+              alignRight: true,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -858,6 +1099,9 @@ class _RewardCell extends StatelessWidget {
 
   bool get _canClaim => isReached && !isClaimed && _hasAccess;
 
+  Color get _trackColor =>
+      passRequired == 'free' ? const Color(0xFF1976D2) : _kOrange;
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -870,8 +1114,19 @@ class _RewardCell extends StatelessWidget {
           mainAxisAlignment:
               alignRight ? MainAxisAlignment.end : MainAxisAlignment.start,
           children: [
-            Text(reward.emoji, style: const TextStyle(fontSize: 18)),
-            const SizedBox(width: 4),
+            // Emoji in a small pill
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isReached
+                    ? _trackColor.withAlpha(28)
+                    : colorScheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child:
+                  Text(reward.emoji, style: const TextStyle(fontSize: 16)),
+            ),
+            const SizedBox(width: 6),
             Flexible(
               child: Text(
                 reward.label,
@@ -880,7 +1135,7 @@ class _RewardCell extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: isReached
                       ? colorScheme.onSurface
-                      : colorScheme.onSurfaceVariant,
+                      : colorScheme.onSurfaceVariant.withAlpha(140),
                 ),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 2,
@@ -889,48 +1144,74 @@ class _RewardCell extends StatelessWidget {
             if (!_hasAccess) ...[
               const SizedBox(width: 4),
               Icon(Icons.lock_rounded,
-                  size: 12, color: colorScheme.onSurfaceVariant),
+                  size: 12, color: colorScheme.onSurfaceVariant.withAlpha(140)),
             ],
           ],
         ),
         if (_canClaim) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 5),
           GestureDetector(
             onTap: onClaim,
             child: Container(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: colorScheme.primary,
-                borderRadius: BorderRadius.circular(8),
+                gradient: LinearGradient(
+                  colors: passRequired == 'free'
+                      ? _kFreeGradient
+                      : _kPremiumGradient,
+                ),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: _trackColor.withAlpha(60),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              child: Text(
+              child: const Text(
                 'Claim',
                 style: TextStyle(
                   fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: colorScheme.onPrimary,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
                 ),
               ),
             ),
           ),
         ] else if (isClaimed) ...[
-          const SizedBox(height: 4),
-          Text(
-            '✓ Claimed',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.green.shade600,
-              fontWeight: FontWeight.w600,
+          const SizedBox(height: 5),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.green.withAlpha(28),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '✓ Claimed',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.green.shade600,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ] else if (!_hasAccess && isReached) ...[
-          const SizedBox(height: 4),
-          Text(
-            passRequired == 'premium' ? 'Premium only' : 'Plus/Premium',
-            style: TextStyle(
-              fontSize: 9,
-              color: colorScheme.onSurfaceVariant,
+          const SizedBox(height: 5),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: _kOrange.withAlpha(20),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              passRequired == 'premium' ? '🏆 Premium' : '⭐ Plus+',
+              style: TextStyle(
+                fontSize: 9,
+                color: _kGoldDark,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],

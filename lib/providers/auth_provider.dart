@@ -190,7 +190,33 @@ class AuthProvider extends ChangeNotifier {
   /// `_usernameStreamSub`, so the guard in the `authStateChanges()` listener
   /// (`!_usernameLoaded && _usernameStreamSub == null`) can never
   /// accidentally trigger a redundant reload after completion.
+  /// SharedPreferences key for persisting the username locally.
+  ///
+  /// This lets the @handle display immediately on mobile (and any platform)
+  /// without waiting for the Firestore stream to arrive, which can be slow
+  /// on Android when there is no warm cache.
+  static const _prefUsername = 'auth_cached_username';
+
+  /// Loads the locally-cached username and restores it synchronously so the
+  /// UI can display the @handle before the Firestore stream arrives.
+  ///
+  /// Called once from the constructor; updates state asynchronously.
+  Future<void> _loadCachedUsername(String uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString(_prefUsername);
+    // Only apply the cache if the username hasn't already been resolved by
+    // the Firestore stream and the cached value belongs to the current user.
+    if (cached != null && cached.isNotEmpty && _username == null) {
+      _username = cached;
+      notifyListeners();
+    }
+  }
+
   void _loadUsername(String uid) {
+    // Start a local cache warm-up immediately so the username shows in the UI
+    // even before the Firestore stream arrives (fixes mobile display delay).
+    _loadCachedUsername(uid);
+
     _usernameStreamSub?.cancel();
     _usernameStreamSub = DatabaseService.instance
         .usernameStream(uid)
@@ -198,6 +224,13 @@ class AuthProvider extends ChangeNotifier {
         .listen(
           (handle) {
             _username = handle;
+            // Persist to local cache so the next app launch can show the
+            // username immediately without waiting for Firestore.
+            if (handle != null && handle.isNotEmpty) {
+              SharedPreferences.getInstance()
+                  .then((p) => p.setString(_prefUsername, handle))
+                  .ignore();
+            }
             _usernameLoaded = true; // Set before clearing subscription ref.
             _usernameStreamSub = null;
             notifyListeners();
@@ -219,6 +252,12 @@ class AuthProvider extends ChangeNotifier {
     _usernameStreamSub = null;
     _username = handle.toLowerCase().trim();
     _usernameLoaded = true;
+    // Persist immediately so the next app launch shows the handle right away.
+    if (_username != null && _username!.isNotEmpty) {
+      SharedPreferences.getInstance()
+          .then((p) => p.setString(_prefUsername, _username!))
+          .ignore();
+    }
     notifyListeners();
   }
 
@@ -235,6 +274,13 @@ class AuthProvider extends ChangeNotifier {
     if (uid == null) return;
     try {
       _username = await DatabaseService.instance.getUsernameForUid(uid);
+      // Persist the refreshed handle so mobile picks it up immediately
+      // on the next cold start.
+      if (_username != null && _username!.isNotEmpty) {
+        SharedPreferences.getInstance()
+            .then((p) => p.setString(_prefUsername, _username!))
+            .ignore();
+      }
       _usernameLoaded = true;
       notifyListeners();
     } catch (_) {
@@ -339,6 +385,10 @@ class AuthProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_prefGuestMode);
     }
+    // Clear the persisted username cache on sign-out so a different account
+    // starting on the same device doesn't see a stale handle.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_prefUsername);
     await _auth?.signOut();
   }
 
