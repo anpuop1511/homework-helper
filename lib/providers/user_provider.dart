@@ -33,7 +33,7 @@ class UserProvider extends ChangeNotifier {
   int _xp = 0;
   int _level = 1;
   int _streak = 0;
-  String _name = 'Student';
+  String _name = '';
   String _bio = '';
   DateTime? _lastActiveDate;
 
@@ -100,7 +100,7 @@ class UserProvider extends ChangeNotifier {
     _xp = prefs.getInt(_prefXp) ?? 0;
     _level = prefs.getInt(_prefLevel) ?? 1;
     _streak = prefs.getInt(_prefStreak) ?? 0;
-    _name = prefs.getString(_prefName) ?? 'Student';
+    _name = prefs.getString(_prefName) ?? '';
     final lastMs = prefs.getInt(_prefLastActive);
     if (lastMs != null) {
       _lastActiveDate = DateTime.fromMillisecondsSinceEpoch(lastMs);
@@ -177,7 +177,7 @@ class UserProvider extends ChangeNotifier {
     final localXp = prefs.getInt(_prefXp) ?? 0;
     final localLevel = prefs.getInt(_prefLevel) ?? 1;
     final localStreak = prefs.getInt(_prefStreak) ?? 0;
-    final localName = prefs.getString(_prefName) ?? 'Student';
+    final localName = prefs.getString(_prefName) ?? '';
     final hasLocalData = localXp > 0 || localLevel > 1 || localStreak > 1;
     if (!hasLocalData) {
       await prefs.setBool(_prefMigrated, true);
@@ -209,7 +209,7 @@ class UserProvider extends ChangeNotifier {
     _xp = (data['xp'] as int?) ?? 0;
     _level = (data['level'] as int?) ?? 1;
     _streak = (data['streak'] as int?) ?? 0;
-    _name = (data['name'] as String?) ?? 'Student';
+    _name = (data['name'] as String?) ?? '';
     _bio = (data['bio'] as String?) ?? '';
     final lastMs = data['lastActiveDate'] as int?;
     if (lastMs != null) {
@@ -490,7 +490,7 @@ class UserProvider extends ChangeNotifier {
     _xp = 0;
     _level = 1;
     _streak = 0;
-    _name = 'Student';
+    _name = '';
     _bio = '';
     _lastActiveDate = null;
     _coins = 0;
@@ -513,7 +513,7 @@ class UserProvider extends ChangeNotifier {
     _xp = 0;
     _level = 1;
     _streak = 0;
-    _name = 'Student';
+    _name = '';
     _lastActiveDate = null;
     // Reset Battle Pass fields
     _coins = 0;

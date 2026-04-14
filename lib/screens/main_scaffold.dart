@@ -7,6 +7,7 @@ import '../providers/social_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/assignments_provider.dart';
+import '../widgets/nameplate_widget.dart';
 import 'battle_pass_screen.dart';
 import 'season_shop_screen.dart';
 import 'home_screen.dart';
@@ -94,8 +95,8 @@ class _MainScaffoldState extends State<MainScaffold> {
     if (username != null && username.isNotEmpty) return '@$username';
     final displayName = auth.currentUser?.displayName;
     if (displayName != null && displayName.isNotEmpty) return displayName;
-    if (user.name.isNotEmpty && user.name != 'Student') return user.name;
-    return user.name;
+    if (user.name.isNotEmpty) return user.name;
+    return auth.email?.split('@').first ?? '';
   }
 
   @override
@@ -329,14 +330,22 @@ class _UserHubSheet extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          displayName,
-                          style: textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
+                        if (user.activeNameplate.isNotEmpty)
+                          NameplateWidget(
+                            username: displayName,
+                            nameplateId: user.activeNameplate,
+                            fontSize: 15,
+                          )
+                        else
+                          Text(
+                            displayName,
+                            style: textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: nameColorValue(user.equippedNameColor),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
                         const SizedBox(height: 4),
                         Row(
                           children: [

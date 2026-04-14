@@ -5,12 +5,10 @@ import 'package:provider/provider.dart';
 import '../providers/assignments_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
-import '../providers/classroom_provider.dart';
 import '../providers/security_provider.dart';
 import '../providers/social_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
-import 'classroom_screen.dart';
 import 'username_screen.dart';
 
 /// Email of the developer account that can see the hidden debug menu.
@@ -75,12 +73,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: 'About',
       subtitle: 'Version, device info',
     ),
-    _CategoryData(
-      icon: Icons.extension_rounded,
-      color: Color(0xFF00796B),
-      title: 'Integrations',
-      subtitle: 'Google Classroom and third-party connections',
-    ),
   ];
 
   @override
@@ -109,9 +101,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         break;
       case 'About':
         page = const _AboutSettingsPage();
-        break;
-      case 'Integrations':
-        page = const _IntegrationsSettingsPage();
         break;
       case 'Developer':
         page = const _DeveloperMenuPage();
@@ -1213,76 +1202,6 @@ class _AboutSettingsPage extends StatelessWidget {
   }
 }
 
-// ── Integrations ──────────────────────────────────────────────────────────
-
-class _IntegrationsSettingsPage extends StatelessWidget {
-  const _IntegrationsSettingsPage();
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final classroom = context.watch<ClassroomProvider>();
-    final isConnected = classroom.isAuthorized;
-
-    return _CategoryPage(
-      title: 'Integrations',
-      children: [
-        _SquircleCard(
-          colorScheme: colorScheme,
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A73E8).withAlpha(20),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.school_rounded,
-                color: Color(0xFF1A73E8),
-                size: 20,
-              ),
-            ),
-            title: const Text(
-              'Google Classroom',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-            ),
-            subtitle: Text(
-              isConnected ? 'Connected – tap to manage' : 'Not connected',
-              style: TextStyle(
-                fontSize: 12,
-                color: isConnected
-                    ? const Color(0xFF1A73E8)
-                    : colorScheme.onSurfaceVariant,
-              ),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isConnected)
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF34A853),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                const SizedBox(width: 4),
-                Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
-              ],
-            ),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ClassroomScreen()),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 // ── Shared sub-widgets ────────────────────────────────────────────────────
 
 /// Text field widget for entering a custom BYOK API key.
@@ -1934,7 +1853,6 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
     'Test AI Chat — ask a homework question, get a response',
     'Test Notifications — schedule & receive a reminder',
     'Test Settings — theme switch, passkey, privacy options',
-    'Test Google Classroom integration (if configured)',
     'Test Wipe Account — confirm new-user experience from zero',
   ];
 
