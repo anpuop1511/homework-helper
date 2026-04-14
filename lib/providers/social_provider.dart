@@ -171,37 +171,55 @@ class SocialProvider extends ChangeNotifier {
       );
 
       // Subscribe to incoming requests stream.
-      // Track the previous count so we can trigger a notification only when
-      // a *new* request arrives (not on the initial load).
-      int? prevRequestCount;
+      // Track the previous IDs so we can trigger a notification only for
+      // requests that are genuinely new (M-3: don't blindly use list.last).
+      Set<String> prevRequestIds = {};
       _requestsSub =
           DatabaseService.instance.pendingRequestsStream(uid).listen(
         (list) {
-          final newCount = list.length;
-          final hadNew = prevRequestCount != null && newCount > prevRequestCount!;
+          final currentIds = {for (final r in list) r.id};
+          final newRequests = prevRequestIds.isNotEmpty
+              ? list.where((r) => !prevRequestIds.contains(r.id)).toList()
+              : <FriendRequest>[];
           _pendingRequests
             ..clear()
             ..addAll(list);
-          prevRequestCount = newCount;
+          prevRequestIds = currentIds;
           notifyListeners();
-          // Show an in-app notification when a new friend request arrives.
-          if (hadNew) {
-            _onNewFriendRequest(list.last);
+          // Show an in-app notification for each genuinely new request.
+          for (final newReq in newRequests) {
+            _onNewFriendRequest(newReq);
           }
         },
         onError: (_) {/* keep existing list */},
       );
 
       // Load privacy settings from cloud.
+      // Values may be stored as strings (name) or legacy integers (index).
+      // Always prefer string-name lookup; fall back to index for old records (M-5).
       try {
         final data = await DatabaseService.instance.getUserData(uid);
-        final pvIndex = data?['profileVisibility'] as int?;
-        if (pvIndex != null && pvIndex >= 0 && pvIndex < ProfileVisibility.values.length) {
-          _profileVisibility = ProfileVisibility.values[pvIndex];
+        final pvRaw = data?['profileVisibility'];
+        if (pvRaw is String) {
+          _profileVisibility = ProfileVisibility.values.firstWhere(
+            (e) => e.name == pvRaw,
+            orElse: () => ProfileVisibility.public,
+          );
+        } else if (pvRaw is int &&
+            pvRaw >= 0 &&
+            pvRaw < ProfileVisibility.values.length) {
+          _profileVisibility = ProfileVisibility.values[pvRaw];
         }
-        final frpIndex = data?['friendRequestsPrivacy'] as int?;
-        if (frpIndex != null && frpIndex >= 0 && frpIndex < FriendRequestsPrivacy.values.length) {
-          _friendRequestsPrivacy = FriendRequestsPrivacy.values[frpIndex];
+        final frpRaw = data?['friendRequestsPrivacy'];
+        if (frpRaw is String) {
+          _friendRequestsPrivacy = FriendRequestsPrivacy.values.firstWhere(
+            (e) => e.name == frpRaw,
+            orElse: () => FriendRequestsPrivacy.everyone,
+          );
+        } else if (frpRaw is int &&
+            frpRaw >= 0 &&
+            frpRaw < FriendRequestsPrivacy.values.length) {
+          _friendRequestsPrivacy = FriendRequestsPrivacy.values[frpRaw];
         }
         notifyListeners();
       } catch (_) {}
@@ -225,6 +243,10 @@ class SocialProvider extends ChangeNotifier {
   Future<void> _loadLocal() async {
     final prefs = await SharedPreferences.getInstance();
     _showStudyActivity = prefs.getBool(_prefShowActivity) ?? true;
+
+    // Clear before populating to prevent duplicates if called concurrently (M-4).
+    _friends.clear();
+    _activity.clear();
 
     // Load friends from local cache (used in offline / guest mode).
     final friendsJson = prefs.getStringList(_prefFriends) ?? [];
@@ -423,8 +445,23 @@ class SocialProvider extends ChangeNotifier {
   }
 
   /// Accepts an incoming friend request.
+  ///
+  /// Performs an optimistic removal from [_pendingRequests] so the UI updates
+  /// instantly, then commits the change to Firestore.  If Firestore fails (e.g.
+  /// the request was cancelled by the sender between load and tap), the request
+  /// is restored and an exception is rethrown so the caller can show feedback.
   Future<void> acceptRequest(FriendRequest request) async {
     if (_uid == null) return;
+
+    // Optimistic update — remove immediately for instant UI feedback.
+    final idx = _pendingRequests.indexWhere((r) => r.id == request.id);
+    if (idx == -1) {
+      // The request is already gone (cancelled / accepted elsewhere) – ignore.
+      return;
+    }
+    _pendingRequests.removeAt(idx);
+    notifyListeners();
+
     try {
       await DatabaseService.instance.acceptFriendRequest(
         request,
@@ -438,8 +475,16 @@ class SocialProvider extends ChangeNotifier {
           'streak': _userProvider?.streak ?? 0,
         },
       );
-    } catch (_) {
-      // Silently ignore Firestore errors.
+    } catch (e) {
+      // Restore the request in the list so the user can try again.
+      if (idx <= _pendingRequests.length) {
+        _pendingRequests.insert(idx, request);
+      } else {
+        _pendingRequests.add(request);
+      }
+      notifyListeners();
+      // Rethrow so the UI can show a graceful error message.
+      rethrow;
     }
   }
 
@@ -498,7 +543,10 @@ class SocialProvider extends ChangeNotifier {
     if (_uid != null) {
       try {
         await DatabaseService.instance.savePrivacySettings(
-          _uid!, profileVisibility: v.index, friendRequestsPrivacy: _friendRequestsPrivacy.index);
+          _uid!,
+          profileVisibility: v.name,
+          friendRequestsPrivacy: _friendRequestsPrivacy.name,
+        );
       } catch (_) {}
     }
   }
@@ -512,7 +560,10 @@ class SocialProvider extends ChangeNotifier {
     if (_uid != null) {
       try {
         await DatabaseService.instance.savePrivacySettings(
-          _uid!, profileVisibility: _profileVisibility.index, friendRequestsPrivacy: v.index);
+          _uid!,
+          profileVisibility: _profileVisibility.name,
+          friendRequestsPrivacy: v.name,
+        );
       } catch (_) {}
     }
   }

@@ -133,6 +133,8 @@ class ClassroomProvider extends ChangeNotifier {
   GoogleSignInAccount? _currentAccount;
   // Guards against calling initialize() more than once.
   bool _gsiInitialized = false;
+  // Subscription to the GSI auth-events stream; cancelled in dispose() (M-2).
+  StreamSubscription<GoogleSignInAuthenticationEvent>? _authEventsSub;
 
   // ── Public getters ─────────────────────────────────────────────────────
   ClassroomAuthStatus get status => _status;
@@ -160,7 +162,7 @@ class ClassroomProvider extends ChangeNotifier {
     if (_gsiInitialized) return;
     await _googleSignIn.initialize();
     _gsiInitialized = true;
-    _googleSignIn.authenticationEvents.listen(
+    _authEventsSub = _googleSignIn.authenticationEvents.listen(
       (event) {
         if (event is GoogleSignInAuthenticationEventSignIn) {
           _currentAccount = event.user;
@@ -511,5 +513,11 @@ class ClassroomProvider extends ChangeNotifier {
     // Unknown / fallback.
     return 'Connection failed. Please try again or contact support if the '
         'issue persists.';
+  }
+
+  @override
+  void dispose() {
+    _authEventsSub?.cancel();
+    super.dispose();
   }
 }
