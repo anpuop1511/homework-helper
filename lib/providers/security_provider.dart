@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show ChangeNotifier, kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
@@ -13,6 +14,8 @@ class SecurityProvider extends ChangeNotifier {
   static const _kPasskeySet = 'security_passkey_set';
   static const _kAiEnabled = 'security_ai_enabled';
   static const _kPasskeyEmail = 'passkey_email';
+  // L-3: The plaintext password key is kept here only to delete legacy data
+  // on first load. New passkey setups never write a password.
   static const _kPasskeyPassword = 'passkey_password';
 
   final LocalAuthentication _auth = LocalAuthentication();
@@ -46,6 +49,9 @@ class SecurityProvider extends ChangeNotifier {
     _isBioNfcEnabled = prefs.getBool(_kBioNfc) ?? false;
     _isPasskeySet = prefs.getBool(_kPasskeySet) ?? false;
     _isAiEnabled = prefs.getBool(_kAiEnabled) ?? true;
+    // L-3: Eagerly delete any legacy plaintext password that may have been
+    // written by older versions of the app.
+    await _secureStorage.delete(key: _kPasskeyPassword);
     notifyListeners();
   }
 
@@ -71,23 +77,25 @@ class SecurityProvider extends ChangeNotifier {
     if (!value) {
       // Clear stored credentials when passkey is removed.
       await _secureStorage.delete(key: _kPasskeyEmail);
+      // Also purge any legacy password entry (L-3).
       await _secureStorage.delete(key: _kPasskeyPassword);
     }
   }
 
-  /// Stores the user's email and password securely so the Passkey sign-in
-  /// can re-authenticate with Firebase after biometric verification succeeds.
-  Future<void> storePasskeyCredentials(String email, String password) async {
+  /// Stores only the user's email for Passkey sign-in.
+  ///
+  /// The password is intentionally NOT stored (L-3 security fix).  After
+  /// biometric verification, the sign-in flow relies on Firebase's native
+  /// auth-state persistence rather than re-submitting credentials.
+  Future<void> storePasskeyCredentials(String email) async {
     await _secureStorage.write(key: _kPasskeyEmail, value: email);
-    await _secureStorage.write(key: _kPasskeyPassword, value: password);
+    // Ensure no legacy password entry survives.
+    await _secureStorage.delete(key: _kPasskeyPassword);
   }
 
-  /// Returns the stored passkey credentials, or `null` if none are saved.
-  Future<({String email, String password})?> getPasskeyCredentials() async {
-    final email = await _secureStorage.read(key: _kPasskeyEmail);
-    final password = await _secureStorage.read(key: _kPasskeyPassword);
-    if (email == null || password == null) return null;
-    return (email: email, password: password);
+  /// Returns the stored passkey email, or `null` if none is saved.
+  Future<String?> getPasskeyEmail() async {
+    return _secureStorage.read(key: _kPasskeyEmail);
   }
 
   /// Enables or disables AI features app-wide.

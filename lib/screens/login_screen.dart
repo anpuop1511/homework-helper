@@ -223,31 +223,26 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
-    // Retrieve the stored credentials and sign in with Firebase.
-    final credentials = await security.getPasskeyCredentials();
+    // L-3: Rely on Firebase's native auth-state persistence instead of
+    // re-submitting a stored plaintext password.  After a successful biometric
+    // verification, check whether Firebase already has a valid current user
+    // (which it will as long as the session hasn't been explicitly revoked).
+    final storedEmail = await security.getPasskeyEmail();
     if (!mounted) return;
-    if (credentials == null) {
-      _showError(
-          'No stored credentials found. Please sign in with email & password and set up your Passkey again in Settings.');
+
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser != null &&
+        (storedEmail == null || firebaseUser.email == storedEmail)) {
+      // Firebase already has a valid session – notify the provider and proceed.
+      context.read<app_auth.AuthProvider>().refreshUsername();
+      context.read<UserProvider>().recordActivity();
       return;
     }
 
-    setState(() => _isLoading = true);
-    try {
-      final auth = context.read<app_auth.AuthProvider>();
-      await auth.signIn(credentials.email, credentials.password);
-      if (!mounted) return;
-      context.read<UserProvider>().recordActivity();
-      // _AuthGate will route appropriately once Firebase auth state updates.
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      _showError(app_auth.AuthProvider.friendlyError(e));
-    } catch (e) {
-      if (!mounted) return;
-      _showError('Sign-in failed. Please use email & password instead.');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    // Firebase session has expired or the stored email doesn't match.
+    // Ask the user to sign in with email & password once to restore the session.
+    _showError(
+        'Your session has expired. Please sign in with email & password to restore your Passkey.');
   }
 
   @override

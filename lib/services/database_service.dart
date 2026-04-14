@@ -85,10 +85,14 @@ class DatabaseService {
   }
 
   /// Writes / merges profile visibility and friend request privacy settings.
+  ///
+  /// Values are stored as their enum [name] strings (not integer indices) so
+  /// that reordering the enum in future code cannot corrupt existing records
+  /// (M-5).
   Future<void> savePrivacySettings(
     String uid, {
-    required int profileVisibility,
-    required int friendRequestsPrivacy,
+    required String profileVisibility,
+    required String friendRequestsPrivacy,
   }) async {
     await _userDoc(uid).set(
       {
@@ -277,19 +281,43 @@ class DatabaseService {
   // ── Conversion helpers ───────────────────────────────────────────────────
 
   Assignment _docToAssignment(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final d = doc.data()!;
+    final d = doc.data() ?? {};
+    // L-1: provide safe fallbacks for missing/null fields so the stream
+    // never crashes on a malformed or partially-written Firestore document.
+    final title = (d['title'] as String?) ?? 'Untitled';
+    final dueMs = d['dueDate'];
+    final dueDate = dueMs is int
+        ? DateTime.fromMillisecondsSinceEpoch(dueMs)
+        : DateTime.now().add(const Duration(days: 7));
+    final isCompleted = (d['isCompleted'] as bool?) ?? false;
+
+    // L-2: subject is stored as its string name since v2.7+.
+    // Fall back to index-based lookup for documents written before the migration.
+    final subjectRaw = d['subject'];
+    String subject;
+    if (subjectRaw is String && Subject.allSubjects.contains(subjectRaw)) {
+      subject = subjectRaw;
+    } else if (subjectRaw is int &&
+        subjectRaw >= 0 &&
+        subjectRaw < Subject.allSubjects.length) {
+      subject = Subject.allSubjects[subjectRaw];
+    } else {
+      subject = Subject.other;
+    }
+
     return Assignment(
       id: doc.id,
-      title: d['title'] as String,
-      subject: Subject.allSubjects[d['subject'] as int],
-      dueDate: DateTime.fromMillisecondsSinceEpoch(d['dueDate'] as int),
-      isCompleted: (d['isCompleted'] as bool?) ?? false,
+      title: title,
+      subject: subject,
+      dueDate: dueDate,
+      isCompleted: isCompleted,
     );
   }
 
   Map<String, dynamic> _assignmentToMap(Assignment a) => {
         'title': a.title,
-        'subject': Subject.allSubjects.indexOf(a.subject),
+        // L-2: store subject as its string name, not an integer index.
+        'subject': a.subject,
         'dueDate': a.dueDate.millisecondsSinceEpoch,
         'isCompleted': a.isCompleted,
       };

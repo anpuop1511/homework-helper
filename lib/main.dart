@@ -133,22 +133,16 @@ class _AuthGateState extends State<_AuthGate> {
     super.dispose();
   }
 
-  /// Starts a one-shot timer that surfaces a Retry button if Firestore
-  /// hasn't finished loading the username within 8 seconds.
-  void _scheduleRetryIfNeeded() {
-    if (_loadTimer != null) return; // already running
-    _loadTimer = Timer(const Duration(seconds: 8), () {
-      if (mounted) setState(() => _showRetry = true);
-    });
-  }
-
   @override
-  Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = context.read<AuthProvider>();
     final uid = auth.uid;
 
     // Whenever the UID changes (sign-in / sign-out), sync the email to
     // Firestore so friends can look the user up by email.
+    // Doing this in didChangeDependencies() (rather than build()) keeps
+    // the build method free of Firestore side-effects (M-1).
     if (uid != _prevUid) {
       _prevUid = uid;
       // Reset retry state whenever the account changes.
@@ -161,6 +155,20 @@ class _AuthGateState extends State<_AuthGate> {
             .ignore();
       }
     }
+  }
+
+  /// Starts a one-shot timer that surfaces a Retry button if Firestore
+  /// hasn't finished loading the username within 8 seconds.
+  void _scheduleRetryIfNeeded() {
+    if (_loadTimer != null) return; // already running
+    _loadTimer = Timer(const Duration(seconds: 8), () {
+      if (mounted) setState(() => _showRetry = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
 
     if (!auth.isSignedIn && !auth.isGuest) {
       // H-2: Wait for the initial auth state (including the persisted guest-mode
@@ -262,6 +270,10 @@ class _DeepLinkHandler extends StatefulWidget {
 class _DeepLinkHandlerState extends State<_DeepLinkHandler> {
   StreamSubscription<Uri>? _sub;
 
+  /// Cold-start link that arrived before [AuthProvider] was fully initialised.
+  /// Flushed in [build] once auth is ready so navigation is never orphaned (L-5).
+  Uri? _pendingColdStartLink;
+
   @override
   void initState() {
     super.initState();
@@ -274,12 +286,12 @@ class _DeepLinkHandlerState extends State<_DeepLinkHandler> {
     try {
       final appLinks = AppLinks();
       // Handle the link that launched the app (cold start).
+      // Store it as pending and let build() flush it once auth is ready (L-5).
       final initial = await appLinks.getInitialLink();
-      if (initial != null) {
-        WidgetsBinding.instance
-            .addPostFrameCallback((_) => _handleLink(initial));
+      if (initial != null && mounted) {
+        setState(() => _pendingColdStartLink = initial);
       }
-      // Handle links while the app is already running.
+      // Handle links while the app is already running (auth already ready).
       _sub = appLinks.uriLinkStream.listen(_handleLink, onError: (_) {});
     } catch (_) {
       // Deep link handling is best-effort.
@@ -329,7 +341,29 @@ class _DeepLinkHandlerState extends State<_DeepLinkHandler> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) {
+    // L-5: Flush any queued cold-start deep link once the auth state is
+    // fully initialised (username loaded or confirmed guest) so that
+    // navigation is never pushed onto an uninitialised stack.
+    if (_pendingColdStartLink != null) {
+      final auth = context.watch<AuthProvider>();
+      final ready = auth.initialStateReady &&
+          (auth.isGuest || auth.usernameLoaded);
+      if (ready) {
+        // Schedule the actual navigation for after this build frame.
+        // Use setState to clear _pendingColdStartLink so this doesn't
+        // re-trigger on the next build.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final link = _pendingColdStartLink;
+          if (link == null) return;
+          setState(() => _pendingColdStartLink = null);
+          _handleLink(link);
+        });
+      }
+    }
+    return widget.child;
+  }
 }
 
 /// Wraps the entire app and shows a biometric lock screen once per cold start
@@ -356,19 +390,35 @@ class _AppShieldGateState extends State<_AppShieldGate>
   /// Not persisted to disk — resets only on cold start (process kill + relaunch).
   bool _unlockedThisSession = false;
 
+  /// Guards against enqueuing redundant post-frame callbacks on every rebuild
+  /// (L-4). Set to true once a callback has been scheduled and cleared after
+  /// it fires.
+  bool _coldStartCallbackScheduled = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     // Schedule the cold-start lock check after the first frame so all
     // providers (including SecurityProvider) are fully initialised.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkColdStartLock());
+    _scheduleCheckIfNeeded();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Enqueues [_checkColdStartLock] for the next frame, but only if a
+  /// callback has not already been scheduled (L-4 performance fix).
+  void _scheduleCheckIfNeeded() {
+    if (_coldStartCallbackScheduled) return;
+    _coldStartCallbackScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _coldStartCallbackScheduled = false;
+      _checkColdStartLock();
+    });
   }
 
   /// Locks the app on cold start if App Lock is enabled. Calling this more
@@ -408,14 +458,15 @@ class _AppShieldGateState extends State<_AppShieldGate>
   Widget build(BuildContext context) {
     // Watch SecurityProvider so that if its initial async load completes after
     // the first frame, we still catch App Lock being enabled and trigger the
-    // cold-start check.
+    // cold-start check. Only one post-frame callback is enqueued at a time
+    // to avoid redundant calls on every rebuild (L-4).
     final security = context.watch<SecurityProvider>();
     if (!kIsWeb &&
         security.isAppLockEnabled &&
         !_unlockedThisSession &&
         !_locked &&
         !_authenticating) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _checkColdStartLock());
+      _scheduleCheckIfNeeded();
     }
 
     if (_locked) {

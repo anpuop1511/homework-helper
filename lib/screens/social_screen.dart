@@ -455,6 +455,42 @@ class _SocialScreenState extends State<SocialScreen> {
                 ),
               ),
             ),
+            // ── Web handle bug banner ─────────────────────────────────
+            if (kIsWeb && (myHandle == null || myHandle.isEmpty)) ...[
+              const SizedBox(height: 10),
+              FadeInDown(
+                delay: const Duration(milliseconds: 80),
+                duration: const Duration(milliseconds: 400),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: colorScheme.tertiaryContainer.withAlpha(200),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                        color: colorScheme.tertiary.withAlpha(100)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded,
+                          size: 18,
+                          color: colorScheme.onTertiaryContainer),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Note: Web handle sync is currently bugged '
+                          '(email QR fallback works). We will fix this eventually!',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.onTertiaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             // ── Own @handle chip ──────────────────────────────────────
             if (myHandle != null && myHandle.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -581,8 +617,39 @@ class _SocialScreenState extends State<SocialScreen> {
                   child: _RequestCard(
                     request: req,
                     colorScheme: colorScheme,
-                    onAccept: () =>
-                        context.read<SocialProvider>().acceptRequest(req),
+                    onAccept: () {
+                      final handle = req.fromUsername.isNotEmpty
+                          ? '@${req.fromUsername}'
+                          : req.fromName.isNotEmpty
+                              ? req.fromName
+                              : 'them';
+                      context
+                          .read<SocialProvider>()
+                          .acceptRequest(req)
+                          .then((_) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  'You are now friends with $handle! 🎉'),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor:
+                                  colorScheme.primaryContainer,
+                            ),
+                          );
+                        }
+                      }).catchError((_) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Request no longer available — it may have been cancelled.'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      });
+                    },
                     onDecline: () =>
                         context.read<SocialProvider>().declineRequest(req),
                   ),

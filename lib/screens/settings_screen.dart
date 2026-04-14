@@ -1595,7 +1595,7 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
     setState(() => _setupLoading = false);
     if (ok) {
       final email = authProvider.currentUserEmail ?? '';
-      await security.storePasskeyCredentials(email, password);
+      await security.storePasskeyCredentials(email);
       await security.setPasskeySet(true);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
