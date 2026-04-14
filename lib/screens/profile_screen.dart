@@ -271,6 +271,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           displayName,
                           style: textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w700,
+                            color: nameColorValue(user.equippedNameColor),
                           ),
                         ),
                       // Pass-type icon
@@ -297,6 +298,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  // "Edit Name" prompt shown when no custom display name is set.
+                  if (auth.isSignedIn && user.name.isEmpty)
+                    GestureDetector(
+                      onTap: () => _showEditProfileDialog(
+                        context,
+                        displayName,
+                        user.bio,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.edit_rounded,
+                                size: 13,
+                                color: colorScheme.onSecondaryContainer),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Edit Name',
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSecondaryContainer,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 4),
                   // @username display (tappable to change).
                   if (username != null && username.isNotEmpty)

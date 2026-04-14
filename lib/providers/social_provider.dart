@@ -467,7 +467,7 @@ class SocialProvider extends ChangeNotifier {
         request,
         currentUserData: {
           'uid': _uid!,
-          'name': _userName ?? _userEmail?.split('@').first ?? 'Student',
+          'name': _userName ?? _userEmail?.split('@').first ?? '',
           'email': _userEmail ?? '',
           'username': _userUsername ?? '',
           'level': _userProvider?.level ?? 1,
