@@ -25,12 +25,21 @@ class SocialScreen extends StatefulWidget {
   State<SocialScreen> createState() => _SocialScreenState();
 }
 
-class _SocialScreenState extends State<SocialScreen> {
+class _SocialScreenState extends State<SocialScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
   final _handleController = TextEditingController();
   bool _searching = false;
 
   @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
   void dispose() {
+    _tabController.dispose();
     _handleController.dispose();
     super.dispose();
   }
@@ -397,10 +406,6 @@ class _SocialScreenState extends State<SocialScreen> {
     final social = context.watch<SocialProvider>();
     final auth = context.watch<AuthProvider>();
 
-    // Wait for the global auth state to finish loading the username from
-    // Firestore before rendering the full Social screen.  Without this guard,
-    // a hard web page-refresh can show the screen while auth.username is still
-    // null, making it appear as though the user has no username.
     if (!auth.usernameLoaded) {
       return Scaffold(
         backgroundColor: colorScheme.surface,
@@ -409,6 +414,8 @@ class _SocialScreenState extends State<SocialScreen> {
     }
 
     final myHandle = auth.username;
+    final requestCount = social.pendingRequests.length;
+    final pendingCount = social.sentRequests.length;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -424,277 +431,469 @@ class _SocialScreenState extends State<SocialScreen> {
             color: colorScheme.onSurface,
           ),
         ),
-      ),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          children: [
-            // ── Header ────────────────────────────────────────────────
-            FadeInDown(
-              duration: const Duration(milliseconds: 400),
-              child: Padding(
-                padding: const EdgeInsets.only(top: 16, bottom: 4),
-                child: Text(
-                  'Social Quad',
-                  style: GoogleFonts.lexend(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-              ),
+        bottom: TabBar(
+          controller: _tabController,
+          labelStyle: GoogleFonts.lexend(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
+          unselectedLabelStyle: GoogleFonts.lexend(
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
+          ),
+          tabs: [
+            const Tab(
+              icon: Icon(Icons.group_rounded),
+              text: 'Friends',
             ),
-            FadeInDown(
-              delay: const Duration(milliseconds: 60),
-              duration: const Duration(milliseconds: 400),
-              child: Text(
-                'Study together, grow together.',
-                style: TextStyle(
-                  color: colorScheme.onSurfaceVariant,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-            // ── Web handle bug banner ─────────────────────────────────
-            if (kIsWeb && (myHandle == null || myHandle.isEmpty)) ...[
-              const SizedBox(height: 10),
-              FadeInDown(
-                delay: const Duration(milliseconds: 80),
-                duration: const Duration(milliseconds: 400),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: colorScheme.tertiaryContainer.withAlpha(200),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                        color: colorScheme.tertiary.withAlpha(100)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline_rounded,
-                          size: 18,
-                          color: colorScheme.onTertiaryContainer),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Note: Web handle sync is currently bugged '
-                          '(email QR fallback works). We will fix this eventually!',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colorScheme.onTertiaryContainer,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-            // ── Own @handle chip ──────────────────────────────────────
-            if (myHandle != null && myHandle.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              FadeInDown(
-                delay: const Duration(milliseconds: 90),
-                duration: const Duration(milliseconds: 400),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.alternate_email_rounded,
-                            size: 14,
-                            color: colorScheme.onPrimaryContainer,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            myHandle,
-                            style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 20),
-
-            // ── Quick Actions Panel ───────────────────────────────────
-            FadeInUp(
-              delay: const Duration(milliseconds: 80),
-              duration: const Duration(milliseconds: 400),
-              child: _SectionHeader(
-                icon: Icons.grid_view_rounded,
-                label: 'Quick Actions',
-                badge: 0,
+            Tab(
+              child: _BadgeTab(
+                icon: Icons.notifications_rounded,
+                label: 'Requests',
+                count: requestCount,
                 colorScheme: colorScheme,
               ),
             ),
-            const SizedBox(height: 10),
-            FadeInUp(
-              delay: const Duration(milliseconds: 100),
-              duration: const Duration(milliseconds: 400),
-              child: _QuickActionsGrid(
-                colorScheme: colorScheme,
-                onAddFriend: () => _showAddFriendSheet(context),
-                onScanQr: () {
-                  if (kIsWeb) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'QR scanning is not supported on web. '
-                          'Share your profile link instead.',
-                        ),
-                      ),
-                    );
-                    return;
-                  }
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const QrScanScreen()),
-                  );
-                },
-                // Show QR tile when username is set OR when email is available
-                // as a fallback identifier.
-                onMyQr: (myHandle != null && myHandle.isNotEmpty) ||
-                        (auth.email?.isNotEmpty == true)
-                    ? () {
-                        final identifier =
-                            (myHandle != null && myHandle.isNotEmpty)
-                                ? myHandle!
-                                : auth.email!;
-                        _showMyQr(
-                          context,
-                          identifier,
-                          isEmail: myHandle == null || myHandle.isEmpty,
-                        );
-                      }
-                    : null,
-                onNfcBump: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const NfcBumpScreen()),
-                ),
-                onCreateProject: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const GroupProjectsScreen()),
-                ),
-                onJoinProject: () => _showJoinProjectSheet(context),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // ── Pending Requests ──────────────────────────────────────
-            if (social.pendingRequests.isNotEmpty) ...[
-              FadeInUp(
-                delay: const Duration(milliseconds: 160),
-                duration: const Duration(milliseconds: 400),
-                child: _SectionHeader(
-                  icon: Icons.notifications_rounded,
-                  label: 'Friend Requests',
-                  badge: social.pendingRequests.length,
-                  colorScheme: colorScheme,
-                ),
-              ),
-              const SizedBox(height: 10),
-              ...social.pendingRequests.asMap().entries.map((entry) {
-                final idx = entry.key;
-                final req = entry.value;
-                return FadeInLeft(
-                  delay: Duration(milliseconds: 200 + idx * 60),
-                  duration: const Duration(milliseconds: 350),
-                  child: _RequestCard(
-                    request: req,
-                    colorScheme: colorScheme,
-                    onAccept: () {
-                      final handle = req.fromUsername.isNotEmpty
-                          ? '@${req.fromUsername}'
-                          : req.fromName.isNotEmpty
-                              ? req.fromName
-                              : 'them';
-                      context
-                          .read<SocialProvider>()
-                          .acceptRequest(req)
-                          .then((_) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                  'You are now friends with $handle! 🎉'),
-                              behavior: SnackBarBehavior.floating,
-                              backgroundColor:
-                                  colorScheme.primaryContainer,
-                            ),
-                          );
-                        }
-                      }).catchError((_) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  'Request no longer available — it may have been cancelled.'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      });
-                    },
-                    onDecline: () =>
-                        context.read<SocialProvider>().declineRequest(req),
-                  ),
-                );
-              }),
-              const SizedBox(height: 20),
-            ],
-
-            // ── Friends List ──────────────────────────────────────────
-            FadeInUp(
-              delay: const Duration(milliseconds: 220),
-              duration: const Duration(milliseconds: 400),
-              child: _SectionHeader(
-                icon: Icons.group_rounded,
-                label: 'Friends',
-                badge: social.friends.length,
+            Tab(
+              child: _BadgeTab(
+                icon: Icons.schedule_rounded,
+                label: 'Pending',
+                count: pendingCount,
                 colorScheme: colorScheme,
               ),
             ),
-            const SizedBox(height: 10),
-            if (social.friends.isEmpty)
-              FadeInUp(
-                delay: const Duration(milliseconds: 280),
-                duration: const Duration(milliseconds: 400),
-                child: _EmptyFriendsCard(colorScheme: colorScheme),
-              )
-            else
-              ...social.friends.asMap().entries.map((entry) {
-                final idx = entry.key;
-                final friend = entry.value;
-                return FadeInLeft(
-                  delay: Duration(milliseconds: 280 + idx * 60),
-                  duration: const Duration(milliseconds: 350),
-                  child: _FriendCard(
-                    friend: friend,
-                    colorScheme: colorScheme,
-                    onRemove: () =>
-                        context.read<SocialProvider>().removeFriend(friend.id),
-                  ),
-                );
-              }),
-            const SizedBox(height: 24),
           ],
         ),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Own @handle chip + web banner ─────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (kIsWeb && (myHandle == null || myHandle.isEmpty))
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: colorScheme.tertiaryContainer.withAlpha(200),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                          color: colorScheme.tertiary.withAlpha(100)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded,
+                            size: 18,
+                            color: colorScheme.onTertiaryContainer),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Note: Web handle sync is currently bugged '
+                            '(email QR fallback works).',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.onTertiaryContainer,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (myHandle != null && myHandle.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.alternate_email_rounded,
+                          size: 14,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          myHandle,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // ── Quick Actions Panel ──────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: _QuickActionsGrid(
+              colorScheme: colorScheme,
+              onAddFriend: () => _showAddFriendSheet(context),
+              onScanQr: () {
+                if (kIsWeb) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'QR scanning is not supported on web. '
+                        'Share your profile link instead.',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const QrScanScreen()),
+                );
+              },
+              onMyQr: (myHandle != null && myHandle.isNotEmpty) ||
+                      (auth.email?.isNotEmpty == true)
+                  ? () {
+                      final identifier =
+                          (myHandle != null && myHandle.isNotEmpty)
+                              ? myHandle!
+                              : auth.email!;
+                      _showMyQr(
+                        context,
+                        identifier,
+                        isEmail: myHandle == null || myHandle.isEmpty,
+                      );
+                    }
+                  : null,
+              onNfcBump: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NfcBumpScreen()),
+              ),
+              onCreateProject: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const GroupProjectsScreen()),
+              ),
+              onJoinProject: () => _showJoinProjectSheet(context),
+            ),
+          ),
+
+          // ── Tab content ──────────────────────────────────────────
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Tab 0 — Friends
+                _buildFriendsTab(context, colorScheme, social),
+                // Tab 1 — Requests
+                _buildRequestsTab(context, colorScheme, social),
+                // Tab 2 — Pending
+                _buildPendingTab(context, colorScheme, social),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Tab builders ──────────────────────────────────────────────────────────
+
+  Widget _buildFriendsTab(
+      BuildContext context, ColorScheme colorScheme, SocialProvider social) {
+    if (social.friends.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        children: [
+          _EmptyFriendsCard(colorScheme: colorScheme),
+        ],
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: social.friends.length,
+      itemBuilder: (_, idx) {
+        final friend = social.friends[idx];
+        return FadeInLeft(
+          delay: Duration(milliseconds: idx * 50),
+          duration: const Duration(milliseconds: 300),
+          child: _FriendCard(
+            friend: friend,
+            colorScheme: colorScheme,
+            onRemove: () =>
+                context.read<SocialProvider>().removeFriend(friend.id),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRequestsTab(
+      BuildContext context, ColorScheme colorScheme, SocialProvider social) {
+    if (social.pendingRequests.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.notifications_none_rounded,
+                  size: 48,
+                  color: colorScheme.onSurfaceVariant.withAlpha(140)),
+              const SizedBox(height: 12),
+              Text(
+                'No incoming requests',
+                style: GoogleFonts.lexend(
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'When someone sends you a friend request it will appear here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: social.pendingRequests.length,
+      itemBuilder: (_, idx) {
+        final req = social.pendingRequests[idx];
+        return FadeInLeft(
+          delay: Duration(milliseconds: idx * 60),
+          duration: const Duration(milliseconds: 350),
+          child: _RequestCard(
+            request: req,
+            colorScheme: colorScheme,
+            onAccept: () {
+              final handle = req.fromUsername.isNotEmpty
+                  ? '@${req.fromUsername}'
+                  : req.fromName.isNotEmpty
+                      ? req.fromName
+                      : 'them';
+              context.read<SocialProvider>().acceptRequest(req).then((_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('You are now friends with $handle! 🎉'),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: colorScheme.primaryContainer,
+                    ),
+                  );
+                }
+              }).catchError((_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          'Request no longer available — it may have been cancelled.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              });
+            },
+            onDecline: () =>
+                context.read<SocialProvider>().declineRequest(req),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPendingTab(
+      BuildContext context, ColorScheme colorScheme, SocialProvider social) {
+    if (social.sentRequests.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.schedule_rounded,
+                  size: 48,
+                  color: colorScheme.onSurfaceVariant.withAlpha(140)),
+              const SizedBox(height: 12),
+              Text(
+                'No pending requests',
+                style: GoogleFonts.lexend(
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Sent friend requests waiting for a response will appear here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: social.sentRequests.length,
+      itemBuilder: (_, idx) {
+        final req = social.sentRequests[idx];
+        return FadeInLeft(
+          delay: Duration(milliseconds: idx * 60),
+          duration: const Duration(milliseconds: 350),
+          child: _PendingRequestCard(
+            request: req,
+            colorScheme: colorScheme,
+            onCancel: () =>
+                context.read<SocialProvider>().cancelSentRequest(req),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Badge tab label ───────────────────────────────────────────────────────────
+
+/// A tab label that shows an icon, text, and an optional numeric badge.
+class _BadgeTab extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final ColorScheme colorScheme;
+
+  const _BadgeTab({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18),
+              const SizedBox(width: 6),
+              Text(label),
+            ],
+          ),
+        ),
+        if (count > 0)
+          Positioned(
+            right: -4,
+            top: -6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: colorScheme.error,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onError,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ── Pending (sent) request card ───────────────────────────────────────────────
+
+/// Card shown in the Pending tab for an outgoing friend request.
+class _PendingRequestCard extends StatelessWidget {
+  final SentRequest request;
+  final ColorScheme colorScheme;
+  final VoidCallback onCancel;
+
+  const _PendingRequestCard({
+    required this.request,
+    required this.colorScheme,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final displayHandle = request.displayHandle;
+    final initial = displayHandle.isNotEmpty ? displayHandle[0] : '?';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor:
+                colorScheme.secondaryContainer.withAlpha(160),
+            child: Text(
+              initial.toUpperCase(),
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSecondaryContainer,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayHandle,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'Awaiting response',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: onCancel,
+            style: TextButton.styleFrom(
+              foregroundColor: colorScheme.error,
+            ),
+            child: const Text('Cancel'),
+          ),
+        ],
       ),
     );
   }
