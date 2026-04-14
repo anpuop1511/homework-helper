@@ -500,16 +500,23 @@ class DatabaseService {
       },
     );
 
-    // 3. Add accepter to sender's friends (two-way sync in the same batch).
-    batch.set(
-      _friendsCol(request.fromUid).doc(request.toUid),
-      currentUserData,
-    );
-
-    // 4. Clean up the accepter's incoming subcollection entry.
+    // 3. Clean up the accepter's incoming subcollection entry.
     batch.delete(_friendRequestsCol(request.toUid).doc(request.id));
 
+    // Commit the primary batch first.  This marks the request as accepted and
+    // adds the sender to the accepter's friends list — both operations are scoped
+    // to the accepter's own documents and should always succeed.
     await batch.commit();
+
+    // 4. Best-effort: add the accepter to the sender's friends list (two-way sync).
+    //    This write targets the sender's sub-collection, which may be restricted by
+    //    Firestore security rules on some configurations.  A failure here is
+    //    non-fatal — the accept has already been committed above.
+    try {
+      await _friendsCol(request.fromUid).doc(request.toUid).set(currentUserData);
+    } catch (e) {
+      debugPrint('[DatabaseService] acceptFriendRequest two-way sync failed (non-fatal): $e');
+    }
   }
 
   Future<void> declineFriendRequest(String requestId, {String? targetUid}) async {
