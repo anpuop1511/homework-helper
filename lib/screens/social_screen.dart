@@ -420,19 +420,60 @@ class _SocialScreenState extends State<SocialScreen>
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: colorScheme.surface,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: Text(
-          'Social Quad',
-          style: GoogleFonts.lexend(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: colorScheme.onSurface,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                _kElectricBlue.withAlpha(22),
+                colorScheme.primaryContainer.withAlpha(35),
+                colorScheme.surface,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: _kElectricBlue.withAlpha(28),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.groups_2_rounded,
+                color: _kElectricBlue,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Social Quad',
+              style: GoogleFonts.lexend(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSurface,
+              ),
+            ),
+          ],
         ),
         bottom: TabBar(
           controller: _tabController,
+          indicator: BoxDecoration(
+            color: _kElectricBlue.withAlpha(28),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _kElectricBlue.withAlpha(80), width: 1),
+          ),
+          indicatorSize: TabBarIndicatorSize.tab,
+          indicatorPadding:
+              const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          labelColor: _kElectricBlue,
+          unselectedLabelColor: colorScheme.onSurfaceVariant,
+          dividerColor: Colors.transparent,
           labelStyle: GoogleFonts.lexend(
             fontWeight: FontWeight.w700,
             fontSize: 13,
@@ -508,10 +549,18 @@ class _SocialScreenState extends State<SocialScreen>
                   Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 4),
+                        horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer,
+                      gradient: LinearGradient(
+                        colors: [
+                          _kElectricBlue.withAlpha(35),
+                          colorScheme.primaryContainer.withAlpha(180),
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: _kElectricBlue.withAlpha(70)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -519,15 +568,15 @@ class _SocialScreenState extends State<SocialScreen>
                         Icon(
                           Icons.alternate_email_rounded,
                           size: 14,
-                          color: colorScheme.onPrimaryContainer,
+                          color: _kElectricBlue,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 5),
                         Text(
                           myHandle,
                           style: GoogleFonts.outfit(
                             fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.w700,
+                            color: _kElectricBlue,
                           ),
                         ),
                       ],
@@ -642,18 +691,33 @@ class _SocialScreenState extends State<SocialScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.notifications_none_rounded,
-                  size: 48,
-                  color: colorScheme.onSurfaceVariant.withAlpha(140)),
-              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      _kElectricBlue.withAlpha(22),
+                      colorScheme.primaryContainer.withAlpha(60),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.notifications_none_rounded,
+                    size: 48,
+                    color: _kElectricBlue.withAlpha(200)),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'No incoming requests',
                 style: GoogleFonts.lexend(
                   fontWeight: FontWeight.w700,
+                  fontSize: 16,
                   color: colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
                 'When someone sends you a friend request it will appear here.',
                 textAlign: TextAlign.center,
@@ -723,18 +787,33 @@ class _SocialScreenState extends State<SocialScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.schedule_rounded,
-                  size: 48,
-                  color: colorScheme.onSurfaceVariant.withAlpha(140)),
-              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      colorScheme.tertiary.withAlpha(22),
+                      colorScheme.tertiaryContainer.withAlpha(80),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.schedule_rounded,
+                    size: 48,
+                    color: colorScheme.tertiary.withAlpha(200)),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'No pending requests',
                 style: GoogleFonts.lexend(
                   fontWeight: FontWeight.w700,
+                  fontSize: 16,
                   color: colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
                 'Sent friend requests waiting for a response will appear here.',
                 textAlign: TextAlign.center,
@@ -847,21 +926,42 @@ class _PendingRequestCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.surfaceContainerLow,
+            colorScheme.surface,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outlineVariant),
+        border: Border.all(color: colorScheme.outlineVariant.withAlpha(160)),
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor:
-                colorScheme.secondaryContainer.withAlpha(160),
-            child: Text(
-              initial.toUpperCase(),
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: colorScheme.onSecondaryContainer,
+          Container(
+            padding: const EdgeInsets.all(2.5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  colorScheme.primary.withAlpha(80),
+                  colorScheme.primaryContainer,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: CircleAvatar(
+              radius: 21,
+              backgroundColor:
+                  colorScheme.secondaryContainer.withAlpha(180),
+              child: Text(
+                initial.toUpperCase(),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSecondaryContainer,
+                ),
               ),
             ),
           ),
@@ -875,12 +975,20 @@ class _PendingRequestCard extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w700),
                   overflow: TextOverflow.ellipsis,
                 ),
-                Text(
-                  'Awaiting response',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                Row(
+                  children: [
+                    Icon(Icons.schedule_rounded,
+                        size: 11,
+                        color: colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 3),
+                    Text(
+                      'Awaiting response',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -890,6 +998,8 @@ class _PendingRequestCard extends StatelessWidget {
             onPressed: onCancel,
             style: TextButton.styleFrom(
               foregroundColor: colorScheme.error,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             ),
             child: const Text('Cancel'),
           ),
@@ -1021,39 +1131,72 @@ class _QsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: data.disabled
-          ? data.color.withAlpha(100)
-          : data.color,
-      borderRadius: BorderRadius.circular(24),
-      child: InkWell(
-        onTap: data.disabled ? null : data.onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                data.icon,
-                color: data.disabled
-                    ? data.foreground.withAlpha(100)
-                    : data.foreground,
-                size: 28,
-              ),
-              const Spacer(),
-              Text(
-                data.label,
-                style: GoogleFonts.lexend(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: data.disabled
-                      ? data.foreground.withAlpha(100)
-                      : data.foreground,
+    final active = !data.disabled;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: active
+            ? LinearGradient(
+                colors: [
+                  data.color,
+                  // Blend 14% toward the foreground for a subtle sheen gradient
+                  Color.lerp(data.color, data.foreground, 0.14)!,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+        color: active ? null : data.color.withAlpha(60),
+        boxShadow: active
+            ? [
+                BoxShadow(
+                  color: data.foreground.withAlpha(45),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              ]
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: active ? data.onTap : null,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color:
+                        data.foreground.withAlpha(active ? 32 : 16),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    data.icon,
+                    color: active
+                        ? data.foreground
+                        : data.foreground.withAlpha(100),
+                    size: 20,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  data.label,
+                  style: GoogleFonts.lexend(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    color: active
+                        ? data.foreground
+                        : data.foreground.withAlpha(100),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1138,20 +1281,49 @@ class _RequestCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: colorScheme.secondaryContainer.withAlpha(120),
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.secondaryContainer.withAlpha(130),
+            colorScheme.surface,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outlineVariant),
+        border: Border.all(
+            color: _kElectricBlue.withAlpha(50)),
+        boxShadow: [
+          BoxShadow(
+            color: _kElectricBlue.withAlpha(18),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: colorScheme.secondaryContainer,
-            child: Text(
-              initial.toUpperCase(),
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: colorScheme.onSecondaryContainer,
+          Container(
+            padding: const EdgeInsets.all(2.5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  _kElectricBlue.withAlpha(180),
+                  colorScheme.primary.withAlpha(120),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: CircleAvatar(
+              radius: 21,
+              backgroundColor: colorScheme.secondaryContainer,
+              child: Text(
+                initial.toUpperCase(),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSecondaryContainer,
+                ),
               ),
             ),
           ),
@@ -1178,16 +1350,38 @@ class _RequestCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          IconButton.filledTonal(
-            icon: const Icon(Icons.check_rounded),
-            tooltip: 'Accept',
-            onPressed: onAccept,
-            style: IconButton.styleFrom(
-              backgroundColor: colorScheme.primaryContainer,
-              foregroundColor: colorScheme.onPrimaryContainer,
+          // Accept button with gradient
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF007FFF), Color(0xFF0050C8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: _kElectricBlue.withAlpha(90),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: onAccept,
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(Icons.check_rounded,
+                      color: Colors.white, size: 22),
+                ),
+              ),
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           IconButton.filledTonal(
             icon: const Icon(Icons.close_rounded),
             tooltip: 'Decline',
@@ -1229,27 +1423,61 @@ class _FriendCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.surfaceContainerLow,
+            colorScheme.surface,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outlineVariant),
+        border: Border.all(color: colorScheme.outlineVariant.withAlpha(160)),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withAlpha(18),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: colorScheme.primaryContainer,
-            backgroundImage: friend.photoUrl != null && friend.photoUrl!.isNotEmpty
-                ? NetworkImage(friend.photoUrl!)
-                : null,
-            child: friend.photoUrl == null || friend.photoUrl!.isEmpty
-                ? Text(
-                    friend.initials,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
-                  )
-                : null,
+          // Avatar with gradient ring based on passType
+          Container(
+            padding: const EdgeInsets.all(2.5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: friend.passType == 'premium'
+                    ? const [Color(0xFFFFD700), Color(0xFFFF8C00)]
+                    : friend.passType == 'plus'
+                        ? const [Color(0xFF007FFF), Color(0xFF4FC3F7)]
+                        : [
+                            colorScheme.primary.withAlpha(100),
+                            colorScheme.primaryContainer,
+                          ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: CircleAvatar(
+              radius: 21,
+              backgroundColor: colorScheme.primaryContainer,
+              backgroundImage:
+                  friend.photoUrl != null && friend.photoUrl!.isNotEmpty
+                      ? NetworkImage(friend.photoUrl!)
+                      : null,
+              child: friend.photoUrl == null || friend.photoUrl!.isEmpty
+                  ? Text(
+                      friend.initials,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                    )
+                  : null,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1389,26 +1617,48 @@ class _EmptyFriendsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
+        gradient: LinearGradient(
+          colors: [
+            _kElectricBlue.withAlpha(12),
+            colorScheme.surfaceContainerLow,
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colorScheme.outlineVariant),
+        border: Border.all(color: _kElectricBlue.withAlpha(40)),
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.group_outlined,
-            size: 48,
-            color: colorScheme.onSurfaceVariant.withAlpha(140),
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  _kElectricBlue.withAlpha(22),
+                  colorScheme.primaryContainer.withAlpha(80),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.group_outlined,
+              size: 48,
+              color: _kElectricBlue.withAlpha(200),
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Text(
             'No friends yet',
-            style: TextStyle(
+            style: GoogleFonts.lexend(
               fontWeight: FontWeight.w700,
+              fontSize: 16,
               color: colorScheme.onSurface,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             'Search by @username above to add friends\nor use "Bump to Study" to connect instantly!',
             textAlign: TextAlign.center,

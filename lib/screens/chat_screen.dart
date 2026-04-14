@@ -290,11 +290,19 @@ class _ChatScreenState extends State<ChatScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Quick questions',
-                    style: textTheme.labelMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                  Row(
+                    children: [
+                      const Icon(Icons.auto_awesome,
+                          size: 15, color: _kElectricBlue),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Quick questions',
+                        style: textTheme.labelMedium?.copyWith(
+                          color: _kElectricBlue,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -302,9 +310,23 @@ class _ChatScreenState extends State<ChatScreen>
                     runSpacing: 6,
                     children: _quickPrompts.map((prompt) {
                       return ActionChip(
-                        label: Text(prompt),
+                        label: Text(
+                          prompt,
+                          style: const TextStyle(
+                            color: _kElectricBlue,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
                         onPressed: () => _sendMessage(prompt),
-                        avatar: const Icon(Icons.lightbulb_outline, size: 16),
+                        avatar: const Icon(Icons.lightbulb_outline,
+                            size: 15, color: _kElectricBlue),
+                        backgroundColor: _kElectricBlue.withAlpha(16),
+                        side: BorderSide(
+                            color: _kElectricBlue.withAlpha(65)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                       );
                     }).toList(),
                   ),
@@ -688,12 +710,16 @@ class _InlineWaveform extends StatelessWidget {
         padding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: colorScheme.secondaryContainer,
+          color: colorScheme.surfaceContainerHighest,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
             bottomRight: Radius.circular(20),
             bottomLeft: Radius.circular(4),
+          ),
+          border: Border(
+            left: BorderSide(
+                color: _kElectricBlue.withAlpha(170), width: 2.5),
           ),
         ),
         child: _WaveformBars(controller: waveController, barCount: 7),
@@ -732,27 +758,48 @@ class _GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
           automaticallyImplyLeading: false,
           title: Row(
             children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: colorScheme.primaryContainer,
-                child: Icon(
-                  Icons.smart_toy_rounded,
-                  size: 20,
-                  color: colorScheme.onPrimaryContainer,
+              // Glowing AI avatar
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: _kElectricBlue.withAlpha(110),
+                      blurRadius: 12,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: _kElectricBlue.withAlpha(38),
+                  child: const Icon(
+                    Icons.smart_toy_rounded,
+                    size: 20,
+                    color: _kElectricBlue,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Gemini Study Buddy',
-                    style: textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+                  ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [Color(0xFF007FFF), Color(0xFF4FC3F7)],
+                    ).createShader(bounds),
+                    child: Text(
+                      'Gemini Study Buddy',
+                      style: textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   Text(
-                    isLiveActive ? 'Live Voice Active 🎙️' : 'Powered by Gemini AI',
+                    isLiveActive
+                        ? 'Live Voice Active 🎙️'
+                        : 'Powered by Gemini AI',
                     style: textTheme.bodySmall?.copyWith(
                       color: isLiveActive
                           ? _kElectricBlue
@@ -774,7 +821,9 @@ class _GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
                   isLiveActive
                       ? Icons.graphic_eq_rounded
                       : Icons.mic_external_on_rounded,
-                  color: isLiveActive ? _kElectricBlue : colorScheme.onSurfaceVariant,
+                  color: isLiveActive
+                      ? _kElectricBlue
+                      : colorScheme.onSurfaceVariant,
                 ),
                 tooltip: isLiveActive ? 'Stop Live Voice' : 'Start Live Voice',
                 onPressed: onLivePulse,
@@ -853,15 +902,35 @@ class _MessageBubble extends StatelessWidget {
           padding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: isUser
-                ? colorScheme.primaryContainer
-                : colorScheme.secondaryContainer,
+            gradient: isUser
+                ? const LinearGradient(
+                    colors: [Color(0xFF007FFF), Color(0xFF0050C8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: isUser ? null : colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(20),
               topRight: const Radius.circular(20),
               bottomLeft: Radius.circular(isUser ? 20 : 4),
               bottomRight: Radius.circular(isUser ? 4 : 20),
             ),
+            border: !isUser
+                ? Border(
+                    left: BorderSide(
+                        color: _kElectricBlue.withAlpha(170), width: 2.5),
+                  )
+                : null,
+            boxShadow: [
+              BoxShadow(
+                color: isUser
+                    ? _kElectricBlue.withAlpha(55)
+                    : colorScheme.shadow.withAlpha(18),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: isUser
@@ -872,10 +941,10 @@ class _MessageBubble extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.smart_toy_rounded,
                       size: 14,
-                      color: colorScheme.onSecondaryContainer,
+                      color: _kElectricBlue,
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -883,7 +952,7 @@ class _MessageBubble extends StatelessWidget {
                       style: GoogleFonts.lexend(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: colorScheme.onSecondaryContainer,
+                        color: _kElectricBlue,
                       ),
                     ),
                   ],
@@ -894,8 +963,8 @@ class _MessageBubble extends StatelessWidget {
                 _sanitizeMarkdown(message.text),
                 style: textTheme.bodyMedium?.copyWith(
                   color: isUser
-                      ? colorScheme.onPrimaryContainer
-                      : colorScheme.onSecondaryContainer,
+                      ? Colors.white
+                      : colorScheme.onSurface,
                   height: 1.4,
                 ),
               ),
@@ -906,8 +975,8 @@ class _MessageBubble extends StatelessWidget {
                 style: GoogleFonts.lexend(
                   fontSize: 10,
                   color: isUser
-                      ? colorScheme.onPrimaryContainer.withAlpha(153)
-                      : colorScheme.onSecondaryContainer.withAlpha(153),
+                      ? Colors.white.withAlpha(180)
+                      : colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -957,12 +1026,16 @@ class _TypingIndicatorState extends State<_TypingIndicator>
         padding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: widget.colorScheme.secondaryContainer,
+          color: widget.colorScheme.surfaceContainerHighest,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
             bottomRight: Radius.circular(20),
             bottomLeft: Radius.circular(4),
+          ),
+          border: Border(
+            left: BorderSide(
+                color: _kElectricBlue.withAlpha(170), width: 2.5),
           ),
         ),
         child: SizedBox(
@@ -973,7 +1046,9 @@ class _TypingIndicatorState extends State<_TypingIndicator>
             builder: (_, __) => CustomPaint(
               painter: _DotsPainter(
                 progress: _controller.value,
-                color: widget.colorScheme.onSecondaryContainer,
+                // Electric Blue is the consistent AI accent color; it contrasts
+                // well against surfaceContainerHighest in all M3 theme tones.
+                color: _kElectricBlue,
               ),
             ),
           ),
@@ -1049,8 +1124,16 @@ class _ChatInputBar extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         decoration: BoxDecoration(
           color: colorScheme.surface,
+          boxShadow: [
+            BoxShadow(
+              color: _kElectricBlue.withAlpha(22),
+              blurRadius: 18,
+              offset: const Offset(0, -4),
+            ),
+          ],
           border: Border(
-            top: BorderSide(color: colorScheme.outlineVariant, width: 1),
+            top: BorderSide(
+                color: _kElectricBlue.withAlpha(55), width: 1.5),
           ),
         ),
         child: Row(
@@ -1077,8 +1160,19 @@ class _ChatInputBar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,
                   ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide(
+                        color: colorScheme.outline.withAlpha(45)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide(
+                        color: _kElectricBlue.withAlpha(140),
+                        width: 1.5),
+                  ),
                   filled: true,
-                  fillColor: colorScheme.surfaceContainerHighest,
+                  fillColor: colorScheme.surfaceContainerLow,
                 ),
                 onSubmitted:
                     isLoading || voiceState != _VoiceState.idle ? null : onSend,
@@ -1124,26 +1218,54 @@ class _ChatInputBar extends StatelessWidget {
               ),
               const SizedBox(width: 8),
             ],
-            // Send button
-            FloatingActionButton.small(
-              heroTag: 'send_fab',
-              onPressed: isLoading || voiceState != _VoiceState.idle
-                  ? null
-                  : () => onSend(controller.text),
-              elevation: 0,
-              backgroundColor: isLoading || voiceState != _VoiceState.idle
-                  ? colorScheme.surfaceContainerHighest
-                  : colorScheme.primary,
-              child: isLoading
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: colorScheme.primary,
-                      ),
-                    )
-                  : Icon(Icons.send_rounded, color: colorScheme.onPrimary),
+            // Send button with Electric Blue gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient:
+                    isLoading || voiceState != _VoiceState.idle
+                        ? null
+                        : const LinearGradient(
+                            colors: [
+                              Color(0xFF007FFF),
+                              Color(0xFF0050C8),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                color: isLoading || voiceState != _VoiceState.idle
+                    ? colorScheme.surfaceContainerHighest
+                    : null,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow:
+                    isLoading || voiceState != _VoiceState.idle
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: _kElectricBlue.withAlpha(90),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+              ),
+              child: FloatingActionButton.small(
+                heroTag: 'send_fab',
+                onPressed: isLoading || voiceState != _VoiceState.idle
+                    ? null
+                    : () => onSend(controller.text),
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                child: isLoading
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: colorScheme.primary,
+                        ),
+                      )
+                    : const Icon(Icons.send_rounded,
+                        color: Colors.white),
+              ),
             ),
           ],
         ),
