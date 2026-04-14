@@ -1141,14 +1141,15 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
       _updateResult = null;
     });
     try {
+      // Note: on Flutter Web, browsers block setting the 'User-Agent' header
+      // in XHR requests (it is a forbidden request-header name), which causes
+      // a DOMException and makes the call fail. Only include it on native.
+      final headers = <String, String>{
+        'Accept': 'application/vnd.github+json',
+        if (!kIsWeb) 'User-Agent': 'homework-helper-app',
+      };
       final response = await http
-          .get(
-            Uri.parse(_kGithubReleasesApi),
-            headers: {
-              'Accept': 'application/vnd.github+json',
-              'User-Agent': 'homework-helper-app',
-            },
-          )
+          .get(Uri.parse(_kGithubReleasesApi), headers: headers)
           .timeout(const Duration(seconds: 10));
       if (!mounted) return;
       if (response.statusCode == 200) {
@@ -1225,12 +1226,10 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
         if (mounted) setState(() => _updateResult = null);
         _showSnack('Could not reach GitHub (${response.statusCode})');
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[UpdateChecker] _checkForUpdates error: $e\n$st');
       if (mounted) setState(() => _updateResult = null);
-      final msg = kIsWeb
-          ? 'Update check unavailable on web — visit GitHub to see the latest release.'
-          : 'Update check failed. Check your connection.';
-      _showSnack(msg);
+      _showSnack('Update check failed: $e');
     } finally {
       if (mounted) setState(() => _checkingUpdate = false);
     }
@@ -1248,7 +1247,9 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
   }
 
   List<int> _parseVersion(String v) {
-    final parts = v.split('.');
+    // Strip build metadata (+N) and any leading 'v' before splitting.
+    final clean = v.replaceFirst(RegExp(r'^v'), '').split('+').first;
+    final parts = clean.split('.');
     return List.generate(
         3, (i) => i < parts.length ? (int.tryParse(parts[i]) ?? 0) : 0);
   }
