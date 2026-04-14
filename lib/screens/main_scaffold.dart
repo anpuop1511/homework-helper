@@ -108,13 +108,6 @@ class _MainScaffoldState extends State<MainScaffold> {
     return auth.email?.split('@').first ?? '';
   }
 
-  /// Clamps [_currentIndex] so it stays in range when visible tabs change.
-  void _clampIndex(int maxIndex) {
-    if (_currentIndex >= maxIndex && maxIndex > 0) {
-      setState(() => _currentIndex = maxIndex - 1);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -125,7 +118,9 @@ class _MainScaffoldState extends State<MainScaffold> {
     final hasPendingRequests = social.hasPendingRequests;
 
     final visibleTabs = navBar.visibleTabs;
-    _clampIndex(visibleTabs.length);
+    // Clamp the index without calling setState during build; the displayed
+    // index is safely bounded and _currentIndex self-corrects on next tap.
+    final safeIndex = _currentIndex.clamp(0, visibleTabs.length - 1);
 
     // Build the list of screens matching visible tabs.
     final screens = visibleTabs.map(_screenForTab).toList();
@@ -136,7 +131,7 @@ class _MainScaffoldState extends State<MainScaffold> {
         body: Row(
           children: [
             NavigationRail(
-              selectedIndex: _currentIndex.clamp(0, visibleTabs.length - 1),
+              selectedIndex: safeIndex,
               onDestinationSelected: (index) =>
                   setState(() => _currentIndex = index),
               labelType: NavigationRailLabelType.all,
@@ -175,7 +170,7 @@ class _MainScaffoldState extends State<MainScaffold> {
             ),
             Expanded(
               child: IndexedStack(
-                index: _currentIndex.clamp(0, screens.length - 1),
+                index: safeIndex,
                 children: screens,
               ),
             ),
@@ -189,7 +184,7 @@ class _MainScaffoldState extends State<MainScaffold> {
       body: Stack(
         children: [
           IndexedStack(
-            index: _currentIndex.clamp(0, screens.length - 1),
+            index: safeIndex,
             children: screens,
           ),
           // Floating User Hub button in top-right corner
@@ -201,7 +196,7 @@ class _MainScaffoldState extends State<MainScaffold> {
         ],
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex.clamp(0, visibleTabs.length - 1),
+        selectedIndex: safeIndex,
         onDestinationSelected: (index) =>
             setState(() => _currentIndex = index),
         destinations: visibleTabs.map((tab) {

@@ -274,6 +274,13 @@ class AuthProvider extends ChangeNotifier {
     if (uid == null) return;
     try {
       _username = await DatabaseService.instance.getUsernameForUid(uid);
+      // Persist the refreshed handle so mobile picks it up immediately
+      // on the next cold start.
+      if (_username != null && _username!.isNotEmpty) {
+        SharedPreferences.getInstance()
+            .then((p) => p.setString(_prefUsername, _username!))
+            .ignore();
+      }
       _usernameLoaded = true;
       notifyListeners();
     } catch (_) {
