@@ -1351,7 +1351,7 @@ class _SubjectsSettingsPage extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ).then((_) => ctrl.dispose());
   }
 }
 
