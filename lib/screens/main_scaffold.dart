@@ -18,6 +18,8 @@ import 'chat_screen.dart';
 import 'social_screen.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
+import 'subjects_screen.dart';
+import 'classes_screen.dart';
 
 /// Returns the single character to use as a profile avatar initial.
 /// Skips any leading '@' symbol (e.g. '@anpu' → 'A').
@@ -37,6 +39,10 @@ Widget _screenForTab(NavTab tab) {
       return const ChatScreen();
     case NavTab.social:
       return const SocialScreen();
+    case NavTab.classes:
+      return const ClassesScreen();
+    case NavTab.subjects:
+      return const SubjectsScreen();
   }
 }
 
