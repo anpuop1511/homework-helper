@@ -506,12 +506,16 @@ class _SocialScreenState extends State<SocialScreen>
           ],
         ),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Own @handle chip + web banner ─────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      body: CustomScrollView(
+        slivers: [
+          // ── Header: handle chip + web banner + quick actions ────────
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Own @handle chip + web banner ─────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -631,9 +635,13 @@ class _SocialScreenState extends State<SocialScreen>
               onJoinProject: () => _showJoinProjectSheet(context),
             ),
           ),
+        ],
+      ),
+    ),
 
           // ── Tab content ──────────────────────────────────────────
-          Expanded(
+          SliverFillRemaining(
+            hasScrollBody: true,
             child: TabBarView(
               controller: _tabController,
               children: [

@@ -1,15 +1,21 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../config/secrets.dart';
 import '../models/assignment.dart';
 import '../models/class_model.dart';
 import '../providers/assignments_provider.dart';
+import '../providers/chat_provider.dart';
 import '../providers/classes_provider.dart';
+import '../providers/subjects_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/assignment_card.dart';
 import '../widgets/add_task_sheet.dart';
 import 'subjects_screen.dart' show SubjectFolderSection;
+import 'settings_screen.dart';
 
 /// The main dashboard screen featuring Material 3 Expressive design.
 /// Displays a motivational header, subject filter chips, and assignment list.
@@ -158,10 +164,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Row(
                       children: Subject.allSubjects.map((subject) {
                         final isSelected = _selectedSubject == subject;
+                        final subjects = context.watch<SubjectsProvider>();
+                        final displayLabel = subject == Subject.all
+                            ? subject
+                            : subjects.displayName(subject);
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: FilterChip(
-                            label: Text(subject),
+                            label: Text(displayLabel),
                             selected: isSelected,
                             onSelected: (_) => setState(
                                 () => _selectedSubject = subject),
@@ -275,15 +285,30 @@ class _ClassesSection extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: () => _showClassDialog(context),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add'),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 4),
-                    visualDensity: VisualDensity.compact,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => _showAiImportSheet(context),
+                      icon: const Icon(Icons.auto_awesome_outlined, size: 16),
+                      label: const Text('AI Import'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _showClassDialog(context),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -315,6 +340,15 @@ class _ClassesSection extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => _ClassEditDialog(existing: existing),
+    );
+  }
+
+  void _showAiImportSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _AiClassImportSheet(),
     );
   }
 }
@@ -482,7 +516,6 @@ class _ClassEditDialog extends StatefulWidget {
 class _ClassEditDialogState extends State<_ClassEditDialog> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _descCtrl;
-  late final TextEditingController _subjectCtrl;
   late List<String> _subjects;
 
   @override
@@ -491,7 +524,6 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
     final c = widget.existing;
     _nameCtrl = TextEditingController(text: c?.name ?? '');
     _descCtrl = TextEditingController(text: c?.description ?? '');
-    _subjectCtrl = TextEditingController();
     _subjects = List<String>.from(c?.subjects ?? []);
   }
 
@@ -499,15 +531,17 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
   void dispose() {
     _nameCtrl.dispose();
     _descCtrl.dispose();
-    _subjectCtrl.dispose();
     super.dispose();
   }
 
-  void _addSubject() {
-    final val = _subjectCtrl.text.trim();
-    if (val.isEmpty || _subjects.contains(val)) return;
-    setState(() => _subjects.add(val));
-    _subjectCtrl.clear();
+  void _toggleSubject(String canonical) {
+    setState(() {
+      if (_subjects.contains(canonical)) {
+        _subjects.remove(canonical);
+      } else {
+        _subjects.add(canonical);
+      }
+    });
   }
 
   void _save() {
@@ -535,6 +569,9 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isEditing = widget.existing != null;
+    final allSubjectNames = Subject.allSubjects
+        .where((s) => s != Subject.all)
+        .toList();
 
     return AlertDialog(
       title: Text(isEditing ? 'Edit Class' : 'New Class'),
@@ -561,43 +598,25 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Subjects',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant)),
-            const SizedBox(height: 6),
-            // Subject chips
-            if (_subjects.isNotEmpty)
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: _subjects
-                    .map((s) => Chip(
-                          label: Text(s),
-                          onDeleted: () => setState(() => _subjects.remove(s)),
-                          visualDensity: VisualDensity.compact,
-                        ))
-                    .toList(),
-              ),
+            Text(
+              'Link to Subjects',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant),
+            ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _subjectCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'Add subject…',
-                      isDense: true,
-                    ),
-                    onSubmitted: (_) => _addSubject(),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.add_circle_rounded,
-                      color: colorScheme.primary),
-                  onPressed: _addSubject,
-                  tooltip: 'Add subject',
-                ),
-              ],
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: allSubjectNames.map((canonical) {
+                final isSelected = _subjects.contains(canonical);
+                return FilterChip(
+                  label: Text(canonical),
+                  selected: isSelected,
+                  onSelected: (_) => _toggleSubject(canonical),
+                  showCheckmark: isSelected,
+                  visualDensity: VisualDensity.compact,
+                );
+              }).toList(),
             ),
           ],
         ),
@@ -788,4 +807,304 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
+// ── AI Classroom Import Sheet ─────────────────────────────────────────────────
 
+/// Bottom-sheet that lets the user paste their Google Classroom homepage text.
+/// Gemini extracts class names and subjects, which the user can then confirm.
+class _AiClassImportSheet extends StatefulWidget {
+  const _AiClassImportSheet();
+
+  @override
+  State<_AiClassImportSheet> createState() => _AiClassImportSheetState();
+}
+
+class _AiClassImportSheetState extends State<_AiClassImportSheet> {
+  final _ctrl = TextEditingController();
+  bool _loading = false;
+  String? _error;
+  List<SchoolClass> _parsed = [];
+  final Set<int> _selected = {};
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _import() async {
+    final text = _ctrl.text.trim();
+    if (text.isEmpty) return;
+
+    // Resolve API key: prefer BYOK key, fall back to compile-time key.
+    final chatProvider = context.read<ChatProvider>();
+    final apiKey = chatProvider.customApiKey.isNotEmpty
+        ? chatProvider.customApiKey
+        : AppSecrets.geminiApiKey;
+
+    if (apiKey.isEmpty) {
+      setState(() => _error =
+          'No Gemini API key found.\nGo to Settings → AI & Models to add your key.');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+      _parsed = [];
+      _selected.clear();
+    });
+
+    try {
+      final model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: apiKey);
+      const systemPrompt =
+          'You are a class-name extractor for a homework helper app. '
+          'The user will paste raw text copied from their Google Classroom homepage. '
+          'Extract ONLY actual class/course names (e.g. "AP Biology", "Math 101"). '
+          'Ignore assignment names, announcements, teacher names, and dates. '
+          'For each class, also suggest the best matching subject from this list: '
+          'Math, Science, History, English, Art, Music, P.E., Other. '
+          'Return a JSON array like: '
+          '[{"name":"AP Biology","subject":"Science"},{"name":"Pre-Calc","subject":"Math"}]. '
+          'Return ONLY the JSON array, nothing else.';
+
+      final response = await model.generateContent([
+        Content.text('$systemPrompt\n\nClassroom text:\n$text'),
+      ]);
+
+      final raw = response.text ?? '';
+      // Strip markdown code fences if present.
+      final jsonStr =
+          raw.replaceAll('```json', '').replaceAll('```', '').trim();
+      final List<dynamic> items = json.decode(jsonStr) as List<dynamic>;
+      final classes = items.map((item) {
+        final m = item as Map<String, dynamic>;
+        return SchoolClass(
+          id: '',
+          name: (m['name'] as String? ?? '').trim(),
+          subjects: [
+            if ((m['subject'] as String?)?.isNotEmpty == true)
+              m['subject'] as String,
+          ],
+        );
+      }).where((c) => c.name.isNotEmpty).toList();
+
+      setState(() {
+        _parsed = classes;
+        _selected.addAll(List.generate(classes.length, (i) => i));
+      });
+    } catch (e) {
+      setState(() =>
+          _error = 'Failed to parse classes.\nCheck your API key and try again.\n\nDetails: $e');
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _addSelected() async {
+    final classesProvider = context.read<ClassesProvider>();
+    for (final i in _selected) {
+      if (i < _parsed.length) {
+        await classesProvider.addClass(_parsed[i]);
+      }
+    }
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              '${_selected.length} class${_selected.length == 1 ? '' : 'es'} added! 🎉'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final keySet = context.watch<ChatProvider>().customApiKey.isNotEmpty ||
+        AppSecrets.geminiApiKey.isNotEmpty;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (_, scrollCtrl) => Container(
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
+        ),
+        child: ListView(
+          controller: scrollCtrl,
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              '🤖 AI Classroom Import',
+              style: GoogleFonts.lexend(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Paste the text from your Google Classroom homepage. '
+              'Gemini will extract your class names and suggest subjects.',
+              style: TextStyle(
+                fontSize: 13,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            if (!keySet) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.vpn_key_rounded,
+                        color: colorScheme.onErrorContainer, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'No Gemini API key set. Add one in Settings → AI & Models.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const SettingsScreen()),
+                        );
+                      },
+                      child: const Text('Settings'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            TextField(
+              controller: _ctrl,
+              maxLines: 6,
+              decoration: InputDecoration(
+                hintText: 'Paste Google Classroom homepage text here…',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                filled: true,
+                fillColor: colorScheme.surfaceContainerLow,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _loading ? null : _import,
+                icon: _loading
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: colorScheme.onPrimary),
+                      )
+                    : const Icon(Icons.auto_awesome_rounded, size: 18),
+                label: Text(_loading ? 'Analyzing…' : 'Extract Classes'),
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  _error!,
+                  style: TextStyle(
+                      fontSize: 12, color: colorScheme.onErrorContainer),
+                ),
+              ),
+            ],
+            if (_parsed.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Text(
+                'Found ${_parsed.length} class${_parsed.length == 1 ? '' : 'es'} — select to add:',
+                style: GoogleFonts.lexend(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ..._parsed.asMap().entries.map((e) {
+                final i = e.key;
+                final cls = e.value;
+                final sel = _selected.contains(i);
+                return CheckboxListTile(
+                  value: sel,
+                  onChanged: (v) => setState(() {
+                    if (v == true) {
+                      _selected.add(i);
+                    } else {
+                      _selected.remove(i);
+                    }
+                  }),
+                  title: Text(cls.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: cls.subjects.isNotEmpty
+                      ? Text(cls.subjects.join(', '))
+                      : null,
+                  secondary: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.school_rounded,
+                        size: 18, color: colorScheme.onPrimaryContainer),
+                  ),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                );
+              }),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _selected.isEmpty ? null : _addSelected,
+                  child: Text(
+                      'Add ${_selected.length} Class${_selected.length == 1 ? '' : 'es'}'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -5,12 +5,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../models/assignment.dart';
 import '../providers/assignments_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/nav_bar_provider.dart';
 import '../providers/security_provider.dart';
 import '../providers/social_provider.dart';
+import '../providers/subjects_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import 'username_screen.dart';
@@ -66,6 +68,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       subtitle: 'Reorder & hide bottom bar tabs',
     ),
     _CategoryData(
+      icon: Icons.folder_rounded,
+      color: Color(0xFFBF6900),
+      title: 'Subjects',
+      subtitle: 'Rename subjects (e.g. Science → Bio)',
+    ),
+    _CategoryData(
       icon: Icons.notifications_rounded,
       color: Color(0xFFE64A19),
       title: 'Notifications',
@@ -105,6 +113,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         break;
       case 'Navigation':
         page = const _NavigationSettingsPage();
+        break;
+      case 'Subjects':
+        page = const _SubjectsSettingsPage();
         break;
       case 'Notifications':
         page = const _NotificationsSettingsPage();
@@ -1065,7 +1076,8 @@ class _NavigationSettingsPage extends StatelessWidget {
       children: [
         Text(
           'Customise your bottom navigation bar.\n'
-          'Drag rows to reorder tabs; toggle to show or hide them.',
+          'Drag rows to reorder tabs; toggle to show or hide them.\n'
+          'The Home tab is always visible and cannot be hidden.',
           style: textTheme.bodySmall
               ?.copyWith(color: colorScheme.onSurfaceVariant),
         ),
@@ -1133,26 +1145,211 @@ class _NavTabRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final canHide =
-        context.watch<NavBarProvider>().visibleTabs.length > 1 || isHidden;
+    final navBar = context.watch<NavBarProvider>();
+    final isHome = tab == NavTab.home;
+    // Home can never be hidden; other tabs can be hidden only if at least
+    // one non-home tab remains visible.
+    final nonHomeVisible = navBar.visibleTabs
+        .where((t) => t != NavTab.home)
+        .length;
+    final canHide = !isHome && (nonHomeVisible > 1 || isHidden);
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 8),
       leading: ReorderableDragStartListener(
         index: index,
         child: const Icon(Icons.drag_handle_rounded),
       ),
-      title: Text(
-        tab.label,
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          color: isHidden ? colorScheme.onSurfaceVariant : colorScheme.onSurface,
-        ),
+      title: Row(
+        children: [
+          Text(
+            tab.label,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: isHidden
+                  ? colorScheme.onSurfaceVariant
+                  : colorScheme.onSurface,
+            ),
+          ),
+          if (isHome) ...[
+            const SizedBox(width: 6),
+            Icon(Icons.lock_outline_rounded,
+                size: 14, color: colorScheme.onSurfaceVariant),
+          ],
+        ],
       ),
-      trailing: Switch(
-        value: !isHidden,
-        onChanged: canHide
-            ? (v) => context.read<NavBarProvider>().toggleTab(tab, visible: v)
-            : null,
+      subtitle: isHome
+          ? Text(
+              'Always visible',
+              style: TextStyle(
+                fontSize: 11,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            )
+          : null,
+      trailing: isHome
+          ? Icon(Icons.lock_rounded,
+              size: 20, color: colorScheme.onSurfaceVariant)
+          : Switch(
+              value: !isHidden,
+              onChanged: canHide
+                  ? (v) =>
+                      context.read<NavBarProvider>().toggleTab(tab, visible: v)
+                  : null,
+            ),
+    );
+  }
+}
+
+// ── Subjects (custom names) ──────────────────────────────────────────────────
+
+/// Settings page that lets users rename each built-in subject.
+/// For example, "Science" → "Bio".
+class _SubjectsSettingsPage extends StatelessWidget {
+  const _SubjectsSettingsPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final subjectsProvider = context.watch<SubjectsProvider>();
+
+    final subjects =
+        Subject.allSubjects.where((s) => s != Subject.all).toList();
+
+    return _CategoryPage(
+      title: 'Subjects',
+      children: [
+        Text(
+          'Rename any subject to better match your school\'s terminology.\n'
+          'Custom names appear everywhere in the app.',
+          style: textTheme.bodySmall
+              ?.copyWith(color: colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 12),
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: Column(
+            children: subjects.asMap().entries.map((e) {
+              final i = e.key;
+              final canonical = e.value;
+              final customName = subjectsProvider.displayName(canonical);
+              final hasCustom = subjectsProvider.hasCustomName(canonical);
+              return Column(
+                children: [
+                  if (i != 0) Divider(color: colorScheme.outlineVariant, height: 1),
+                  ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.folder_rounded,
+                          color: colorScheme.onSecondaryContainer, size: 20),
+                    ),
+                    title: Text(
+                      hasCustom ? customName : canonical,
+                      style: textTheme.bodyLarge
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: hasCustom
+                        ? Text(
+                            'Default: $canonical',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          )
+                        : null,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (hasCustom)
+                          IconButton(
+                            icon: Icon(Icons.undo_rounded,
+                                size: 18, color: colorScheme.onSurfaceVariant),
+                            tooltip: 'Reset to default',
+                            onPressed: () => subjectsProvider.setCustomName(canonical, ''),
+                          ),
+                        IconButton(
+                          icon: Icon(Icons.edit_outlined,
+                              size: 18, color: colorScheme.primary),
+                          tooltip: 'Rename',
+                          onPressed: () =>
+                              _showRenameDialog(context, canonical, customName),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              context.read<SubjectsProvider>().resetAll();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Subject names reset to defaults.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            icon: const Icon(Icons.restore_rounded, size: 18),
+            label: const Text('Reset All to Defaults'),
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showRenameDialog(
+      BuildContext context, String canonical, String currentDisplay) {
+    final ctrl = TextEditingController(
+        text: currentDisplay == canonical ? '' : currentDisplay);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Rename "$canonical"'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: canonical,
+            labelText: 'Custom name',
+          ),
+          textCapitalization: TextCapitalization.words,
+          onSubmitted: (_) {
+            context.read<SubjectsProvider>().setCustomName(canonical, ctrl.text);
+            Navigator.pop(ctx);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              context.read<SubjectsProvider>().setCustomName(canonical, ctrl.text);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/assignment.dart';
 import '../providers/assignments_provider.dart';
+import '../providers/subjects_provider.dart';
 import '../widgets/assignment_card.dart';
 import '../widgets/add_task_sheet.dart';
 
@@ -292,7 +293,7 @@ class _SubjectFolderState extends State<_SubjectFolder>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.subject,
+                          context.watch<SubjectsProvider>().displayName(widget.subject),
                           style: widget.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),

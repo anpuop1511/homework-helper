@@ -15,11 +15,13 @@ import 'providers/nav_bar_provider.dart';
 import 'providers/projects_provider.dart';
 import 'providers/security_provider.dart';
 import 'providers/social_provider.dart';
+import 'providers/subjects_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/database_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
+import 'screens/feature_drop_screen.dart';
 import 'screens/group_projects_screen.dart';
 import 'screens/join_invite_screen.dart';
 import 'screens/login_screen.dart';
@@ -47,6 +49,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => SecurityProvider()),
         ChangeNotifierProvider(create: (_) => NavBarProvider()),
+        ChangeNotifierProvider(create: (_) => SubjectsProvider()),
         ChangeNotifierProvider(
           create: (_) => AuthProvider(
             firebaseReady: firebaseReady,
@@ -222,8 +225,30 @@ class _AuthGateState extends State<_AuthGate> {
     _loadTimer?.cancel();
     _loadTimer = null;
 
-    return const MainScaffold();
+    return const _FeatureDropGate(child: MainScaffold());
   }
+}
+
+/// Wraps [MainScaffold] and triggers the Feature Drop splash once per update.
+class _FeatureDropGate extends StatefulWidget {
+  final Widget child;
+  const _FeatureDropGate({required this.child});
+
+  @override
+  State<_FeatureDropGate> createState() => _FeatureDropGateState();
+}
+
+class _FeatureDropGateState extends State<_FeatureDropGate> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) showFeatureDropIfNeeded(context);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Root widget for the Homework Helper application.
