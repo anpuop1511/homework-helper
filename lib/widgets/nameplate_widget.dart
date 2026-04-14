@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -99,11 +100,19 @@ Color? nameColorValue(String id) {
   }
 }
 
+/// Returns `true` when the nameplate ID uses a looping animation.
+bool isAnimatedNameplate(String id) {
+  return id == 'animated_golden_cherry_blossom';
+}
+
 /// Renders a username (or any text) inside a coloured nameplate background.
 ///
-/// When [nameplateId] is empty or unknown the widget simply returns the [child]
-/// (or a plain text of [username]) without any decoration.
-class NameplateWidget extends StatelessWidget {
+/// When [nameplateId] is the Tier-50 animated golden cherry blossom the
+/// gradient sweeps continuously left-to-right in a shimmer loop.  All other
+/// nameplates render a static linear gradient.
+///
+/// When [nameplateId] is empty or unknown the widget simply renders plain text.
+class NameplateWidget extends StatefulWidget {
   /// The text to display (typically the user's @handle or display name).
   final String username;
 
@@ -122,11 +131,104 @@ class NameplateWidget extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final colors = nameplateGradientColors(nameplateId);
-    if (colors.isEmpty || username.isEmpty) return const SizedBox.shrink();
+  State<NameplateWidget> createState() => _NameplateWidgetState();
+}
 
-    final fg = nameplateForegroundColor(nameplateId);
+class _NameplateWidgetState extends State<NameplateWidget>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    );
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+    if (isAnimatedNameplate(widget.nameplateId)) {
+      _ctrl.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(NameplateWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (isAnimatedNameplate(widget.nameplateId)) {
+      if (!_ctrl.isAnimating) _ctrl.repeat(reverse: true);
+    } else {
+      _ctrl.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = nameplateGradientColors(widget.nameplateId);
+    if (colors.isEmpty || widget.username.isEmpty) return const SizedBox.shrink();
+
+    final fg = nameplateForegroundColor(widget.nameplateId);
+    final animated = isAnimatedNameplate(widget.nameplateId);
+
+    if (animated) {
+      return AnimatedBuilder(
+        animation: _anim,
+        builder: (context, child) {
+          // Sweep the shimmer highlight from left-to-right and back.
+          final t = _anim.value;
+          // Base colors for animated_golden_cherry_blossom
+          const List<Color> baseColors = [
+            Color(0xFFFFD700),
+            Color(0xFFFFB347),
+            Color(0xFFFF69B4),
+            Color(0xFFFFD700),
+          ];
+          // Shimmer highlight positioned along the gradient.
+          final shimmerPos = t;
+          final shimmerColors = [
+            baseColors[0],
+            Color.lerp(baseColors[1], Colors.white, 0.6 * math.sin(math.pi * shimmerPos))!,
+            baseColors[2],
+            baseColors[3],
+          ];
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: shimmerColors,
+                begin: Alignment(-1.0 + 2.0 * t, 0),
+                end: Alignment(1.0 + 2.0 * t, 0),
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFD700).withAlpha(
+                    (80 + 80 * math.sin(math.pi * t)).round(),
+                  ),
+                  blurRadius: 8 + 4 * t,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: child,
+          );
+        },
+        child: Text(
+          widget.username,
+          style: GoogleFonts.outfit(
+            fontSize: widget.fontSize,
+            fontWeight: FontWeight.w700,
+            color: fg,
+          ),
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -146,9 +248,9 @@ class NameplateWidget extends StatelessWidget {
         ],
       ),
       child: Text(
-        username,
+        widget.username,
         style: GoogleFonts.outfit(
-          fontSize: fontSize,
+          fontSize: widget.fontSize,
           fontWeight: FontWeight.w700,
           color: fg,
         ),
