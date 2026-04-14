@@ -473,6 +473,10 @@ class SocialProvider extends ChangeNotifier {
           'level': _userProvider?.level ?? 1,
           'totalXp': _userProvider?.totalXp ?? 0,
           'streak': _userProvider?.streak ?? 0,
+          if ((_userProvider?.passType ?? 'free') != 'free')
+            'passType': _userProvider!.passType,
+          if ((_userProvider?.equippedBadge ?? '').isNotEmpty)
+            'equippedBadge': _userProvider!.equippedBadge,
         },
       );
     } catch (e) {
