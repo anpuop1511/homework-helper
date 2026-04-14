@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/assignments_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/nav_bar_provider.dart';
 import '../providers/security_provider.dart';
 import '../providers/social_provider.dart';
 import '../providers/theme_provider.dart';
@@ -59,6 +60,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       subtitle: 'Color theme, vibe palette',
     ),
     _CategoryData(
+      icon: Icons.navigation_rounded,
+      color: Color(0xFF00796B),
+      title: 'Navigation',
+      subtitle: 'Reorder & hide bottom bar tabs',
+    ),
+    _CategoryData(
       icon: Icons.notifications_rounded,
       color: Color(0xFFE64A19),
       title: 'Notifications',
@@ -96,6 +103,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case 'Appearance':
         page = const _AppearanceSettingsPage();
         break;
+      case 'Navigation':
+        page = const _NavigationSettingsPage();
+        break;
       case 'Notifications':
         page = const _NotificationsSettingsPage();
         break;
@@ -119,6 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final auth = context.watch<AuthProvider>();
+    final user = context.watch<UserProvider>();
     final isDev = auth.email == _kDevEmail;
 
     final filtered = _query.isEmpty
@@ -128,6 +139,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 c.title.toLowerCase().contains(_query.toLowerCase()) ||
                 c.subtitle.toLowerCase().contains(_query.toLowerCase()))
             .toList();
+
+    final displayName = auth.username != null && auth.username!.isNotEmpty
+        ? '@${auth.username}'
+        : user.name.isNotEmpty
+            ? user.name
+            : auth.email?.split('@').first ?? '';
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -152,10 +169,90 @@ class _SettingsScreenState extends State<SettingsScreen> {
         top: false,
         child: Column(
           children: [
+            // ── Profile header card ───────────────────────────────────
+            if (auth.isSignedIn)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        colorScheme.primaryContainer.withAlpha(200),
+                        colorScheme.secondaryContainer.withAlpha(120),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Row(
+                    children: [
+                      // Avatar
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              colorScheme.primary,
+                              colorScheme.tertiary,
+                            ],
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            displayName.isNotEmpty
+                                ? (displayName.startsWith('@')
+                                    ? displayName[1].toUpperCase()
+                                    : displayName[0].toUpperCase())
+                                : '?',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: colorScheme.onPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayName,
+                              style: GoogleFonts.lexend(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: colorScheme.onPrimaryContainer,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (auth.email != null)
+                              Text(
+                                auth.email!,
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onPrimaryContainer
+                                      .withAlpha(170),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            const SizedBox(height: 4),
             // ── Search bar ────────────────────────────────────────────
             Padding(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: TextField(
                 controller: _searchController,
                 onChanged: (v) => setState(() => _query = v),
@@ -949,6 +1046,115 @@ class _AppearanceSettingsPage extends StatelessWidget {
       case FriendRequestsPrivacy.nobody:
         return 'Nobody';
     }
+  }
+}
+
+// ── Navigation (customisable bottom bar) ─────────────────────────────────
+
+class _NavigationSettingsPage extends StatelessWidget {
+  const _NavigationSettingsPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final navBar = context.watch<NavBarProvider>();
+
+    return _CategoryPage(
+      title: 'Navigation',
+      children: [
+        Text(
+          'Customise your bottom navigation bar.\n'
+          'Drag rows to reorder tabs; toggle to show or hide them.',
+          style: textTheme.bodySmall
+              ?.copyWith(color: colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 12),
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: ReorderableListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            onReorder: (oldIndex, newIndex) =>
+                context.read<NavBarProvider>().reorderTab(oldIndex, newIndex),
+            children: [
+              for (int i = 0; i < navBar.tabOrder.length; i++)
+                _NavTabRow(
+                  key: ValueKey(navBar.tabOrder[i]),
+                  tab: navBar.tabOrder[i],
+                  isHidden: navBar.isHidden(navBar.tabOrder[i]),
+                  index: i,
+                  colorScheme: colorScheme,
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              context.read<NavBarProvider>().resetToDefaults();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Navigation bar reset to defaults.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            icon: const Icon(Icons.restore_rounded, size: 18),
+            label: const Text('Reset to Defaults'),
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NavTabRow extends StatelessWidget {
+  final NavTab tab;
+  final bool isHidden;
+  final int index;
+  final ColorScheme colorScheme;
+
+  const _NavTabRow({
+    required super.key,
+    required this.tab,
+    required this.isHidden,
+    required this.index,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final canHide =
+        context.watch<NavBarProvider>().visibleTabs.length > 1 || isHidden;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      leading: ReorderableDragStartListener(
+        index: index,
+        child: const Icon(Icons.drag_handle_rounded),
+      ),
+      title: Text(
+        tab.label,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: isHidden ? colorScheme.onSurfaceVariant : colorScheme.onSurface,
+        ),
+      ),
+      trailing: Switch(
+        value: !isHidden,
+        onChanged: canHide
+            ? (v) => context.read<NavBarProvider>().toggleTab(tab, visible: v)
+            : null,
+      ),
+    );
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/nav_bar_provider.dart';
 import '../providers/security_provider.dart';
 import '../providers/social_provider.dart';
 import '../providers/theme_provider.dart';
@@ -25,6 +26,20 @@ String _avatarInitialFor(String displayName) {
   return name.isNotEmpty ? name[0].toUpperCase() : '?';
 }
 
+/// Maps a [NavTab] to its corresponding screen widget.
+Widget _screenForTab(NavTab tab) {
+  switch (tab) {
+    case NavTab.home:
+      return const HomeScreen();
+    case NavTab.focus:
+      return const TimerScreen();
+    case NavTab.helper:
+      return const ChatScreen();
+    case NavTab.social:
+      return const SocialScreen();
+  }
+}
+
 /// The root scaffold of the app with adaptive navigation.
 ///
 /// On **mobile (Android/iOS/web, width < 600 px)**: shows a [NavigationBar]
@@ -44,13 +59,6 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
-
-  static const List<Widget> _screens = [
-    HomeScreen(),
-    TimerScreen(),
-    ChatScreen(),
-    SocialScreen(),
-  ];
 
   /// Use a NavigationRail instead of a BottomNavigationBar on wide screens
   /// (desktop / tablet, width ≥ 600 logical pixels).
@@ -100,13 +108,27 @@ class _MainScaffoldState extends State<MainScaffold> {
     return auth.email?.split('@').first ?? '';
   }
 
+  /// Clamps [_currentIndex] so it stays in range when visible tabs change.
+  void _clampIndex(int maxIndex) {
+    if (_currentIndex >= maxIndex && maxIndex > 0) {
+      setState(() => _currentIndex = maxIndex - 1);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final user = context.watch<UserProvider>();
     final auth = context.watch<AuthProvider>();
     final social = context.watch<SocialProvider>();
+    final navBar = context.watch<NavBarProvider>();
     final hasPendingRequests = social.hasPendingRequests;
+
+    final visibleTabs = navBar.visibleTabs;
+    _clampIndex(visibleTabs.length);
+
+    // Build the list of screens matching visible tabs.
+    final screens = visibleTabs.map(_screenForTab).toList();
 
     if (_useRail) {
       // ── Wide screen: NavigationRail layout ─────────────────────────
@@ -114,38 +136,28 @@ class _MainScaffoldState extends State<MainScaffold> {
         body: Row(
           children: [
             NavigationRail(
-              selectedIndex: _currentIndex,
+              selectedIndex: _currentIndex.clamp(0, visibleTabs.length - 1),
               onDestinationSelected: (index) =>
                   setState(() => _currentIndex = index),
               labelType: NavigationRailLabelType.all,
-              destinations: [
-                const NavigationRailDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: Text('Home'),
-                ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.timer_outlined),
-                  selectedIcon: Icon(Icons.timer_rounded),
-                  label: Text('Focus'),
-                ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.auto_awesome_outlined),
-                  selectedIcon: Icon(Icons.auto_awesome_rounded),
-                  label: Text('Helper'),
-                ),
-                NavigationRailDestination(
-                  icon: Badge(
-                    isLabelVisible: hasPendingRequests,
-                    child: const Icon(Icons.people_outline_rounded),
-                  ),
-                  selectedIcon: Badge(
-                    isLabelVisible: hasPendingRequests,
-                    child: const Icon(Icons.people_rounded),
-                  ),
-                  label: const Text('Social'),
-                ),
-              ],
+              destinations: visibleTabs.map((tab) {
+                final isSocial = tab == NavTab.social;
+                return NavigationRailDestination(
+                  icon: isSocial
+                      ? Badge(
+                          isLabelVisible: hasPendingRequests,
+                          child: Icon(tab.icon),
+                        )
+                      : Icon(tab.icon),
+                  selectedIcon: isSocial
+                      ? Badge(
+                          isLabelVisible: hasPendingRequests,
+                          child: Icon(tab.selectedIcon),
+                        )
+                      : Icon(tab.selectedIcon),
+                  label: Text(tab.label),
+                );
+              }).toList(),
               trailing: Expanded(
                 child: Align(
                   alignment: Alignment.bottomCenter,
@@ -163,8 +175,8 @@ class _MainScaffoldState extends State<MainScaffold> {
             ),
             Expanded(
               child: IndexedStack(
-                index: _currentIndex,
-                children: _screens,
+                index: _currentIndex.clamp(0, screens.length - 1),
+                children: screens,
               ),
             ),
           ],
@@ -177,8 +189,8 @@ class _MainScaffoldState extends State<MainScaffold> {
       body: Stack(
         children: [
           IndexedStack(
-            index: _currentIndex,
-            children: _screens,
+            index: _currentIndex.clamp(0, screens.length - 1),
+            children: screens,
           ),
           // Floating User Hub button in top-right corner
           Positioned(
@@ -189,37 +201,27 @@ class _MainScaffoldState extends State<MainScaffold> {
         ],
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
+        selectedIndex: _currentIndex.clamp(0, visibleTabs.length - 1),
         onDestinationSelected: (index) =>
             setState(() => _currentIndex = index),
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.timer_outlined),
-            selectedIcon: Icon(Icons.timer_rounded),
-            label: 'Focus',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.auto_awesome_outlined),
-            selectedIcon: Icon(Icons.auto_awesome_rounded),
-            label: 'Helper',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: hasPendingRequests,
-              child: const Icon(Icons.people_outline_rounded),
-            ),
-            selectedIcon: Badge(
-              isLabelVisible: hasPendingRequests,
-              child: const Icon(Icons.people_rounded),
-            ),
-            label: 'Social',
-          ),
-        ],
+        destinations: visibleTabs.map((tab) {
+          final isSocial = tab == NavTab.social;
+          return NavigationDestination(
+            icon: isSocial
+                ? Badge(
+                    isLabelVisible: hasPendingRequests,
+                    child: Icon(tab.icon),
+                  )
+                : Icon(tab.icon),
+            selectedIcon: isSocial
+                ? Badge(
+                    isLabelVisible: hasPendingRequests,
+                    child: Icon(tab.selectedIcon),
+                  )
+                : Icon(tab.selectedIcon),
+            label: tab.label,
+          );
+        }).toList(),
       ),
     );
   }
