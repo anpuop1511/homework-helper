@@ -12,6 +12,9 @@ import '../providers/user_provider.dart';
 import 'classroom_screen.dart';
 import 'username_screen.dart';
 
+/// Email of the developer account that can see the hidden debug menu.
+const _kDevEmail = 'anpuop1511@gmail.com';
+
 // ── Settings landing page ─────────────────────────────────────────────────
 
 /// Settings screen – Android-style landing page.
@@ -109,6 +112,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case 'Integrations':
         page = const _IntegrationsSettingsPage();
         break;
+      case 'Developer':
+        page = const _DeveloperMenuPage();
+        break;
       default:
         return;
     }
@@ -119,6 +125,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final auth = context.watch<AuthProvider>();
+    final isDev = auth.email == _kDevEmail;
 
     final filtered = _query.isEmpty
         ? _categories
@@ -199,9 +207,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Expanded(
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                itemCount: filtered.length,
+                itemCount: filtered.length + (isDev ? 1 : 0),
                 separatorBuilder: (_, __) => const SizedBox(height: 10),
                 itemBuilder: (context, i) {
+                  // Developer tile is always last.
+                  if (isDev && i == filtered.length) {
+                    const devCat = _CategoryData(
+                      icon: Icons.bug_report_rounded,
+                      color: Color(0xFFD32F2F),
+                      title: 'Developer',
+                      subtitle: 'Debug tools — dev only',
+                    );
+                    return _SettingsCategoryTile(
+                      data: devCat,
+                      colorScheme: colorScheme,
+                      onTap: () => _openCategory(devCat, context),
+                    );
+                  }
                   final cat = filtered[i];
                   return _SettingsCategoryTile(
                     data: cat,
@@ -1879,6 +1901,181 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+// ── Developer / Debug Menu ─────────────────────────────────────────────────
+
+/// Hidden settings page only accessible to the dev account
+/// ([_kDevEmail] = anpuop1511@gmail.com).
+///
+/// Provides quick shortcuts to inject rewards and reset state for testing.
+class _DeveloperMenuPage extends StatelessWidget {
+  const _DeveloperMenuPage();
+
+  void _grantCoins(BuildContext context) {
+    context.read<UserProvider>().awardCoins(1000);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('🪙 +1000 Coins granted!')),
+    );
+  }
+
+  void _grantSeasonXp(BuildContext context) {
+    context.read<UserProvider>().addSeasonXp(500);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('🌟 +500 Season XP (+5 Tiers) granted!')),
+    );
+  }
+
+  void _grantAccountXp(BuildContext context) {
+    context.read<UserProvider>().awardXp(500);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('⚡ +500 Account XP granted!')),
+    );
+  }
+
+  void _resetPass(BuildContext context) {
+    final user = context.read<UserProvider>();
+    user.setPassType('free');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('🔄 Battle Pass reset to Free.')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          '🐛 Developer Menu',
+          style: GoogleFonts.lexend(fontWeight: FontWeight.w700),
+        ),
+        backgroundColor: const Color(0xFFD32F2F),
+        foregroundColor: Colors.white,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            color: colorScheme.surfaceContainerLow,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Economy',
+                    style: GoogleFonts.lexend(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _DevButton(
+                    icon: Icons.monetization_on_rounded,
+                    label: 'Grant 1000 Coins',
+                    color: const Color(0xFFFFD700),
+                    onTap: () => _grantCoins(context),
+                  ),
+                  const SizedBox(height: 8),
+                  _DevButton(
+                    icon: Icons.auto_awesome_rounded,
+                    label: 'Grant 500 Season XP (+5 Tiers)',
+                    color: Colors.purple,
+                    onTap: () => _grantSeasonXp(context),
+                  ),
+                  const SizedBox(height: 8),
+                  _DevButton(
+                    icon: Icons.bolt_rounded,
+                    label: 'Grant 500 Account XP',
+                    color: Colors.orange,
+                    onTap: () => _grantAccountXp(context),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            color: colorScheme.surfaceContainerLow,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Reset',
+                    style: GoogleFonts.lexend(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _DevButton(
+                    icon: Icons.refresh_rounded,
+                    label: 'Reset Battle Pass to Free',
+                    color: colorScheme.error,
+                    onTap: () => _resetPass(context),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DevButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _DevButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.tonal(
+        onPressed: onTap,
+        style: FilledButton.styleFrom(
+          backgroundColor: color.withAlpha(30),
+          foregroundColor: color,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: color.withAlpha(80)),
+          ),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          alignment: Alignment.centerLeft,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
       ),
     );
   }

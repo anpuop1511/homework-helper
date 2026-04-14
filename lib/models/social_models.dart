@@ -11,6 +11,10 @@ class Friend {
   final int totalXp;
   final int streak;
   final String activeNameplate;
+  /// Battle Pass type: 'free', 'plus', or 'premium'.
+  final String passType;
+  /// Currently equipped badge cosmetic ID.
+  final String equippedBadge;
 
   const Friend({
     required this.id,
@@ -22,6 +26,8 @@ class Friend {
     required this.totalXp,
     required this.streak,
     this.activeNameplate = '',
+    this.passType = 'free',
+    this.equippedBadge = '',
   });
 
   String get initials => name.isNotEmpty ? name[0].toUpperCase() : '?';
@@ -41,6 +47,8 @@ class Friend {
         'totalXp': totalXp,
         'streak': streak,
         if (activeNameplate.isNotEmpty) 'activeNameplate': activeNameplate,
+        if (passType != 'free') 'passType': passType,
+        if (equippedBadge.isNotEmpty) 'equippedBadge': equippedBadge,
       };
 
   factory Friend.fromJson(Map<String, dynamic> json) => Friend(
@@ -53,6 +61,8 @@ class Friend {
         totalXp: json['totalXp'] as int? ?? 0,
         streak: json['streak'] as int? ?? 0,
         activeNameplate: json['activeNameplate'] as String? ?? '',
+        passType: json['passType'] as String? ?? 'free',
+        equippedBadge: json['equippedBadge'] as String? ?? '',
       );
 }
 

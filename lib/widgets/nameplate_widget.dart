@@ -34,6 +34,59 @@ Color nameplateForegroundColor(String id) {
   }
 }
 
+/// Returns the emoji for a badge cosmetic ID, or an empty string when unknown.
+///
+/// Handles both direct badge IDs (e.g. `'spring_petal_badge'`) and the
+/// battle-pass prefixed form (e.g. `'badge_blossom_brawler'`).
+String badgeEmoji(String id) {
+  switch (id) {
+    // ── Season-shop / direct badges ─────────────────────────────────────
+    case 'spring_petal_badge':
+      return '🌸';
+    case 'study_streak_frame':
+      return '🔥';
+    case 'night_owl_badge':
+      return '🦉';
+    // ── Battle-pass badges (stored as 'badge_{value}') ──────────────────
+    case 'badge_spring_sprout':
+      return '🌱';
+    case 'badge_blossom_brawler':
+      return '🌸';
+    case 'badge_petal_collector':
+      return '🌼';
+    case 'badge_bloom_scholar':
+      return '📚';
+    case 'badge_blossom_warrior':
+      return '⚔️';
+    case 'badge_sakura_storm':
+      return '🌺';
+    case 'badge_petal_warrior':
+      return '🌺';
+    case 'badge_spring_royale':
+      return '👑';
+    case 'badge_sakura_legend':
+      return '🌟';
+    case 'badge_grand_blossom':
+      return '🌺';
+    default:
+      return '';
+  }
+}
+
+/// Returns the icon string for a Battle Pass type ('plus' → '[+]', 'premium' → '[★]').
+///
+/// Returns an empty string for the free tier.
+String passTypeIcon(String passType) {
+  switch (passType) {
+    case 'plus':
+      return '[+]';
+    case 'premium':
+      return '[★]';
+    default:
+      return '';
+  }
+}
+
 /// Maps a name-color cosmetic ID to a [Color] for the username text.
 Color? nameColorValue(String id) {
   switch (id) {

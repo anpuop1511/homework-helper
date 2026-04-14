@@ -319,6 +319,7 @@ class DatabaseService {
         ? DateTime.fromMillisecondsSinceEpoch(dueMs)
         : DateTime.now().add(const Duration(days: 7));
     final isCompleted = (d['isCompleted'] as bool?) ?? false;
+    final rewardsClaimed = (d['rewardsClaimed'] as bool?) ?? false;
 
     // L-2: subject is stored as its string name since v2.7+.
     // Fall back to index-based lookup for documents written before the migration.
@@ -340,6 +341,7 @@ class DatabaseService {
       subject: subject,
       dueDate: dueDate,
       isCompleted: isCompleted,
+      rewardsClaimed: rewardsClaimed,
     );
   }
 
@@ -349,6 +351,7 @@ class DatabaseService {
         'subject': a.subject,
         'dueDate': a.dueDate.millisecondsSinceEpoch,
         'isCompleted': a.isCompleted,
+        'rewardsClaimed': a.rewardsClaimed,
       };
 
   // ── Social / Friends ─────────────────────────────────────────────────────
@@ -488,6 +491,12 @@ class DatabaseService {
         'level': senderLevel,
         'totalXp': senderTotalXp,
         'streak': senderData?['streak'] as int? ?? 0,
+        if ((senderData?['bp_passType'] as String?) != null &&
+            senderData!['bp_passType'] != 'free')
+          'passType': senderData['bp_passType'],
+        if ((senderData?['bp_equippedBadge'] as String?) != null &&
+            (senderData!['bp_equippedBadge'] as String).isNotEmpty)
+          'equippedBadge': senderData['bp_equippedBadge'],
       },
     );
 

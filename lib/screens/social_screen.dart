@@ -1057,24 +1057,53 @@ class _FriendCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  friend.username.isNotEmpty
-                      ? '@${friend.username}'
-                      : (friend.name.isNotEmpty ? friend.name : 'Unknown user'),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                  overflow: TextOverflow.ellipsis,
+                // Username / display name — wrapped in nameplate if equipped.
+                Row(
+                  children: [
+                    if (friend.activeNameplate.isNotEmpty)
+                      Flexible(
+                        child: NameplateWidget(
+                          username: friend.username.isNotEmpty
+                              ? '@${friend.username}'
+                              : (friend.name.isNotEmpty ? friend.name : 'Unknown user'),
+                          nameplateId: friend.activeNameplate,
+                          fontSize: 12,
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: Text(
+                          friend.username.isNotEmpty
+                              ? '@${friend.username}'
+                              : (friend.name.isNotEmpty ? friend.name : 'Unknown user'),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    // Pass-type icon
+                    if (passTypeIcon(friend.passType).isNotEmpty) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        passTypeIcon(friend.passType),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: friend.passType == 'premium'
+                              ? const Color(0xFFB8860B)
+                              : const Color(0xFF007FFF),
+                        ),
+                      ),
+                    ],
+                    // Equipped badge
+                    if (badgeEmoji(friend.equippedBadge).isNotEmpty) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        badgeEmoji(friend.equippedBadge),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ],
                 ),
-                if (friend.activeNameplate.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 3),
-                    child: NameplateWidget(
-                      username: friend.username.isNotEmpty
-                          ? '@${friend.username}'
-                          : friend.name,
-                      nameplateId: friend.activeNameplate,
-                      fontSize: 10,
-                    ),
-                  ),
                 if (friend.username.isNotEmpty && friend.name.isNotEmpty)
                   Text(
                     friend.name,

@@ -6,12 +6,17 @@ class Assignment {
   final DateTime dueDate;
   bool isCompleted;
 
+  /// True once the XP/Coin/SeasonXP rewards have been claimed for this
+  /// assignment.  Prevents farming by toggling completion repeatedly.
+  bool rewardsClaimed;
+
   Assignment({
     required this.id,
     required this.title,
     required this.subject,
     required this.dueDate,
     this.isCompleted = false,
+    this.rewardsClaimed = false,
   });
 
   /// Creates a copy of this assignment with updated fields.
@@ -21,6 +26,7 @@ class Assignment {
     String? subject,
     DateTime? dueDate,
     bool? isCompleted,
+    bool? rewardsClaimed,
   }) {
     return Assignment(
       id: id ?? this.id,
@@ -28,13 +34,15 @@ class Assignment {
       subject: subject ?? this.subject,
       dueDate: dueDate ?? this.dueDate,
       isCompleted: isCompleted ?? this.isCompleted,
+      rewardsClaimed: rewardsClaimed ?? this.rewardsClaimed,
     );
   }
 
   @override
   String toString() {
     return 'Assignment(id: $id, title: $title, subject: $subject, '
-        'dueDate: $dueDate, isCompleted: $isCompleted)';
+        'dueDate: $dueDate, isCompleted: $isCompleted, '
+        'rewardsClaimed: $rewardsClaimed)';
   }
 
   @override

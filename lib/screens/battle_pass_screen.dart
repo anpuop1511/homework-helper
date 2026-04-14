@@ -176,15 +176,89 @@ class _PassPurchaseSection extends StatelessWidget {
   const _PassPurchaseSection(
       {required this.user, required this.colorScheme});
 
+  /// Shows a "Learn More" dialog with perks before confirming the purchase.
+  void _showPassDialog(BuildContext context, String type, int price) {
+    final isPlus = type == 'plus';
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Text(isPlus ? '⭐' : '🏆', style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 8),
+            Text(
+              isPlus ? 'Plus Pass' : 'Premium Pass',
+              style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Perks included:',
+              style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            if (isPlus) ...[
+              const _PerkRow(emoji: '✅', text: 'Access to the Plus reward track'),
+              const _PerkRow(emoji: '🎁', text: 'Exclusive Plus badges & nameplates'),
+              const _PerkRow(emoji: '[+]', text: '[+] icon shown next to your name'),
+              const _PerkRow(emoji: '🌿', text: 'Spring Mint theme unlock'),
+            ] else ...[
+              const _PerkRow(emoji: '✅', text: 'Access to the Premium reward track'),
+              const _PerkRow(emoji: '🚀', text: '+3 Tiers instantly on purchase'),
+              const _PerkRow(emoji: '🏆', text: 'Golden & Magical Coin Cups'),
+              const _PerkRow(emoji: '✨', text: 'Animated Golden Cherry Blossom Nameplate at Tier 50'),
+              const _PerkRow(emoji: '[★]', text: '[★] icon shown next to your name'),
+              const _PerkRow(emoji: '🌼', text: 'Daffodil & Cherry Blossom themes'),
+            ],
+            const SizedBox(height: 12),
+            Text(
+              'Cost: $price 🪙',
+              style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: isPlus
+                ? null
+                : FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFD700),
+                    foregroundColor: Colors.black87,
+                  ),
+            child: Text('Purchase for $price 🪙'),
+          ),
+        ],
+      ),
+    ).then((confirmed) {
+      if (confirmed != true) return;
+      if (!context.mounted) return;
+      _buyPass(context, type, price);
+    });
+  }
+
   void _buyPass(BuildContext context, String type, int price) {
     final user = context.read<UserProvider>();
     final success = user.spendCoins(price);
     if (success) {
       user.setPassType(type);
+      // Premium Pass bonus: instantly grant +300 Season XP (= +3 tiers).
+      if (type == 'premium') {
+        user.addSeasonXp(300);
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              '🎉 ${type == 'plus' ? 'Plus' : 'Premium'} Pass unlocked!'),
+              '🎉 ${type == 'plus' ? 'Plus' : 'Premium'} Pass unlocked!'
+              '${type == 'premium' ? ' +3 Tiers granted!' : ''}'),
           backgroundColor: Colors.green,
         ),
       );
@@ -254,7 +328,7 @@ class _PassPurchaseSection extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => _buyPass(context, 'plus', 499),
+                onPressed: () => _showPassDialog(context, 'plus', 499),
                 icon: const Text('⭐', style: TextStyle(fontSize: 16)),
                 label: const Text('Unlock Plus Pass — 499 🪙'),
                 style: OutlinedButton.styleFrom(
@@ -270,7 +344,7 @@ class _PassPurchaseSection extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: () => _buyPass(context, 'premium', 999),
+              onPressed: () => _showPassDialog(context, 'premium', 999),
               icon: const Text('🏆', style: TextStyle(fontSize: 16)),
               label: const Text('Unlock Premium Pass — 999 🪙'),
               style: FilledButton.styleFrom(
@@ -281,6 +355,33 @@ class _PassPurchaseSection extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A single perk row shown inside the pass purchase dialog.
+class _PerkRow extends StatelessWidget {
+  final String emoji;
+  final String text;
+
+  const _PerkRow({required this.emoji, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 28,
+            child: Text(emoji, style: const TextStyle(fontSize: 14)),
+          ),
+          Expanded(
+            child: Text(text, style: const TextStyle(fontSize: 13)),
           ),
         ],
       ),
