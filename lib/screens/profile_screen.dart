@@ -255,11 +255,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    displayName,
-                    style: textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  // Display name — wrapped inside nameplate if one is equipped.
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (user.activeNameplate.isNotEmpty)
+                        NameplateWidget(
+                          username: displayName,
+                          nameplateId: user.activeNameplate,
+                          fontSize: 18,
+                        )
+                      else
+                        Text(
+                          displayName,
+                          style: textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      // Pass-type icon
+                      if (user.passType != 'free') ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          passTypeIcon(user.passType),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: user.passType == 'premium'
+                                ? const Color(0xFFB8860B)
+                                : colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                      // Equipped badge
+                      if (user.equippedBadge.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          badgeEmoji(user.equippedBadge),
+                          style: const TextStyle(fontSize: 18),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 4),
                   // @username display (tappable to change).
@@ -287,14 +323,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                  if (user.activeNameplate.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    NameplateWidget(
-                      username: username ?? displayName,
-                      nameplateId: user.activeNameplate,
-                      fontSize: 13,
-                    ),
-                  ],
                   Text(
                     'Level ${user.level} Scholar',
                     style: textTheme.bodyMedium?.copyWith(

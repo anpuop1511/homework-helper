@@ -75,13 +75,18 @@ class AssignmentsProvider extends ChangeNotifier {
   }
 
   /// Toggles the completion state of an assignment by [id].
-  /// Awards XP when an assignment is marked complete.
+  ///
+  /// Rewards (XP / Coins / Season XP) are awarded only the *first* time an
+  /// assignment is checked off.  Once [Assignment.rewardsClaimed] is true,
+  /// unchecking and re-checking yields no further rewards, preventing farming.
   void toggleComplete(String id) {
     final idx = _assignments.indexWhere((a) => a.id == id);
     if (idx != -1) {
       final wasCompleted = _assignments[idx].isCompleted;
       _assignments[idx].isCompleted = !wasCompleted;
-      if (!wasCompleted) {
+      // Award rewards only on the very first completion.
+      if (!wasCompleted && !_assignments[idx].rewardsClaimed) {
+        _assignments[idx].rewardsClaimed = true;
         _userProvider?.awardXp(_xpPerAssignment);
         _userProvider?.awardCoins(_coinsPerAssignment);
         _userProvider?.addSeasonXp(_seasonXpPerAssignment);
