@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import '../providers/chat_provider.dart';
+import 'settings_screen.dart';
 
 // Electric Blue — same as the NFC bump screen glow.
 const Color _kElectricBlue = Color(0xFF007FFF);
@@ -258,6 +259,12 @@ class _ChatScreenState extends State<ChatScreen>
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final chat = context.watch<ChatProvider>();
+
+    // If the user hasn't provided their own Gemini API key, show the setup
+    // screen instead of the normal chat UI.
+    if (chat.customApiKey.isEmpty) {
+      return const _SetupAiScreen();
+    }
 
     // Auto-scroll when new messages arrive
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
@@ -1145,4 +1152,206 @@ class _ChatInputBar extends StatelessWidget {
   }
 }
 
+// ── Setup AI / Under Maintenance screen ─────────────────────────────────────
 
+/// Shown in the AI Chat tab when the user has not yet provided a personal
+/// Gemini API key.  Explains why the built-in key is unavailable and guides
+/// the user through the BYOK (Bring-Your-Own-Key) setup flow.
+class _SetupAiScreen extends StatelessWidget {
+  const _SetupAiScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: colorScheme.surface,
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: colorScheme.primaryContainer,
+              child: Icon(
+                Icons.smart_toy_rounded,
+                size: 20,
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'AI Study Buddy',
+              style: textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Maintenance icon
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.construction_rounded,
+                size: 40,
+                color: colorScheme.onErrorContainer,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              '🔧 Under Maintenance',
+              style: textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w800),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'The built-in Gemini API key has been removed for security.\n'
+              'To use AI features, please provide your own free API key.',
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+
+            // Step-by-step instructions
+            _SetupStep(
+              number: '1',
+              title: 'Visit Google AI Studio',
+              body: 'Go to  aistudio.google.com  and sign in with your Google account.',
+              icon: Icons.open_in_new_rounded,
+              colorScheme: colorScheme,
+              textTheme: textTheme,
+            ),
+            const SizedBox(height: 12),
+            _SetupStep(
+              number: '2',
+              title: 'Get your free API key',
+              body: 'Click "Get API key" → "Create API key". Copy the key that starts with "AIza…".',
+              icon: Icons.vpn_key_rounded,
+              colorScheme: colorScheme,
+              textTheme: textTheme,
+            ),
+            const SizedBox(height: 12),
+            _SetupStep(
+              number: '3',
+              title: 'Paste it in Settings',
+              body: 'Open Settings → AI & Chat → "Your Gemini API Key" and paste the key there.',
+              icon: Icons.settings_rounded,
+              colorScheme: colorScheme,
+              textTheme: textTheme,
+            ),
+            const SizedBox(height: 32),
+
+            // CTA button — navigate to Settings
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              ),
+              icon: const Icon(Icons.settings_rounded),
+              label: const Text('Open Settings'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(200, 48),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'The AI Study Buddy will unlock automatically once your key is saved.',
+              style: textTheme.bodySmall
+                  ?.copyWith(color: colorScheme.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A single numbered step card used in [_SetupAiScreen].
+class _SetupStep extends StatelessWidget {
+  const _SetupStep({
+    required this.number,
+    required this.title,
+    required this.body,
+    required this.icon,
+    required this.colorScheme,
+    required this.textTheme,
+  });
+
+  final String number;
+  final String title;
+  final String body;
+  final IconData icon;
+  final ColorScheme colorScheme;
+  final TextTheme textTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Circle number badge
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: colorScheme.primaryContainer,
+            child: Text(
+              number,
+              style: textTheme.labelLarge?.copyWith(
+                color: colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 16, color: colorScheme.primary),
+                    const SizedBox(width: 6),
+                    Text(
+                      title,
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  body,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

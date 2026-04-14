@@ -2107,7 +2107,7 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
             colorScheme: colorScheme,
             children: [
               _DevButton(
-                icon: Icons.assignment_add_rounded,
+                icon: Icons.add_task_rounded,
                 label: 'Spawn 5 Test Assignments',
                 color: Colors.indigo,
                 onTap: () => _spawnTestAssignments(context),
