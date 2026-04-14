@@ -1063,6 +1063,27 @@ class _FriendCard extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (friend.activeNameplate.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: colorScheme.tertiaryContainer,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        friend.activeNameplate,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onTertiaryContainer,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
                 if (friend.username.isNotEmpty && friend.name.isNotEmpty)
                   Text(
                     friend.name,

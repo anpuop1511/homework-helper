@@ -8,6 +8,7 @@ import '../providers/classroom_provider.dart';
 import '../providers/security_provider.dart';
 import '../providers/social_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/user_provider.dart';
 import 'classroom_screen.dart';
 import 'username_screen.dart';
 
@@ -745,12 +746,20 @@ class _AiModelsSettingsPage extends StatelessWidget {
 class _AppearanceSettingsPage extends StatelessWidget {
   const _AppearanceSettingsPage();
 
+  static const _springVibes = {
+    AppVibe.springMint,
+    AppVibe.cherryBlossom,
+    AppVibe.skyBloom,
+    AppVibe.daffodil,
+  };
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final themeProvider = context.watch<ThemeProvider>();
     final socialProvider = context.watch<SocialProvider>();
+    final userProvider = context.watch<UserProvider>();
     return _CategoryPage(
       title: 'Appearance',
       children: [
@@ -765,6 +774,10 @@ class _AppearanceSettingsPage extends StatelessWidget {
           child: Column(
             children: AppVibe.values.map((vibe) {
               final isSelected = themeProvider.vibe == vibe;
+              final isSpring = _springVibes.contains(vibe);
+              final cosmeticId = 'vibe_${vibe.name}';
+              final isUnlocked = !isSpring ||
+                  userProvider.unlockedCosmetics.contains(cosmeticId);
               final vibeScheme = ColorScheme.fromSeed(
                 seedColor: vibe.seedColor,
                 brightness: Theme.of(context).brightness,
@@ -773,7 +786,35 @@ class _AppearanceSettingsPage extends StatelessWidget {
                 vibe: vibe,
                 vibeScheme: vibeScheme,
                 isSelected: isSelected,
-                onTap: () => context.read<ThemeProvider>().setVibe(vibe),
+                isLocked: !isUnlocked,
+                onTap: () {
+                  if (!isUnlocked) {
+                    showDialog<void>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: Row(
+                          children: [
+                            Text(vibe.emoji),
+                            const SizedBox(width: 8),
+                            Text(vibe.label),
+                          ],
+                        ),
+                        content: const Text(
+                          'This theme is part of the Spring Bloomin\' Battle Pass!\n\n'
+                          'Complete Battle Pass tiers or unlock it in the Season Shop.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Got it'),
+                          ),
+                        ],
+                      ),
+                    );
+                    return;
+                  }
+                  context.read<ThemeProvider>().setVibe(vibe);
+                },
                 showDivider: vibe != AppVibe.values.last,
                 colorScheme: colorScheme,
               );
@@ -1368,6 +1409,7 @@ class _VibeRow extends StatelessWidget {
   final AppVibe vibe;
   final ColorScheme vibeScheme;
   final bool isSelected;
+  final bool isLocked;
   final VoidCallback onTap;
   final bool showDivider;
   final ColorScheme colorScheme;
@@ -1379,6 +1421,7 @@ class _VibeRow extends StatelessWidget {
     required this.onTap,
     required this.showDivider,
     required this.colorScheme,
+    this.isLocked = false,
   });
 
   @override
@@ -1405,21 +1448,37 @@ class _VibeRow extends StatelessWidget {
                 Text(vibe.emoji, style: const TextStyle(fontSize: 18)),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    vibe.label,
-                    style: TextStyle(
-                      fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      color: isSelected
-                          ? colorScheme.primary
-                          : colorScheme.onSurface,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        vibe.label,
+                        style: TextStyle(
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: isSelected
+                              ? colorScheme.primary
+                              : colorScheme.onSurface,
+                        ),
+                      ),
+                      if (isLocked)
+                        Text(
+                          '🔒 Unlock via Battle Pass',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 if (isSelected)
                   Icon(Icons.check_circle_rounded,
                       color: colorScheme.primary, size: 20),
+                if (isLocked && !isSelected)
+                  Icon(Icons.lock_rounded,
+                      color: colorScheme.onSurfaceVariant, size: 18),
               ],
             ),
           ),

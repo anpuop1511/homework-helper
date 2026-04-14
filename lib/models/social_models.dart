@@ -10,6 +10,7 @@ class Friend {
   final int level;
   final int totalXp;
   final int streak;
+  final String activeNameplate;
 
   const Friend({
     required this.id,
@@ -20,6 +21,7 @@ class Friend {
     required this.level,
     required this.totalXp,
     required this.streak,
+    this.activeNameplate = '',
   });
 
   String get initials => name.isNotEmpty ? name[0].toUpperCase() : '?';
@@ -38,6 +40,7 @@ class Friend {
         'level': level,
         'totalXp': totalXp,
         'streak': streak,
+        if (activeNameplate.isNotEmpty) 'activeNameplate': activeNameplate,
       };
 
   factory Friend.fromJson(Map<String, dynamic> json) => Friend(
@@ -49,6 +52,7 @@ class Friend {
         level: json['level'] as int? ?? 1,
         totalXp: json['totalXp'] as int? ?? 0,
         streak: json['streak'] as int? ?? 0,
+        activeNameplate: json['activeNameplate'] as String? ?? '',
       );
 }
 

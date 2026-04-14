@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_service.dart';
 import '../services/widget_service.dart';
 
-/// Manages the user's gamification state: XP, level, and study streak.
+/// Manages the user's gamification state: XP, level, streak, and Battle Pass.
 ///
 /// When a Firebase UID is set (via [setUid]) the provider mirrors all changes
 /// to Cloud Firestore and, on first cloud login, migrates any locally stored
@@ -16,6 +16,15 @@ class UserProvider extends ChangeNotifier {
   static const _prefName = 'user_name';
   static const _prefMigrated = 'cloud_migrated';
 
+  // Battle Pass prefs
+  static const _prefBpCoins = 'bp_coins';
+  static const _prefBpSeasonTier = 'bp_season_tier';
+  static const _prefBpSeasonXp = 'bp_season_xp';
+  static const _prefBpPassType = 'bp_pass_type';
+  static const _prefBpUnlockedCosmetics = 'bp_unlocked_cosmetics';
+  static const _prefBpActiveNameplate = 'bp_active_nameplate';
+  static const _prefBpClaimedTiers = 'bp_claimed_tiers';
+
   /// XP required to advance from level N to N+1 = baseXp * N.
   static const int _baseXp = 100;
 
@@ -26,6 +35,15 @@ class UserProvider extends ChangeNotifier {
   String _bio = '';
   DateTime? _lastActiveDate;
 
+  // Battle Pass fields
+  int _coins = 0;
+  int _seasonTier = 1;
+  int _seasonXp = 0;
+  String _passType = 'free';
+  List<String> _unlockedCosmetics = [];
+  String _activeNameplate = '';
+  List<int> _claimedTiers = [];
+
   /// UID of the currently signed-in Firebase user, or null for guest mode.
   String? _uid;
 
@@ -34,6 +52,15 @@ class UserProvider extends ChangeNotifier {
   int get streak => _streak;
   String get name => _name;
   String get bio => _bio;
+
+  // Battle Pass getters
+  int get coins => _coins;
+  int get seasonTier => _seasonTier;
+  int get seasonXp => _seasonXp;
+  String get passType => _passType;
+  List<String> get unlockedCosmetics => List.unmodifiable(_unlockedCosmetics);
+  String get activeNameplate => _activeNameplate;
+  List<int> get claimedTiers => List.unmodifiable(_claimedTiers);
 
   /// XP needed to reach the next level from the current one.
   int get xpForNextLevel => _baseXp * _level;
@@ -65,6 +92,18 @@ class UserProvider extends ChangeNotifier {
     if (lastMs != null) {
       _lastActiveDate = DateTime.fromMillisecondsSinceEpoch(lastMs);
     }
+    // Battle Pass
+    _coins = prefs.getInt(_prefBpCoins) ?? 0;
+    _seasonTier = prefs.getInt(_prefBpSeasonTier) ?? 1;
+    _seasonXp = prefs.getInt(_prefBpSeasonXp) ?? 0;
+    _passType = prefs.getString(_prefBpPassType) ?? 'free';
+    _unlockedCosmetics =
+        prefs.getStringList(_prefBpUnlockedCosmetics) ?? [];
+    _activeNameplate = prefs.getString(_prefBpActiveNameplate) ?? '';
+    _claimedTiers =
+        (prefs.getStringList(_prefBpClaimedTiers) ?? [])
+            .map(int.parse)
+            .toList();
     _updateStreak();
     notifyListeners();
   }
@@ -79,6 +118,15 @@ class UserProvider extends ChangeNotifier {
       await prefs.setInt(
           _prefLastActive, _lastActiveDate!.millisecondsSinceEpoch);
     }
+    // Battle Pass
+    await prefs.setInt(_prefBpCoins, _coins);
+    await prefs.setInt(_prefBpSeasonTier, _seasonTier);
+    await prefs.setInt(_prefBpSeasonXp, _seasonXp);
+    await prefs.setString(_prefBpPassType, _passType);
+    await prefs.setStringList(_prefBpUnlockedCosmetics, _unlockedCosmetics);
+    await prefs.setString(_prefBpActiveNameplate, _activeNameplate);
+    await prefs.setStringList(
+        _prefBpClaimedTiers, _claimedTiers.map((t) => t.toString()).toList());
   }
 
   // ── Cloud (Firestore) sync ───────────────────────────────────────────────
@@ -150,6 +198,21 @@ class UserProvider extends ChangeNotifier {
     if (lastMs != null) {
       _lastActiveDate = DateTime.fromMillisecondsSinceEpoch(lastMs);
     }
+    // Battle Pass
+    _coins = (data['bp_coins'] as int?) ?? _coins;
+    _seasonTier = (data['bp_seasonTier'] as int?) ?? _seasonTier;
+    _seasonXp = (data['bp_seasonXp'] as int?) ?? _seasonXp;
+    _passType = (data['bp_passType'] as String?) ?? _passType;
+    final rawCosmetics = data['bp_unlockedCosmetics'];
+    if (rawCosmetics is List) {
+      _unlockedCosmetics = rawCosmetics.cast<String>();
+    }
+    _activeNameplate =
+        (data['bp_activeNameplate'] as String?) ?? _activeNameplate;
+    final rawTiers = data['bp_claimedTiers'];
+    if (rawTiers is List) {
+      _claimedTiers = rawTiers.cast<int>();
+    }
     notifyListeners();
     updateStudyWidget(streak: _streak, level: _level);
   }
@@ -164,6 +227,16 @@ class UserProvider extends ChangeNotifier {
         streak: _streak,
         name: _name,
         lastActiveDate: _lastActiveDate ?? DateTime.now(),
+      );
+      await DatabaseService.instance.saveBattlePassData(
+        uid: _uid!,
+        coins: _coins,
+        seasonTier: _seasonTier,
+        seasonXp: _seasonXp,
+        passType: _passType,
+        unlockedCosmetics: _unlockedCosmetics,
+        activeNameplate: _activeNameplate,
+        claimedTiers: _claimedTiers,
       );
     } catch (_) {
       // Firestore unavailable — local data already saved.
@@ -193,7 +266,7 @@ class UserProvider extends ChangeNotifier {
 
   // ── Public API ────────────────────────────────────────────────────────────
 
-  /// Awards [amount] XP and handles level-ups.
+  /// Awards [amount] XP and handles level-ups; awards 50 coins per level-up.
   void awardXp(int amount) {
     assert(amount > 0, 'awardXp called with non-positive amount: $amount');
     if (amount <= 0) return;
@@ -201,11 +274,90 @@ class UserProvider extends ChangeNotifier {
     while (_xp >= xpForNextLevel) {
       _xp -= xpForNextLevel;
       _level += 1;
+      _coins += 50; // bonus coins for leveling up
     }
     notifyListeners();
     _saveLocal();
     _syncToCloud();
     updateStudyWidget(streak: _streak, level: _level);
+  }
+
+  /// Awards [amount] coins to the user.
+  void awardCoins(int amount) {
+    if (amount <= 0) return;
+    _coins += amount;
+    notifyListeners();
+    _saveLocal();
+    _syncToCloud();
+  }
+
+  /// Deducts [amount] coins if the user has enough. Returns true on success.
+  bool spendCoins(int amount) {
+    if (amount <= 0 || _coins < amount) return false;
+    _coins -= amount;
+    notifyListeners();
+    _saveLocal();
+    _syncToCloud();
+    return true;
+  }
+
+  /// Sets the Battle Pass type ('free', 'plus', 'premium').
+  void setPassType(String type) {
+    _passType = type;
+    notifyListeners();
+    _saveLocal();
+    _syncToCloud();
+  }
+
+  /// Adds [amount] season XP and advances tiers (every 100 season XP = 1 tier, max 50).
+  /// Awards coins automatically from tier bonuses.
+  void addSeasonXp(int amount) {
+    if (amount <= 0) return;
+    _seasonXp += amount;
+    while (_seasonXp >= 100 && _seasonTier < 50) {
+      _seasonXp -= 100;
+      _seasonTier += 1;
+      // Award tier-up bonus coins
+      if (_seasonTier % 10 == 0) {
+        _coins += 50; // bigger bonus every 10 tiers
+      } else {
+        _coins += 10;
+      }
+    }
+    if (_seasonTier >= 50) {
+      _seasonXp = 0;
+    }
+    notifyListeners();
+    _saveLocal();
+    _syncToCloud();
+  }
+
+  /// Sets the active nameplate cosmetic.
+  void setActiveNameplate(String nameplate) {
+    _activeNameplate = nameplate;
+    notifyListeners();
+    _saveLocal();
+    _syncToCloud();
+  }
+
+  /// Adds a cosmetic to the unlocked list.
+  void unlockCosmetic(String cosmetic) {
+    if (!_unlockedCosmetics.contains(cosmetic)) {
+      _unlockedCosmetics = [..._unlockedCosmetics, cosmetic];
+      notifyListeners();
+      _saveLocal();
+      _syncToCloud();
+    }
+  }
+
+  /// Marks a Battle Pass tier as claimed.
+  void claimTierReward(int tier) {
+    if (!_claimedTiers.contains(tier)) {
+      _claimedTiers = [..._claimedTiers, tier];
+      notifyListeners();
+      _saveLocal();
+      _syncToCloud();
+    }
   }
 
   /// Records activity for the day (call when user opens the app or completes a task).
@@ -242,6 +394,14 @@ class UserProvider extends ChangeNotifier {
     _streak = 0;
     _name = 'Student';
     _lastActiveDate = null;
+    // Reset Battle Pass fields
+    _coins = 0;
+    _seasonTier = 1;
+    _seasonXp = 0;
+    _passType = 'free';
+    _unlockedCosmetics = [];
+    _activeNameplate = '';
+    _claimedTiers = [];
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefXp);
@@ -249,6 +409,13 @@ class UserProvider extends ChangeNotifier {
     await prefs.remove(_prefStreak);
     await prefs.remove(_prefName);
     await prefs.remove(_prefLastActive);
+    await prefs.remove(_prefBpCoins);
+    await prefs.remove(_prefBpSeasonTier);
+    await prefs.remove(_prefBpSeasonXp);
+    await prefs.remove(_prefBpPassType);
+    await prefs.remove(_prefBpUnlockedCosmetics);
+    await prefs.remove(_prefBpActiveNameplate);
+    await prefs.remove(_prefBpClaimedTiers);
   }
 
   static DateTime _dateOnly(DateTime dt) =>

@@ -7,6 +7,7 @@ import '../models/assignment.dart';
 import '../models/class_model.dart';
 import '../providers/assignments_provider.dart';
 import '../providers/classes_provider.dart';
+import '../providers/user_provider.dart';
 import '../widgets/assignment_card.dart';
 import '../widgets/add_task_sheet.dart';
 import 'subjects_screen.dart' show SubjectFolderSection;
@@ -91,6 +92,33 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             actions: [
+              Consumer<UserProvider>(
+                builder: (context, user, _) => Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('🪙',
+                          style: TextStyle(fontSize: 14)),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${user.coins}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               IconButton(
                 icon: Icon(
                   _showCompleted
