@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/coin_cup_reveal_widget.dart';
+import 'season_shop_screen.dart';
 
 /// The Homework Battle Pass screen — Season 1: Spring Bloomin' 🌸
 class BattlePassScreen extends StatelessWidget {
@@ -80,6 +81,26 @@ class _BattlePassBody extends StatelessWidget {
         // ── Pass purchase buttons ────────────────────────────────────
         SliverToBoxAdapter(
           child: _PassPurchaseSection(user: user, colorScheme: colorScheme),
+        ),
+
+        // ── Season Shop banner ───────────────────────────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const SeasonShopScreen()),
+              ),
+              icon: const Text('🛒', style: TextStyle(fontSize: 16)),
+              label: const Text('Season Shop — Exclusive Cosmetics'),
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
         ),
 
         // ── Tier list ───────────────────────────────────────────────
@@ -267,6 +288,241 @@ class _PassPurchaseSection extends StatelessWidget {
   }
 }
 
+// ── Reward Type & Data ─────────────────────────────────────────────────────
+
+enum _RewardType { coins, nameplate, xpBoost, badge, theme }
+
+class _TierReward {
+  final String label;
+  final String emoji;
+  final _RewardType type;
+  /// Cosmetic/nameplate/vibe ID for non-coin rewards; unused for coins.
+  final String value;
+  /// XP amount for xpBoost rewards.
+  final int xpAmount;
+  /// Cup rarity for coin cup rewards.
+  final CupRarity cupRarity;
+
+  const _TierReward({
+    required this.label,
+    required this.emoji,
+    required this.type,
+    this.value = '',
+    this.xpAmount = 0,
+    this.cupRarity = CupRarity.rare,
+  });
+}
+
+// ── Free-track reward table (index 0 = Tier 1, index 49 = Tier 50) ─────────
+
+const _freeRewards = <_TierReward>[
+  // T1
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T2
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T3
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T4
+  _TierReward(label: 'Spring Sprout Badge', emoji: '🌱', type: _RewardType.badge, value: 'spring_sprout'),
+  // T5
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T6
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T7
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T8
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T9
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T10
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T11
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T12
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T13
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T14
+  _TierReward(label: 'Blossom Brawler Badge', emoji: '🌸', type: _RewardType.badge, value: 'blossom_brawler'),
+  // T15
+  _TierReward(label: 'Spring Mint Theme', emoji: '🌿', type: _RewardType.theme, value: 'springMint'),
+  // T16
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T17
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T18
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T19
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T20
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T21
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T22
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T23
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T24
+  _TierReward(label: 'Petal Collector Badge', emoji: '🌼', type: _RewardType.badge, value: 'petal_collector'),
+  // T25
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T26
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T27
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T28
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T29
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T30
+  _TierReward(label: 'Sky Bloom Theme', emoji: '🩵', type: _RewardType.theme, value: 'skyBloom'),
+  // T31
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T32
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T33
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T34
+  _TierReward(label: 'Bloom Scholar Badge', emoji: '📚', type: _RewardType.badge, value: 'bloom_scholar'),
+  // T35
+  _TierReward(label: 'Shiny Coin Cup', emoji: '✨', type: _RewardType.coins, cupRarity: CupRarity.shiny),
+  // T36
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T37
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T38
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T39
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T40
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T41
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T42
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T43
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T44
+  _TierReward(label: 'Blossom Warrior Badge', emoji: '⚔️', type: _RewardType.badge, value: 'blossom_warrior'),
+  // T45
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T46
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T47
+  _TierReward(label: 'Shiny Coin Cup', emoji: '✨', type: _RewardType.coins, cupRarity: CupRarity.shiny),
+  // T48
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T49
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T50
+  _TierReward(label: 'Cherry Blossom Nameplate', emoji: '🌸', type: _RewardType.nameplate, value: 'Cherry Blossom'),
+];
+
+// ── Plus/Premium-track reward table ─────────────────────────────────────────
+
+const _premiumRewards = <_TierReward>[
+  // T1
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T2
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T3
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T4
+  _TierReward(label: 'Sakura Storm Badge', emoji: '🌺', type: _RewardType.badge, value: 'sakura_storm'),
+  // T5
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T6
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T7
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T8
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T9
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T10
+  _TierReward(label: 'Daffodil Theme', emoji: '🌼', type: _RewardType.theme, value: 'daffodil'),
+  // T11
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T12
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T13
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T14
+  _TierReward(label: 'Petal Warrior Badge', emoji: '🌺', type: _RewardType.badge, value: 'petal_warrior'),
+  // T15
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  // T16
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T17
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T18
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T19
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T20
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T21
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T22
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T23
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T24
+  _TierReward(label: 'Spring Royale Badge', emoji: '👑', type: _RewardType.badge, value: 'spring_royale'),
+  // T25
+  _TierReward(label: 'Cherry Blossom Theme', emoji: '🌸', type: _RewardType.theme, value: 'cherryBlossom'),
+  // T26
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T27
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T28
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T29
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T30
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  // T31
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T32
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T33
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T34
+  _TierReward(label: 'Sakura Legend Badge', emoji: '🌟', type: _RewardType.badge, value: 'sakura_legend'),
+  // T35
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  // T36
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T37
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T38
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T39
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T40
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  // T41
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T42
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T43
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T44
+  _TierReward(label: 'Grand Blossom Badge', emoji: '🌺', type: _RewardType.badge, value: 'grand_blossom'),
+  // T45
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  // T46
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T47
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T48
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T49
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  // T50
+  _TierReward(label: 'Animated Golden Cherry Blossom Nameplate', emoji: '✨', type: _RewardType.nameplate, value: 'animated_golden_cherry_blossom'),
+];
+
 // ── Tier Row ───────────────────────────────────────────────────────────────
 
 class _TierRow extends StatelessWidget {
@@ -285,47 +541,8 @@ class _TierRow extends StatelessWidget {
   bool get _isPremiumClaimed => user.isTierRewardClaimed(tier, side: 'premium');
   bool get _isCurrent => user.seasonTier == tier;
 
-  // Free reward for each tier
-  _TierReward get _freeReward {
-    if (tier == 50) {
-      return const _TierReward(
-        label: 'Cherry Blossom Nameplate',
-        emoji: '🌸',
-        type: _RewardType.nameplate,
-        value: 'Cherry Blossom',
-        coins: 0,
-      );
-    }
-    final coins = (tier % 5 == 0) ? 30 : 20;
-    return _TierReward(
-      label: '$coins Coins',
-      emoji: '🪙',
-      type: _RewardType.coins,
-      value: '',
-      coins: coins,
-    );
-  }
-
-  // Plus/Premium reward for each tier
-  _TierReward get _premiumReward {
-    if (tier == 50) {
-      return const _TierReward(
-        label: 'Animated Golden Cherry Blossom Nameplate',
-        emoji: '✨',
-        type: _RewardType.nameplate,
-        value: 'animated_golden_cherry_blossom',
-        coins: 0,
-      );
-    }
-    final coins = (tier % 10 == 0) ? 100 : 50;
-    return _TierReward(
-      label: '$coins Coins',
-      emoji: '🪙',
-      type: _RewardType.coins,
-      value: '',
-      coins: coins,
-    );
-  }
+  _TierReward get _freeReward => _freeRewards[tier - 1];
+  _TierReward get _premiumReward => _premiumRewards[tier - 1];
 
   @override
   Widget build(BuildContext context) {
@@ -411,24 +628,41 @@ class _TierRow extends StatelessWidget {
   void _claimFree(BuildContext context) {
     final user = context.read<UserProvider>();
     final reward = _freeReward;
-    if (reward.type == _RewardType.coins) {
-      showCoinCupReveal(
-        context,
-        initialRarity: tier % 10 == 0
-            ? CupRarity.epic
-            : (tier % 5 == 0 ? CupRarity.rare : CupRarity.rare),
-        onClaimed: (coins) {
-          user.awardCoins(coins);
-          user.claimTierReward(tier, side: 'free');
-        },
-      );
-    } else if (reward.type == _RewardType.nameplate) {
-      user.setActiveNameplate(reward.value);
-      user.unlockCosmetic('nameplate_${reward.value}');
-      user.claimTierReward(tier, side: 'free');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('🌸 ${reward.label} equipped!')),
-      );
+    switch (reward.type) {
+      case _RewardType.coins:
+        showCoinCupReveal(
+          context,
+          initialRarity: reward.cupRarity,
+          onClaimed: (coins) {
+            user.awardCoins(coins);
+            user.claimTierReward(tier, side: 'free');
+          },
+        );
+      case _RewardType.nameplate:
+        user.setActiveNameplate(reward.value);
+        user.unlockCosmetic('nameplate_${reward.value}');
+        user.claimTierReward(tier, side: 'free');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('🌸 ${reward.label} equipped!')),
+        );
+      case _RewardType.xpBoost:
+        user.awardXp(reward.xpAmount);
+        user.claimTierReward(tier, side: 'free');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('⚡ ${reward.label} applied! +${reward.xpAmount} XP')),
+        );
+      case _RewardType.badge:
+        user.unlockCosmetic('badge_${reward.value}');
+        user.claimTierReward(tier, side: 'free');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${reward.emoji} ${reward.label} unlocked!')),
+        );
+      case _RewardType.theme:
+        user.unlockCosmetic('vibe_${reward.value}');
+        user.claimTierReward(tier, side: 'free');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${reward.emoji} ${reward.label} theme unlocked! Find it in Settings → Appearance.')),
+        );
     }
   }
 
@@ -451,45 +685,46 @@ class _TierRow extends StatelessWidget {
       return;
     }
     final reward = _premiumReward;
-    if (reward.type == _RewardType.coins) {
-      showCoinCupReveal(
-        context,
-        initialRarity: tier % 10 == 0 ? CupRarity.epic : CupRarity.rare,
-        onClaimed: (coins) {
-          user.awardCoins(coins);
-          user.claimTierReward(tier, side: 'premium');
-        },
-      );
-    } else if (reward.type == _RewardType.nameplate) {
-      user.setActiveNameplate(reward.value);
-      user.unlockCosmetic('nameplate_${reward.value}');
-      user.claimTierReward(tier, side: 'premium');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✨ ${reward.label} equipped!')),
-      );
+    switch (reward.type) {
+      case _RewardType.coins:
+        showCoinCupReveal(
+          context,
+          initialRarity: reward.cupRarity,
+          onClaimed: (coins) {
+            user.awardCoins(coins);
+            user.claimTierReward(tier, side: 'premium');
+          },
+        );
+      case _RewardType.nameplate:
+        user.setActiveNameplate(reward.value);
+        user.unlockCosmetic('nameplate_${reward.value}');
+        user.claimTierReward(tier, side: 'premium');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('✨ ${reward.label} equipped!')),
+        );
+      case _RewardType.xpBoost:
+        user.awardXp(reward.xpAmount);
+        user.claimTierReward(tier, side: 'premium');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('⚡ ${reward.label} applied! +${reward.xpAmount} XP')),
+        );
+      case _RewardType.badge:
+        user.unlockCosmetic('badge_${reward.value}');
+        user.claimTierReward(tier, side: 'premium');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${reward.emoji} ${reward.label} unlocked!')),
+        );
+      case _RewardType.theme:
+        user.unlockCosmetic('vibe_${reward.value}');
+        user.claimTierReward(tier, side: 'premium');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${reward.emoji} ${reward.label} theme unlocked! Find it in Settings → Appearance.')),
+        );
     }
   }
 }
 
 // ── Reward Cell ────────────────────────────────────────────────────────────
-
-enum _RewardType { coins, nameplate }
-
-class _TierReward {
-  final String label;
-  final String emoji;
-  final _RewardType type;
-  final String value;
-  final int coins;
-
-  const _TierReward({
-    required this.label,
-    required this.emoji,
-    required this.type,
-    required this.value,
-    required this.coins,
-  });
-}
 
 class _RewardCell extends StatelessWidget {
   final _TierReward reward;
