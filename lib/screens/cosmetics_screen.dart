@@ -84,7 +84,7 @@ const _allCosmetics = [
     emoji: '🌊',
     type: _CosmeticType.nameplate,
   ),
-  // ── Badges ─────────────────────────────────────────────────────────
+  // ── Badges (Season Shop) ────────────────────────────────────────────
   _CosmeticInfo(
     id: 'spring_petal_badge',
     label: 'Spring Petal',
@@ -101,6 +101,68 @@ const _allCosmetics = [
     id: 'night_owl_badge',
     label: 'Night Owl',
     emoji: '🦉',
+    type: _CosmeticType.badge,
+  ),
+  // ── Badges (Battle Pass — Free Track) ──────────────────────────────
+  _CosmeticInfo(
+    id: 'badge_spring_sprout',
+    label: 'Spring Sprout',
+    emoji: '🌱',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'badge_blossom_brawler',
+    label: 'Blossom Brawler',
+    emoji: '🌸',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'badge_petal_collector',
+    label: 'Petal Collector',
+    emoji: '🌼',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'badge_bloom_scholar',
+    label: 'Bloom Scholar',
+    emoji: '📚',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'badge_blossom_warrior',
+    label: 'Blossom Warrior',
+    emoji: '⚔️',
+    type: _CosmeticType.badge,
+  ),
+  // ── Badges (Battle Pass — Premium Track) ───────────────────────────
+  _CosmeticInfo(
+    id: 'badge_sakura_storm',
+    label: 'Sakura Storm',
+    emoji: '🌺',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'badge_petal_warrior',
+    label: 'Petal Warrior',
+    emoji: '🌺',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'badge_spring_royale',
+    label: 'Spring Royale',
+    emoji: '👑',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'badge_sakura_legend',
+    label: 'Sakura Legend',
+    emoji: '🌟',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'badge_grand_blossom',
+    label: 'Grand Blossom',
+    emoji: '🌺',
     type: _CosmeticType.badge,
   ),
   // ── Name Colors ─────────────────────────────────────────────────────
