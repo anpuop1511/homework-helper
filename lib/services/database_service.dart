@@ -53,6 +53,31 @@ class DatabaseService {
     );
   }
 
+  /// Writes / merges Battle Pass data to the user document.
+  Future<void> saveBattlePassData({
+    required String uid,
+    required int coins,
+    required int seasonTier,
+    required int seasonXp,
+    required String passType,
+    required List<String> unlockedCosmetics,
+    required String activeNameplate,
+    required List<int> claimedTiers,
+  }) async {
+    await _userDoc(uid).set(
+      {
+        'bp_coins': coins,
+        'bp_seasonTier': seasonTier,
+        'bp_seasonXp': seasonXp,
+        'bp_passType': passType,
+        'bp_unlockedCosmetics': unlockedCosmetics,
+        'bp_activeNameplate': activeNameplate,
+        'bp_claimedTiers': claimedTiers,
+      },
+      SetOptions(merge: true),
+    );
+  }
+
   /// Writes / merges only the vibe field.
   Future<void> saveVibe(String uid, AppVibe vibe) async {
     await _userDoc(uid).set(
