@@ -218,11 +218,12 @@ class _ShopBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<UserProvider>();
     final colorScheme = Theme.of(context).colorScheme;
+    final timeTravelEnabled = user.shopTimeTravelEnabled;
 
     final unlockedDrops =
-        _timedDropItems.where((i) => i.isUnlocked).toList();
+        _timedDropItems.where((i) => i.isUnlocked || timeTravelEnabled).toList();
     final lockedDrops =
-        _timedDropItems.where((i) => !i.isUnlocked).toList();
+        _timedDropItems.where((i) => !i.isUnlocked && !timeTravelEnabled).toList();
 
     return ListView(
       padding: const EdgeInsets.all(16),

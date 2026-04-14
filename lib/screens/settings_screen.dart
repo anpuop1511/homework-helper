@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../providers/assignments_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/classroom_provider.dart';
@@ -1911,9 +1912,35 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
 /// Hidden settings page only accessible to the dev account
 /// ([_kDevEmail] = anpuop1511@gmail.com).
 ///
-/// Provides quick shortcuts to inject rewards and reset state for testing.
-class _DeveloperMenuPage extends StatelessWidget {
+/// Provides quick shortcuts to inject rewards, reset state, spawn test data,
+/// time-travel the Season Shop, and run through a release-readiness checklist.
+class _DeveloperMenuPage extends StatefulWidget {
   const _DeveloperMenuPage();
+
+  @override
+  State<_DeveloperMenuPage> createState() => _DeveloperMenuPageState();
+}
+
+class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
+  // ── QA Checklist items ──────────────────────────────────────────────────
+  static const _qaItems = [
+    'Test Auth — sign up / sign in / sign out',
+    'Test Battle Pass — view tiers, buy Plus / Premium',
+    'Test Checking off Assignment — anti-farming (re-check = no reward)',
+    'Test Equipping Badge — cosmetics screen saves & renders on profile',
+    'Test Season Shop — buy item, auto-equip, coins deducted',
+    'Test Nameplate — renders behind display name on Profile & Social',
+    'Test Social / Friends — add friend, view leaderboard',
+    'Test AI Chat — ask a homework question, get a response',
+    'Test Notifications — schedule & receive a reminder',
+    'Test Settings — theme switch, passkey, privacy options',
+    'Test Google Classroom integration (if configured)',
+    'Test Wipe Account — confirm new-user experience from zero',
+  ];
+
+  final Set<int> _checked = {};
+
+  // ── Action helpers ──────────────────────────────────────────────────────
 
   void _grantCoins(BuildContext context) {
     context.read<UserProvider>().awardCoins(1000);
@@ -1936,6 +1963,27 @@ class _DeveloperMenuPage extends StatelessWidget {
     );
   }
 
+  void _maxBattlePass(BuildContext context) {
+    context.read<UserProvider>().maxBattlePass();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('🏆 Battle Pass maxed to Tier 50!')),
+    );
+  }
+
+  void _unlockAllCosmetics(BuildContext context) {
+    context.read<UserProvider>().unlockAllCosmetics();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('🎨 All cosmetics unlocked!')),
+    );
+  }
+
+  void _spawnTestAssignments(BuildContext context) {
+    context.read<AssignmentsProvider>().spawnTestAssignments();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('📚 5 test assignments spawned!')),
+    );
+  }
+
   void _resetPass(BuildContext context) {
     final user = context.read<UserProvider>();
     user.setPassType('free');
@@ -1944,9 +1992,45 @@ class _DeveloperMenuPage extends StatelessWidget {
     );
   }
 
+  void _wipeAccount(BuildContext context) {
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('⚠️ Wipe Account?'),
+        content: const Text(
+          'This will reset ALL progress — coins, XP, Battle Pass, cosmetics — '
+          'back to day-one state.  You will stay signed in.\n\nThis cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFD32F2F)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Wipe'),
+          ),
+        ],
+      ),
+    ).then((confirmed) async {
+      if (confirmed == true && context.mounted) {
+        await context.read<UserProvider>().resetForTesting();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('💥 Account wiped — fresh start!')),
+          );
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final user = context.watch<UserProvider>();
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -1959,78 +2043,278 @@ class _DeveloperMenuPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Card(
-            color: colorScheme.surfaceContainerLow,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Economy',
-                    style: GoogleFonts.lexend(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _DevButton(
-                    icon: Icons.monetization_on_rounded,
-                    label: 'Grant 1000 Coins',
-                    color: const Color(0xFFFFD700),
-                    onTap: () => _grantCoins(context),
-                  ),
-                  const SizedBox(height: 8),
-                  _DevButton(
-                    icon: Icons.auto_awesome_rounded,
-                    label: 'Grant 500 Season XP (+5 Tiers)',
-                    color: Colors.purple,
-                    onTap: () => _grantSeasonXp(context),
-                  ),
-                  const SizedBox(height: 8),
-                  _DevButton(
-                    icon: Icons.bolt_rounded,
-                    label: 'Grant 500 Account XP',
-                    color: Colors.orange,
-                    onTap: () => _grantAccountXp(context),
-                  ),
-                ],
+          // ── Economy ───────────────────────────────────────────────────
+          _DevCard(
+            title: 'Economy',
+            colorScheme: colorScheme,
+            children: [
+              _DevButton(
+                icon: Icons.monetization_on_rounded,
+                label: 'Grant 1000 Coins',
+                color: const Color(0xFFFFD700),
+                onTap: () => _grantCoins(context),
               ),
-            ),
+              const SizedBox(height: 8),
+              _DevButton(
+                icon: Icons.auto_awesome_rounded,
+                label: 'Grant 500 Season XP (+5 Tiers)',
+                color: Colors.purple,
+                onTap: () => _grantSeasonXp(context),
+              ),
+              const SizedBox(height: 8),
+              _DevButton(
+                icon: Icons.bolt_rounded,
+                label: 'Grant 500 Account XP',
+                color: Colors.orange,
+                onTap: () => _grantAccountXp(context),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
+
+          // ── State Controls ─────────────────────────────────────────────
+          _DevCard(
+            title: 'State Controls',
+            colorScheme: colorScheme,
+            children: [
+              _DevButton(
+                icon: Icons.military_tech_rounded,
+                label: 'Max Battle Pass (→ Tier 50)',
+                color: Colors.amber,
+                onTap: () => _maxBattlePass(context),
+              ),
+              const SizedBox(height: 8),
+              _DevButton(
+                icon: Icons.color_lens_rounded,
+                label: 'Unlock All Cosmetics',
+                color: Colors.teal,
+                onTap: () => _unlockAllCosmetics(context),
+              ),
+              const SizedBox(height: 8),
+              _DevButton(
+                icon: Icons.refresh_rounded,
+                label: 'Reset Battle Pass to Free',
+                color: colorScheme.error,
+                onTap: () => _resetPass(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // ── QA Tools ──────────────────────────────────────────────────
+          _DevCard(
+            title: 'QA Tools',
+            colorScheme: colorScheme,
+            children: [
+              _DevButton(
+                icon: Icons.assignment_add_rounded,
+                label: 'Spawn 5 Test Assignments',
+                color: Colors.indigo,
+                onTap: () => _spawnTestAssignments(context),
+              ),
+              const SizedBox(height: 8),
+              // Time-travel toggle
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.cyan.withAlpha(30),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.cyan.withAlpha(80)),
+                ),
+                child: SwitchListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  secondary: const Icon(Icons.access_time_rounded,
+                      color: Colors.cyan),
+                  title: const Text(
+                    'Time-Travel Shop',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  subtitle: const Text(
+                    'Bypasses 4/7/10/12-day timers — all drops available now',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  value: user.shopTimeTravelEnabled,
+                  onChanged: (v) =>
+                      context.read<UserProvider>().setShopTimeTravel(v),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _DevButton(
+                icon: Icons.delete_forever_rounded,
+                label: 'Wipe Account (Hard Reset)',
+                color: const Color(0xFFD32F2F),
+                onTap: () => _wipeAccount(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // ── QA Release Readiness Checklist ─────────────────────────────
           Card(
             color: colorScheme.surfaceContainerLow,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Reset',
-                    style: GoogleFonts.lexend(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        'Release Readiness Checklist',
+                        style: GoogleFonts.lexend(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${_checked.length}/${_qaItems.length}',
+                        style: GoogleFonts.lexend(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: _checked.length == _qaItems.length
+                              ? Colors.green
+                              : colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  LinearProgressIndicator(
+                    value: _qaItems.isEmpty
+                        ? 0
+                        : _checked.length / _qaItems.length,
+                    borderRadius: BorderRadius.circular(4),
+                    color: _checked.length == _qaItems.length
+                        ? Colors.green
+                        : colorScheme.primary,
+                    backgroundColor: colorScheme.surfaceContainerHigh,
                   ),
                   const SizedBox(height: 12),
-                  _DevButton(
-                    icon: Icons.refresh_rounded,
-                    label: 'Reset Battle Pass to Free',
-                    color: colorScheme.error,
-                    onTap: () => _resetPass(context),
-                  ),
+                  ..._qaItems.asMap().entries.map((entry) {
+                    final idx = entry.key;
+                    final label = entry.value;
+                    final done = _checked.contains(idx);
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => setState(() {
+                        if (done) {
+                          _checked.remove(idx);
+                        } else {
+                          _checked.add(idx);
+                        }
+                      }),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Icon(
+                              done
+                                  ? Icons.check_circle_rounded
+                                  : Icons.radio_button_unchecked_rounded,
+                              size: 20,
+                              color: done
+                                  ? Colors.green
+                                  : colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: done
+                                      ? colorScheme.onSurfaceVariant
+                                      : colorScheme.onSurface,
+                                  decoration: done
+                                      ? TextDecoration.lineThrough
+                                      : TextDecoration.none,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  if (_checked.length == _qaItems.length) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withAlpha(30),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.green.withAlpha(80)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.rocket_launch_rounded,
+                              color: Colors.green, size: 18),
+                          SizedBox(width: 8),
+                          Text(
+                            '✅ All checks passed — ready to release!',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Colors.green,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Shared dev-menu card wrapper ────────────────────────────────────────────
+
+class _DevCard extends StatelessWidget {
+  final String title;
+  final ColorScheme colorScheme;
+  final List<Widget> children;
+
+  const _DevCard({
+    required this.title,
+    required this.colorScheme,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.lexend(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...children,
+          ],
+        ),
       ),
     );
   }

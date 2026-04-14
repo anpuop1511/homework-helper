@@ -107,6 +107,50 @@ class AssignmentsProvider extends ChangeNotifier {
     }
   }
 
+  /// Spawns a set of dummy test assignments for QA purposes.
+  ///
+  /// Creates five fake homework tasks across different subjects so the
+  /// anti-farming logic and completion flow can be tested end-to-end.
+  void spawnTestAssignments() {
+    final now = DateTime.now();
+    final base = now.millisecondsSinceEpoch;
+    final testAssignments = [
+      Assignment(
+        id: 'qa_${base}_1',
+        title: '[QA] Math Homework',
+        subject: Subject.math,
+        dueDate: now.add(const Duration(days: 1)),
+      ),
+      Assignment(
+        id: 'qa_${base}_2',
+        title: '[QA] Science Lab Report',
+        subject: Subject.science,
+        dueDate: now.add(const Duration(days: 2)),
+      ),
+      Assignment(
+        id: 'qa_${base}_3',
+        title: '[QA] History Essay',
+        subject: Subject.history,
+        dueDate: now.add(const Duration(days: 3)),
+      ),
+      Assignment(
+        id: 'qa_${base}_4',
+        title: '[QA] English Reading',
+        subject: Subject.english,
+        dueDate: now.add(const Duration(days: 1)),
+      ),
+      Assignment(
+        id: 'qa_${base}_5',
+        title: '[QA] Art Project',
+        subject: Subject.art,
+        dueDate: now.add(const Duration(days: 5)),
+      ),
+    ];
+    for (final a in testAssignments) {
+      add(a);
+    }
+  }
+
   @override
   void dispose() {
     _sub?.cancel();

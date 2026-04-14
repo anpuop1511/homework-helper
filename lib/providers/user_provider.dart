@@ -48,6 +48,10 @@ class UserProvider extends ChangeNotifier {
   String _equippedBadge = '';
   String _equippedNameColor = '';
 
+  /// In-memory dev flag: when true the Season Shop shows all timed drops as
+  /// available regardless of the real-time unlock date.  Not persisted.
+  bool _shopTimeTravelEnabled = false;
+
   /// UID of the currently signed-in Firebase user, or null for guest mode.
   String? _uid;
 
@@ -67,6 +71,9 @@ class UserProvider extends ChangeNotifier {
   List<int> get claimedTiers => List.unmodifiable(_claimedTiers);
   String get equippedBadge => _equippedBadge;
   String get equippedNameColor => _equippedNameColor;
+
+  /// Dev-only: when true the Season Shop shows all timed drops as available.
+  bool get shopTimeTravelEnabled => _shopTimeTravelEnabled;
 
   /// XP needed to reach the next level from the current one.
   int get xpForNextLevel => _baseXp * _level;
@@ -429,6 +436,75 @@ class UserProvider extends ChangeNotifier {
     if (_bio == bio) return;
     _bio = bio;
     notifyListeners();
+  }
+
+  // ── Developer / QA helpers (dev-only) ────────────────────────────────────
+
+  /// Toggles the Season Shop time-travel bypass (dev-only, not persisted).
+  void setShopTimeTravel(bool enabled) {
+    _shopTimeTravelEnabled = enabled;
+    notifyListeners();
+  }
+
+  /// Instantly advances the Battle Pass to Tier 50.
+  void maxBattlePass() {
+    _seasonTier = 50;
+    _seasonXp = 0;
+    notifyListeners();
+    _saveLocal();
+    _syncToCloud();
+  }
+
+  /// Unlocks every known cosmetic so the equip flow can be fully tested.
+  void unlockAllCosmetics() {
+    const all = [
+      // Season Shop badges
+      'spring_petal_badge', 'study_streak_frame', 'night_owl_badge',
+      // Season Shop nameplates
+      'blue_sky', 'daffodil_yellow', 'aurora_purple', 'ocean_deep',
+      // Season Shop name colors
+      'rainbow_name_color', 'crimson_name',
+      // Battle-pass nameplates
+      'nameplate_Cherry Blossom', 'animated_golden_cherry_blossom',
+      // Battle-pass badges (free track)
+      'badge_spring_sprout', 'badge_blossom_brawler', 'badge_petal_collector',
+      'badge_bloom_scholar', 'badge_blossom_warrior',
+      // Battle-pass badges (premium track)
+      'badge_sakura_storm', 'badge_petal_warrior', 'badge_spring_royale',
+      'badge_sakura_legend', 'badge_grand_blossom',
+    ];
+    for (final id in all) {
+      if (!_unlockedCosmetics.contains(id)) {
+        _unlockedCosmetics = [..._unlockedCosmetics, id];
+      }
+    }
+    notifyListeners();
+    _saveLocal();
+    _syncToCloud();
+  }
+
+  /// Wipes the account back to day-one state (keeps the user signed in).
+  ///
+  /// Used in the dev menu to test the new-user experience without signing out.
+  Future<void> resetForTesting() async {
+    _xp = 0;
+    _level = 1;
+    _streak = 0;
+    _name = 'Student';
+    _bio = '';
+    _lastActiveDate = null;
+    _coins = 0;
+    _seasonTier = 1;
+    _seasonXp = 0;
+    _passType = 'free';
+    _unlockedCosmetics = [];
+    _activeNameplate = '';
+    _claimedTiers = [];
+    _equippedBadge = '';
+    _equippedNameColor = '';
+    notifyListeners();
+    await _saveLocal();
+    await _syncToCloud();
   }
 
   /// Signs the user out by resetting all local state and clearing persisted
