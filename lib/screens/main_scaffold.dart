@@ -8,6 +8,7 @@ import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/assignments_provider.dart';
 import 'battle_pass_screen.dart';
+import 'season_shop_screen.dart';
 import 'home_screen.dart';
 import 'timer_screen.dart';
 import 'chat_screen.dart';
@@ -481,6 +482,28 @@ class _UserHubSheet extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                       builder: (_) => const BattlePassScreen()),
+                );
+              },
+            ),
+
+            // ── Season Shop ───────────────────────────────────────────
+            ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 20),
+              leading: Icon(Icons.storefront_rounded,
+                  color: colorScheme.primary),
+              title: Text('Season Shop 🛒', style: textTheme.bodyLarge),
+              subtitle: Text(
+                'Exclusive cosmetics for coins',
+                style: textTheme.bodySmall
+                    ?.copyWith(color: colorScheme.onSurfaceVariant),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const SeasonShopScreen()),
                 );
               },
             ),

@@ -70,14 +70,18 @@ extension CupRarityExt on CupRarity {
 /// A widget that displays a coin cup that can be tapped to upgrade through
 /// rarities (Rare → Epic → Shiny → Magical → Golden).
 /// When claimed, [onClaimed] is called with the coin reward amount.
+/// [maxTaps] limits how many upgrade attempts the user gets before the cup
+/// locks and must be claimed at its current rarity.
 class CoinCupRevealWidget extends StatefulWidget {
   final CupRarity initialRarity;
   final void Function(int coins) onClaimed;
+  final int maxTaps;
 
   const CoinCupRevealWidget({
     super.key,
     this.initialRarity = CupRarity.rare,
     required this.onClaimed,
+    this.maxTaps = 5,
   });
 
   @override
@@ -89,10 +93,14 @@ class _CoinCupRevealWidgetState extends State<CoinCupRevealWidget>
   late CupRarity _current;
   bool _claimed = false;
   bool _animating = false;
+  int _tapsUsed = 0;
   final _random = Random();
 
-  // Upgrade probability per tap: rare→epic, epic→shiny, shiny→magical, magical→golden
-  static const _upgradeChances = [0.80, 0.60, 0.40, 0.25];
+  // Nerfed upgrade probabilities: rare→epic, epic→shiny, shiny→magical, magical→golden
+  static const _upgradeChances = [0.45, 0.30, 0.20, 0.10];
+
+  bool get _tapsExhausted => _tapsUsed >= widget.maxTaps;
+  int get _tapsRemaining => widget.maxTaps - _tapsUsed;
 
   @override
   void initState() {
@@ -101,7 +109,7 @@ class _CoinCupRevealWidgetState extends State<CoinCupRevealWidget>
   }
 
   void _onTap() {
-    if (_claimed || _animating) return;
+    if (_claimed || _animating || _tapsExhausted) return;
 
     if (_current == CupRarity.golden) {
       _claim();
@@ -111,7 +119,10 @@ class _CoinCupRevealWidgetState extends State<CoinCupRevealWidget>
     final idx = _current.index;
     final upgraded = _random.nextDouble() < _upgradeChances[idx];
 
-    setState(() => _animating = true);
+    setState(() {
+      _tapsUsed++;
+      _animating = true;
+    });
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
@@ -133,12 +144,13 @@ class _CoinCupRevealWidgetState extends State<CoinCupRevealWidget>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final canUpgrade = !_claimed && !_tapsExhausted && _current != CupRarity.golden;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         GestureDetector(
-          onTap: _claimed ? null : _onTap,
+          onTap: (_claimed || _tapsExhausted) ? null : _onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             width: 120,
@@ -189,14 +201,22 @@ class _CoinCupRevealWidgetState extends State<CoinCupRevealWidget>
           '+${_current.coinReward} 🪙',
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         if (!_claimed) ...[
-          if (_current != CupRarity.golden)
+          if (canUpgrade) ...[
             Text(
-              'Tap to try upgrading!',
+              'Tap cup to upgrade  •  $_tapsRemaining tap${_tapsRemaining == 1 ? '' : 's'} left',
               style: TextStyle(
                   color: colorScheme.onSurfaceVariant, fontSize: 12),
             ),
+          ] else if (_tapsExhausted && _current != CupRarity.golden) ...[
+            Text(
+              'No more taps! Claim your reward.',
+              style: TextStyle(
+                  color: colorScheme.error, fontSize: 12,
+                  fontWeight: FontWeight.w600),
+            ),
+          ],
           const SizedBox(height: 8),
           FilledButton(
             onPressed: _claim,
