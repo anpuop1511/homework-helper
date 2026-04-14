@@ -10,6 +10,9 @@ const int _xpPerAssignment = 25;
 /// Coins awarded when an assignment is marked complete.
 const int _coinsPerAssignment = 10;
 
+/// Season XP awarded when an assignment is marked complete.
+const int _seasonXpPerAssignment = 20;
+
 /// Manages the list of assignments and notifies listeners on changes.
 ///
 /// When a Firebase UID is available (via [setUid]) the provider subscribes to
@@ -81,6 +84,7 @@ class AssignmentsProvider extends ChangeNotifier {
       if (!wasCompleted) {
         _userProvider?.awardXp(_xpPerAssignment);
         _userProvider?.awardCoins(_coinsPerAssignment);
+        _userProvider?.addSeasonXp(_seasonXpPerAssignment);
       }
       notifyListeners();
       if (_uid != null) {
