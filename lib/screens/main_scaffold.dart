@@ -214,7 +214,7 @@ class _MainScaffoldState extends State<MainScaffold> {
         child: Material(
           color: colorScheme.surfaceContainerHigh,
           elevation: 3,
-          shadowColor: Colors.black.withAlpha(50),
+          shadowColor: colorScheme.shadow.withAlpha(90),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(_mobileNavBarRadius),
             side: BorderSide(
