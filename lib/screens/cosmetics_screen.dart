@@ -47,6 +47,12 @@ class _CosmeticInfo {
 
 /// All cosmetics that can be equipped (must match shop / battle-pass IDs).
 const _allCosmetics = [
+  _CosmeticInfo(
+    id: 'notepad_nameplate',
+    label: 'Notepad Nameplate',
+    emoji: '📝',
+    type: _CosmeticType.nameplate,
+  ),
   // ── Nameplates ──────────────────────────────────────────────────────
   _CosmeticInfo(
     id: 'blue_sky',
