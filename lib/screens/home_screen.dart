@@ -8,12 +8,14 @@ import '../config/secrets.dart';
 import '../models/assignment.dart';
 import '../models/class_model.dart';
 import '../providers/assignments_provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/classes_provider.dart';
 import '../providers/subjects_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/assignment_card.dart';
 import '../widgets/add_task_sheet.dart';
+import '../widgets/gradient_text.dart';
 import 'subjects_screen.dart' show SubjectFolderSection;
 import 'settings_screen.dart';
 
@@ -72,13 +74,41 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Returns a time-based greeting word based on the current hour.
+  static String _timeGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) return 'Good morning';
+    if (hour >= 12 && hour < 17) return 'Good afternoon';
+    if (hour >= 17 && hour < 22) return 'Good evening';
+    return 'Hello';
+  }
+
+  /// Resolves the best display name for the greeting, using the fallback order:
+  /// 1. FirebaseAuth displayName (trimmed, non-empty)
+  /// 2. App username/handle prefixed with '@'
+  /// 3. Email prefix before '@'
+  /// 4. "there"
+  static String _resolveGreetingName(AuthProvider auth, UserProvider user) {
+    final firebaseName = auth.currentUser?.displayName?.trim();
+    if (firebaseName != null && firebaseName.isNotEmpty) return firebaseName;
+    final username = auth.username;
+    if (username != null && username.isNotEmpty) return '@$username';
+    final email = auth.email;
+    if (email != null && email.contains('@')) return email.split('@').first;
+    return 'there';
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final provider = context.watch<AssignmentsProvider>();
+    final auth = context.watch<AuthProvider>();
+    final user = context.watch<UserProvider>();
     final filtered = _filteredAssignments(provider.assignments.toList());
     final pendingCount = provider.pendingCount;
+    final greeting =
+        '${_timeGreeting()}, ${_resolveGreetingName(auth, user)}';
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -94,6 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 quote: _dailyQuote,
                 pendingCount: pendingCount,
                 colorScheme: colorScheme,
+                greeting: greeting,
               ),
             ),
             actions: [
@@ -221,7 +252,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Assignment list or empty state
           filtered.isEmpty
-              ? SliverToBoxAdapter(child: _EmptyState(colorScheme: colorScheme))
+              ? SliverToBoxAdapter(
+                  child: _EmptyState(
+                    colorScheme: colorScheme,
+                    onAdd: _showAddAssignmentSheet,
+                  ))
               : SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   sliver: SliverList(
@@ -640,11 +675,13 @@ class _MotivationHeader extends StatelessWidget {
   final String quote;
   final int pendingCount;
   final ColorScheme colorScheme;
+  final String greeting;
 
   const _MotivationHeader({
     required this.quote,
     required this.pendingCount,
     required this.colorScheme,
+    required this.greeting,
   });
 
   @override
@@ -699,12 +736,16 @@ class _MotivationHeader extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                'Hey there! 👋',
+              GradientText(
+                greeting,
                 style: GoogleFonts.outfit(
                   fontSize: 28,
                   fontWeight: FontWeight.w700,
-                  color: colorScheme.onPrimaryContainer,
+                ),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF7B61FF), Color(0xFF00CFFF)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
                 ),
               ),
               Text(
@@ -761,8 +802,9 @@ class _MotivationHeader extends StatelessWidget {
 /// Shown when there are no assignments matching the current filter.
 class _EmptyState extends StatelessWidget {
   final ColorScheme colorScheme;
+  final VoidCallback? onAdd;
 
-  const _EmptyState({required this.colorScheme});
+  const _EmptyState({required this.colorScheme, this.onAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -778,14 +820,14 @@ class _EmptyState extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.check_circle_outline,
+              Icons.auto_awesome_rounded,
               size: 40,
               color: colorScheme.onPrimaryContainer,
             ),
           ),
           const SizedBox(height: 20),
           Text(
-            'No assignments here!',
+            'You\'re all clear! 🎉',
             style: GoogleFonts.outfit(
               fontSize: 20,
               fontWeight: FontWeight.w600,
@@ -794,12 +836,18 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Tap the button below to add a new task.',
+            'No assignments yet. Add one to stay on top of your work!',
             textAlign: TextAlign.center,
             style: GoogleFonts.outfit(
               fontSize: 14,
               color: colorScheme.onSurfaceVariant,
             ),
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text('Add assignment'),
           ),
         ],
       ),
