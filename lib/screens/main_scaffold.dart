@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -66,8 +64,6 @@ class MainScaffold extends StatefulWidget {
 }
 
 class _MainScaffoldState extends State<MainScaffold> {
-  static const int _glassBackgroundAlpha = 165;
-
   int _currentIndex = 0;
 
   /// Use a NavigationRail instead of a BottomNavigationBar on wide screens
@@ -194,7 +190,7 @@ class _MainScaffoldState extends State<MainScaffold> {
       );
     }
 
-    // ── Mobile: Floating glass bottom bar layout ─────────────────────
+    // ── Mobile: Floating Material 3 bottom bar layout ────────────────
     return Scaffold(
       body: Stack(
         children: [
@@ -212,61 +208,52 @@ class _MainScaffoldState extends State<MainScaffold> {
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: colorScheme.outlineVariant.withAlpha(190),
+        child: Material(
+          color: colorScheme.surfaceContainerHigh,
+          elevation: 8,
+          shadowColor: Colors.black.withAlpha(50),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+            side: BorderSide(
+              color: colorScheme.outlineVariant.withAlpha(120),
               width: 1,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(36),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
-              ),
-              BoxShadow(
-                color: colorScheme.primary.withAlpha(20),
-                blurRadius: 18,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(30),
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: NavigationBar(
-                backgroundColor:
-                    colorScheme.surface.withAlpha(_glassBackgroundAlpha),
-                selectedIndex: safeIndex,
-                labelBehavior: navBar.showLabels
-                    ? NavigationDestinationLabelBehavior.alwaysShow
-                    : NavigationDestinationLabelBehavior.alwaysHide,
-                onDestinationSelected: (index) =>
-                    setState(() => _currentIndex = index),
-                destinations: visibleTabs.map((tab) {
-                  final isSocial = tab == NavTab.social;
-                  return NavigationDestination(
-                    icon: isSocial
-                        ? Badge(
-                            isLabelVisible: hasPendingRequests,
-                            child: Icon(tab.icon),
-                          )
-                        : Icon(tab.icon),
-                    selectedIcon: isSocial
-                        ? Badge(
-                            isLabelVisible: hasPendingRequests,
-                            child: Icon(tab.selectedIcon),
-                          )
-                        : Icon(tab.selectedIcon),
-                    label: tab.label,
-                  );
-                }).toList(),
-              ),
-            ),
+          clipBehavior: Clip.antiAlias,
+          borderRadius: BorderRadius.circular(28),
+          child: NavigationBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            height: 72,
+            indicatorColor: colorScheme.secondaryContainer,
+            selectedIconTheme:
+                IconThemeData(color: colorScheme.onSecondaryContainer),
+            unselectedIconTheme:
+                IconThemeData(color: colorScheme.onSurfaceVariant),
+            selectedIndex: safeIndex,
+            labelBehavior: navBar.showLabels
+                ? NavigationDestinationLabelBehavior.alwaysShow
+                : NavigationDestinationLabelBehavior.alwaysHide,
+            onDestinationSelected: (index) =>
+                setState(() => _currentIndex = index),
+            destinations: visibleTabs.map((tab) {
+              final isSocial = tab == NavTab.social;
+              return NavigationDestination(
+                icon: isSocial
+                    ? Badge(
+                        isLabelVisible: hasPendingRequests,
+                        child: Icon(tab.icon),
+                      )
+                    : Icon(tab.icon),
+                selectedIcon: isSocial
+                    ? Badge(
+                        isLabelVisible: hasPendingRequests,
+                        child: Icon(tab.selectedIcon),
+                      )
+                    : Icon(tab.selectedIcon),
+                label: tab.label,
+              );
+            }).toList(),
           ),
         ),
       ),
