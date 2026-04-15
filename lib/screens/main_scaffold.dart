@@ -137,13 +137,14 @@ class _MainScaffoldState extends State<MainScaffold> {
         body: Row(
           children: [
             NavigationRail(
+              backgroundColor: colorScheme.surfaceContainerLow,
               selectedIndex: safeIndex,
               onDestinationSelected: (index) =>
                   setState(() => _currentIndex = index),
               labelType: NavigationRailLabelType.selected,
               minWidth: 72,
-              selectedIconTheme: const IconThemeData(size: 28),
-              unselectedIconTheme: const IconThemeData(size: 24),
+              selectedIconTheme: IconThemeData(size: 28, color: colorScheme.primary),
+              unselectedIconTheme: IconThemeData(size: 24, color: colorScheme.onSurfaceVariant),
               destinations: visibleTabs.map((tab) {
                 final isSocial = tab == NavTab.social;
                 return NavigationRailDestination(
