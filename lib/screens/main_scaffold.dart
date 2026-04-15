@@ -136,6 +136,7 @@ class _MainScaffoldState extends State<MainScaffold> {
 
     // Build the list of screens matching visible tabs.
     final screens = visibleTabs.map(_screenForTab).toList();
+    final mobileNavBorderRadius = BorderRadius.circular(_mobileNavBarRadius);
 
     if (_useRail) {
       // ── Wide screen: NavigationRail layout ─────────────────────────
@@ -219,7 +220,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           elevation: _mobileNavBarElevation,
           shadowColor: colorScheme.shadow.withAlpha(_mobileNavBarShadowAlpha),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_mobileNavBarRadius),
+            borderRadius: mobileNavBorderRadius,
             side: BorderSide(
               color:
                   colorScheme.outlineVariant.withAlpha(_mobileNavBarBorderAlpha),
@@ -227,7 +228,7 @@ class _MainScaffoldState extends State<MainScaffold> {
             ),
           ),
           clipBehavior: Clip.antiAlias,
-          borderRadius: BorderRadius.circular(_mobileNavBarRadius),
+          borderRadius: mobileNavBorderRadius,
           child: NavigationBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
