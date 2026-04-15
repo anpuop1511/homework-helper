@@ -65,6 +65,7 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   static const double _mobileNavBarHeight = 72;
+  static const double _mobileNavBarRadius = 28;
 
   int _currentIndex = 0;
 
@@ -212,17 +213,17 @@ class _MainScaffoldState extends State<MainScaffold> {
         minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         child: Material(
           color: colorScheme.surfaceContainerHigh,
-          elevation: 8,
+          elevation: 3,
           shadowColor: Colors.black.withAlpha(50),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(_mobileNavBarRadius),
             side: BorderSide(
               color: colorScheme.outlineVariant.withAlpha(120),
               width: 1,
             ),
           ),
           clipBehavior: Clip.antiAlias,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(_mobileNavBarRadius),
           child: NavigationBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
