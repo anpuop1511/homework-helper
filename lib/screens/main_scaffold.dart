@@ -66,6 +66,9 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   static const double _mobileNavBarHeight = 72;
   static const double _mobileNavBarRadius = 28;
+  static const double _mobileNavBarElevation = 3;
+  static const int _mobileNavBarShadowAlpha = 90;
+  static const int _mobileNavBarBorderAlpha = 120;
 
   int _currentIndex = 0;
 
@@ -213,12 +216,13 @@ class _MainScaffoldState extends State<MainScaffold> {
         minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         child: Material(
           color: colorScheme.surfaceContainerHigh,
-          elevation: 3,
-          shadowColor: colorScheme.shadow.withAlpha(90),
+          elevation: _mobileNavBarElevation,
+          shadowColor: colorScheme.shadow.withAlpha(_mobileNavBarShadowAlpha),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(_mobileNavBarRadius),
             side: BorderSide(
-              color: colorScheme.outlineVariant.withAlpha(120),
+              color:
+                  colorScheme.outlineVariant.withAlpha(_mobileNavBarBorderAlpha),
               width: 1,
             ),
           ),
