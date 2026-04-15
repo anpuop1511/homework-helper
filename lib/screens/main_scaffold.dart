@@ -64,11 +64,11 @@ class MainScaffold extends StatefulWidget {
 }
 
 class _MainScaffoldState extends State<MainScaffold> {
-  static const double _mobileNavBarHeight = 72;
-  static const double _mobileNavBarRadius = 28;
-  static const double _mobileNavBarElevation = 3;
-  static const int _mobileNavBarShadowAlpha = 90;
-  static const int _mobileNavBarBorderAlpha = 120;
+  static const double _mobileNavBarHeight = 78;
+  static const double _mobileNavBarRadius = 36;
+  static const double _mobileNavBarElevation = 6;
+  static const int _mobileNavBarShadowAlpha = 70;
+  static const int _mobileNavBarBorderAlpha = 110;
 
   int _currentIndex = 0;
 
@@ -228,9 +228,9 @@ class _MainScaffoldState extends State<MainScaffold> {
         ],
       ),
       bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         child: Material(
-          color: colorScheme.surfaceContainerHigh,
+          color: colorScheme.surfaceContainer,
           elevation: _mobileNavBarElevation,
           shadowColor: colorScheme.shadow.withAlpha(_mobileNavBarShadowAlpha),
           shape: RoundedRectangleBorder(
@@ -245,11 +245,26 @@ class _MainScaffoldState extends State<MainScaffold> {
           borderRadius: mobileNavBorderRadius,
           child: NavigationBarTheme(
             data: NavigationBarThemeData(
-              iconTheme: WidgetStateProperty.resolveWith<IconThemeData>((states) {
+              indicatorColor: colorScheme.secondaryContainer,
+              indicatorShape: const StadiumBorder(),
+              iconTheme:
+                  WidgetStateProperty.resolveWith<IconThemeData>((states) {
                 return IconThemeData(
+                  size: states.contains(WidgetState.selected) ? 26 : 24,
                   color: states.contains(WidgetState.selected)
                       ? colorScheme.onSecondaryContainer
-                      : colorScheme.onSurfaceVariant,
+                      : colorScheme.onSurfaceVariant.withAlpha(190),
+                );
+              }),
+              labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((
+                states,
+              ) {
+                final selected = states.contains(WidgetState.selected);
+                return TextStyle(
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected
+                      ? colorScheme.onSurface
+                      : colorScheme.onSurfaceVariant.withAlpha(190),
                 );
               }),
             ),
@@ -257,7 +272,6 @@ class _MainScaffoldState extends State<MainScaffold> {
               backgroundColor: Colors.transparent,
               elevation: 0,
               height: _mobileNavBarHeight,
-              indicatorColor: colorScheme.secondaryContainer,
               selectedIndex: safeIndex,
               labelBehavior: navBar.showLabels
                   ? NavigationDestinationLabelBehavior.alwaysShow
