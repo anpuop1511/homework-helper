@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../models/assignment.dart';
 import '../models/class_model.dart';
 import '../providers/classes_provider.dart';
+import '../providers/entitlements_provider.dart';
 import '../providers/subjects_provider.dart';
+import 'upsell_screen.dart';
 
 /// Full-page screen that lists all user-created [SchoolClass] objects.
 ///
@@ -313,11 +315,56 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
     );
 
     if (existing == null) {
-      classesProvider.addClass(updated);
+      classesProvider.addClass(updated).then((added) {
+        if (!mounted) return;
+        if (!added) {
+          // Free-tier limit reached — show upgrade CTA.
+          _showClassLimitDialog(context);
+        } else {
+          Navigator.pop(context);
+        }
+      });
     } else {
       classesProvider.updateClass(updated);
+      Navigator.pop(context);
     }
-    Navigator.pop(context);
+  }
+
+  void _showClassLimitDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(
+          children: [
+            Text('✨', style: TextStyle(fontSize: 22)),
+            SizedBox(width: 8),
+            Text('Class Limit Reached'),
+          ],
+        ),
+        content: Text(
+          'Free accounts can create up to $kFreeClassLimit classes. '
+          'Upgrade to Helper+ or Helper Pass for unlimited classes and '
+          'many more features!',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Maybe Later'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pop(context); // close the edit dialog too
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const UpsellScreen()),
+              );
+            },
+            child: const Text('Upgrade'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

@@ -105,6 +105,61 @@ class AppTheme {
               : const Color(0xFFF5F5FF),
         );
 
+      // ── Neon Sunrise: vivid orange-to-magenta sunrise palette ────────
+      case AppVibe.neonSunrise:
+        final base = ColorScheme.fromSeed(
+          seedColor: const Color(0xFFFF6B00),
+          brightness: brightness,
+        );
+        return base.copyWith(
+          primary: brightness == Brightness.dark
+              ? const Color(0xFFFF9A3C)
+              : const Color(0xFFD44000),
+          onPrimary: Colors.white,
+          primaryContainer: brightness == Brightness.dark
+              ? const Color(0xFF8C2800)
+              : const Color(0xFFFFDCC8),
+          onPrimaryContainer: brightness == Brightness.dark
+              ? const Color(0xFFFFDCC8)
+              : const Color(0xFF3D0900),
+          secondary: brightness == Brightness.dark
+              ? const Color(0xFFFF5FA3)
+              : const Color(0xFFB5004D),
+          onSecondary: Colors.white,
+          surface: brightness == Brightness.dark
+              ? const Color(0xFF1A0E00)
+              : const Color(0xFFFFF8F5),
+        );
+
+      // ── Deep Ocean: rich deep-blue with teal accents ─────────────────
+      case AppVibe.deepOcean:
+        final base = ColorScheme.fromSeed(
+          seedColor: const Color(0xFF003D8F),
+          brightness: brightness,
+        );
+        return base.copyWith(
+          primary: brightness == Brightness.dark
+              ? const Color(0xFF82AFFF)
+              : const Color(0xFF003D8F),
+          onPrimary: brightness == Brightness.dark ? Colors.black : Colors.white,
+          primaryContainer: brightness == Brightness.dark
+              ? const Color(0xFF002B6E)
+              : const Color(0xFFD6E3FF),
+          onPrimaryContainer: brightness == Brightness.dark
+              ? const Color(0xFFD6E3FF)
+              : const Color(0xFF001948),
+          secondary: brightness == Brightness.dark
+              ? const Color(0xFF4ADFE0)
+              : const Color(0xFF005F60),
+          onSecondary: brightness == Brightness.dark ? Colors.black : Colors.white,
+          surface: brightness == Brightness.dark
+              ? const Color(0xFF00080F)   // near-black deep navy
+              : const Color(0xFFF5F8FF),
+          onSurface: brightness == Brightness.dark
+              ? const Color(0xFFDDE3FF)
+              : const Color(0xFF001048),
+        );
+
       // ── All other vibes: standard Material 3 seed scheme ─────────────
       default:
         return ColorScheme.fromSeed(

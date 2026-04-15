@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../providers/auth_provider.dart';
+import '../providers/entitlements_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/assignments_provider.dart';
 import '../services/database_service.dart';
@@ -13,6 +14,7 @@ import '../widgets/squircle_avatar.dart';
 import 'cosmetics_screen.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
+import 'upsell_screen.dart';
 import 'username_screen.dart';
 
 /// The user profile screen showing gamification stats:
@@ -153,6 +155,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = context.watch<UserProvider>();
     final assignments = context.watch<AssignmentsProvider>();
     final auth = context.watch<AuthProvider>();
+    final entitlements = context.watch<EntitlementsProvider>();
 
     final completedCount =
         assignments.assignments.where((a) => a.isCompleted).length;
@@ -338,7 +341,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: nameColorValue(user.equippedNameColor),
                           ),
                         ),
-                      // Pass-type icon
+                      // Pass-type icon (battle pass tier)
                       if (user.passType != 'free') ...[
                         const SizedBox(width: 6),
                         Text(
@@ -349,6 +352,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: user.passType == 'premium'
                                 ? const Color(0xFFB8860B)
                                 : colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                      // Subscription Pass badge (Helper Pass)
+                      if (entitlements.isPass) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFB8860B), Color(0xFFFFD700)],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '🏅 Pass',
+                            style: GoogleFonts.outfit(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ],
@@ -473,6 +498,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 20),
+
+            // ── Subscription banner (shows when on free tier) ─────────
+            if (auth.isSignedIn && !entitlements.isPlus) ...[
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const UpsellScreen()),
+                ),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6750A4), Color(0xFF9C27B0)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text('✨', style: TextStyle(fontSize: 24)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Unlock Homework Helper+',
+                              style: GoogleFonts.lexend(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              'Unlimited classes, premium themes, '
+                              'repeatable tasks & more.',
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                color: Colors.white.withAlpha(200),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded,
+                          color: Colors.white),
+                    ],
+                  ),
+                ),
+              ),
+            ],
 
             // ── Share Invite Link ─────────────────────────────────────
             if (auth.isSignedIn) ...[
