@@ -107,7 +107,7 @@ class UpsellScreen extends StatelessWidget {
               emoji: '🏅',
               name: 'Helper Pass',
               price: r'$2.99/month',
-              trialText: '7-day free trial · then $1.99/mo for 2 months',
+              trialText: r'7-day free trial · then $1.99/mo for 2 months',
               ladderPromoText:
                   'Complete the Ladder event → one-time 14-day free trial',
               highlightColor: const Color(0xFFB8860B),
@@ -133,8 +133,7 @@ class UpsellScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             // ── Restore purchases (Android only) ──────────────────────
-            if (!kIsWeb)
-              _RestorePurchasesButton(colorScheme: colorScheme),
+            if (!kIsWeb) _RestorePurchasesButton(colorScheme: colorScheme),
 
             const SizedBox(height: 8),
             _DisclaimerText(colorScheme: colorScheme),
@@ -248,7 +247,7 @@ class _CurrentTierBanner extends StatelessWidget {
   }
 }
 
-// ── Web message card ──────────────────────────────────────────────────────────
+// ── Web message card ────────────────────────────────────────────────────────
 
 class _WebMessageCard extends StatelessWidget {
   final ColorScheme colorScheme;
@@ -297,7 +296,7 @@ class _WebMessageCard extends StatelessWidget {
   }
 }
 
-// ── Tier card ─────────────────────────────────────────────────────────────────
+// ── Tier card ──────────────────────────────────────────────────────────
 
 class _TierCard extends StatelessWidget {
   final String emoji;
@@ -455,7 +454,7 @@ class _TierCard extends StatelessWidget {
   }
 }
 
-// ── Feature row ───────────────────────────────────────────────────────────────
+// ── Feature row ─────────────────────────────────────────────────────────
 
 class _Feature {
   final String text;
@@ -505,7 +504,7 @@ class _FeatureRow extends StatelessWidget {
   }
 }
 
-// ── Purchase button ───────────────────────────────────────────────────────────
+// ── Purchase button ────────────────────────────────────────────────────────
 
 class _PurchaseButton extends StatelessWidget {
   final String label;
@@ -540,7 +539,7 @@ class _PurchaseButton extends StatelessWidget {
   }
 }
 
-// ── Restore purchases ─────────────────────────────────────────────────────────
+// ── Restore purchases ───────────────────────────────────────────────────────
 
 class _RestorePurchasesButton extends StatelessWidget {
   final ColorScheme colorScheme;
@@ -575,7 +574,7 @@ class _RestorePurchasesButton extends StatelessWidget {
   }
 }
 
-// ── Disclaimer text ───────────────────────────────────────────────────────────
+// ── Disclaimer text ────────────────────────────────────────────────────────
 
 class _DisclaimerText extends StatelessWidget {
   final ColorScheme colorScheme;
