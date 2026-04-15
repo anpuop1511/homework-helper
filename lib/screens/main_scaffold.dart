@@ -140,10 +140,14 @@ class _MainScaffoldState extends State<MainScaffold> {
               selectedIndex: safeIndex,
               onDestinationSelected: (index) =>
                   setState(() => _currentIndex = index),
-              labelType: NavigationRailLabelType.all,
+              labelType: NavigationRailLabelType.selected,
+              minWidth: 72,
+              selectedIconTheme: const IconThemeData(size: 28),
+              unselectedIconTheme: const IconThemeData(size: 24),
               destinations: visibleTabs.map((tab) {
                 final isSocial = tab == NavTab.social;
                 return NavigationRailDestination(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
                   icon: isSocial
                       ? Badge(
                           isLabelVisible: hasPendingRequests,

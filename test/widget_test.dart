@@ -136,7 +136,12 @@ void main() {
         (WidgetTester tester) async {
       await tester.pumpWidget(_buildTestApp(const HomeScreen()));
       await tester.pump();
-      expect(find.text('Hey there! 👋'), findsOneWidget);
+      // Greeting is now time-based (e.g. "Good morning, there"), so check
+      // for one of the possible greeting prefixes instead of the old static text.
+      final greetingFinder = find.textContaining(
+        RegExp(r'Good morning|Good afternoon|Good evening|Hello'),
+      );
+      expect(greetingFinder, findsOneWidget);
     });
 
     testWidgets('shows Add Task FAB', (WidgetTester tester) async {
