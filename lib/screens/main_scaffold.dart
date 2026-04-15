@@ -150,8 +150,6 @@ class _MainScaffoldState extends State<MainScaffold> {
                   setState(() => _currentIndex = index),
               labelType: NavigationRailLabelType.selected,
               minWidth: 72,
-              selectedIconTheme: IconThemeData(size: 28, color: colorScheme.primary),
-              unselectedIconTheme: IconThemeData(size: 24, color: colorScheme.onSurfaceVariant),
               destinations: visibleTabs.map((tab) {
                 final isSocial = tab == NavTab.social;
                 return NavigationRailDestination(
@@ -159,15 +157,31 @@ class _MainScaffoldState extends State<MainScaffold> {
                   icon: isSocial
                       ? Badge(
                           isLabelVisible: hasPendingRequests,
-                          child: Icon(tab.icon),
+                          child: Icon(
+                            tab.icon,
+                            size: 24,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
                         )
-                      : Icon(tab.icon),
+                      : Icon(
+                          tab.icon,
+                          size: 24,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                   selectedIcon: isSocial
                       ? Badge(
                           isLabelVisible: hasPendingRequests,
-                          child: Icon(tab.selectedIcon),
+                          child: Icon(
+                            tab.selectedIcon,
+                            size: 28,
+                            color: colorScheme.primary,
+                          ),
                         )
-                      : Icon(tab.selectedIcon),
+                      : Icon(
+                          tab.selectedIcon,
+                          size: 28,
+                          color: colorScheme.primary,
+                        ),
                   label: Text(tab.label),
                 );
               }).toList(),
@@ -229,39 +243,46 @@ class _MainScaffoldState extends State<MainScaffold> {
           ),
           clipBehavior: Clip.antiAlias,
           borderRadius: mobileNavBorderRadius,
-          child: NavigationBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            height: _mobileNavBarHeight,
-            indicatorColor: colorScheme.secondaryContainer,
-            selectedIconTheme:
-                IconThemeData(color: colorScheme.onSecondaryContainer),
-            unselectedIconTheme:
-                IconThemeData(color: colorScheme.onSurfaceVariant),
-            selectedIndex: safeIndex,
-            labelBehavior: navBar.showLabels
-                ? NavigationDestinationLabelBehavior.alwaysShow
-                : NavigationDestinationLabelBehavior.alwaysHide,
-            onDestinationSelected: (index) =>
-                setState(() => _currentIndex = index),
-            destinations: visibleTabs.map((tab) {
-              final isSocial = tab == NavTab.social;
-              return NavigationDestination(
-                icon: isSocial
-                    ? Badge(
-                        isLabelVisible: hasPendingRequests,
-                        child: Icon(tab.icon),
-                      )
-                    : Icon(tab.icon),
-                selectedIcon: isSocial
-                    ? Badge(
-                        isLabelVisible: hasPendingRequests,
-                        child: Icon(tab.selectedIcon),
-                      )
-                    : Icon(tab.selectedIcon),
-                label: tab.label,
-              );
-            }).toList(),
+          child: NavigationBarTheme(
+            data: NavigationBarThemeData(
+              iconTheme: WidgetStateProperty.resolveWith<IconThemeData>((states) {
+                return IconThemeData(
+                  color: states.contains(WidgetState.selected)
+                      ? colorScheme.onSecondaryContainer
+                      : colorScheme.onSurfaceVariant,
+                );
+              }),
+            ),
+            child: NavigationBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              height: _mobileNavBarHeight,
+              indicatorColor: colorScheme.secondaryContainer,
+              selectedIndex: safeIndex,
+              labelBehavior: navBar.showLabels
+                  ? NavigationDestinationLabelBehavior.alwaysShow
+                  : NavigationDestinationLabelBehavior.alwaysHide,
+              onDestinationSelected: (index) =>
+                  setState(() => _currentIndex = index),
+              destinations: visibleTabs.map((tab) {
+                final isSocial = tab == NavTab.social;
+                return NavigationDestination(
+                  icon: isSocial
+                      ? Badge(
+                          isLabelVisible: hasPendingRequests,
+                          child: Icon(tab.icon),
+                        )
+                      : Icon(tab.icon),
+                  selectedIcon: isSocial
+                      ? Badge(
+                          isLabelVisible: hasPendingRequests,
+                          child: Icon(tab.selectedIcon),
+                        )
+                      : Icon(tab.selectedIcon),
+                  label: tab.label,
+                );
+              }).toList(),
+            ),
           ),
         ),
       ),
