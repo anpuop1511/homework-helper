@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'bootstrap/firebase_bootstrap.dart';
+import 'providers/event_provider.dart';
 import 'providers/assignments_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
@@ -100,15 +101,26 @@ Future<void> main() async {
             return provider;
           },
         ),
+        // EventProvider tracks progress for the limited-time Assignments Ladder.
+        // Wired to AuthProvider so the UID is set on sign-in/out.
+        ChangeNotifierProxyProvider<AuthProvider, EventProvider>(
+          create: (_) => EventProvider(),
+          update: (_, auth, prev) {
+            final provider = prev ?? EventProvider();
+            provider.setUid(auth.uid);
+            return provider;
+          },
+        ),
         // C-1: AssignmentsProvider is wired to both AuthProvider (for UID /
         // Firestore sync) and UserProvider (for awarding XP on completion).
-        ChangeNotifierProxyProvider2<AuthProvider, UserProvider,
+        ChangeNotifierProxyProvider3<AuthProvider, UserProvider, EventProvider,
             AssignmentsProvider>(
           create: (_) => AssignmentsProvider(),
-          update: (_, auth, userProvider, prev) {
+          update: (_, auth, userProvider, eventProvider, prev) {
             final provider = prev ?? AssignmentsProvider();
             provider.setUid(auth.uid);
             provider.updateUserProvider(userProvider);
+            provider.updateEventProvider(eventProvider);
             return provider;
           },
         ),

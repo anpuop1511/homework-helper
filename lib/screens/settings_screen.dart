@@ -9,6 +9,7 @@ import '../models/assignment.dart';
 import '../providers/assignments_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/event_provider.dart';
 import '../providers/nav_bar_provider.dart';
 import '../providers/security_provider.dart';
 import '../providers/social_provider.dart';
@@ -2677,6 +2678,21 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                   onChanged: (v) =>
                       context.read<UserProvider>().setShopTimeTravel(v),
                 ),
+              ),
+              const SizedBox(height: 8),
+              _DevButton(
+                icon: Icons.event_available_rounded,
+                label: 'Reset Event Progress (Ladder)',
+                color: Colors.deepOrange,
+                onTap: () async {
+                  await context.read<EventProvider>().resetForTesting();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('🏆 Event progress reset!')),
+                    );
+                  }
+                },
               ),
               const SizedBox(height: 8),
               _DevButton(

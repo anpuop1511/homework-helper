@@ -82,6 +82,38 @@ class DatabaseService {
     );
   }
 
+  // ── Limited-time event data ───────────────────────────────────────────────
+
+  /// Writes / merges event progress into a sub-document at
+  /// `users/{uid}/events/{eventId}`.
+  Future<void> saveEventData({
+    required String uid,
+    required String eventId,
+    required int total,
+    required List<int> claimedTiers,
+    required List<String> countedIds,
+  }) async {
+    await _userDoc(uid)
+        .collection('events')
+        .doc(eventId)
+        .set(
+      {
+        'total': total,
+        'claimed': claimedTiers,
+        'countedIds': countedIds,
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Reads event progress from `users/{uid}/events/{eventId}`.
+  /// Returns null if the document does not exist.
+  Future<Map<String, dynamic>?> getEventData(
+      String uid, String eventId) async {
+    final snap = await _userDoc(uid).collection('events').doc(eventId).get();
+    return snap.data();
+  }
+
   /// Writes / merges only the vibe field.
   Future<void> saveVibe(String uid, AppVibe vibe) async {
     await _userDoc(uid).set(

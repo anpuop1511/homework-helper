@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/assignment.dart';
 import '../services/database_service.dart';
 import 'user_provider.dart';
+import 'event_provider.dart';
 
 /// XP awarded when an assignment is marked complete.
 const int _xpPerAssignment = 25;
@@ -20,6 +21,7 @@ const int _seasonXpPerAssignment = 20;
 /// Without a UID it operates entirely in memory (guest / offline mode).
 class AssignmentsProvider extends ChangeNotifier {
   UserProvider? _userProvider;
+  EventProvider? _eventProvider;
 
   String? _uid;
   StreamSubscription<List<Assignment>>? _sub;
@@ -32,6 +34,11 @@ class AssignmentsProvider extends ChangeNotifier {
   /// Called by [ChangeNotifierProxyProvider] to inject [UserProvider].
   void updateUserProvider(UserProvider userProvider) {
     _userProvider = userProvider;
+  }
+
+  /// Called by [ChangeNotifierProxyProvider] to inject [EventProvider].
+  void updateEventProvider(EventProvider eventProvider) {
+    _eventProvider = eventProvider;
   }
 
   /// Switches between guest mode (null) and cloud-backed mode (uid).
@@ -90,6 +97,8 @@ class AssignmentsProvider extends ChangeNotifier {
         _userProvider?.awardXp(_xpPerAssignment);
         _userProvider?.awardCoins(_coinsPerAssignment);
         _userProvider?.addSeasonXp(_seasonXpPerAssignment);
+        // Notify the ladder event provider about this completion.
+        _eventProvider?.recordCompletion(_assignments[idx].id);
       }
       notifyListeners();
       if (_uid != null) {

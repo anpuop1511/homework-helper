@@ -11,11 +11,13 @@ import '../providers/assignments_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/classes_provider.dart';
+import '../providers/event_provider.dart';
 import '../providers/subjects_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/assignment_card.dart';
 import '../widgets/add_task_sheet.dart';
 import '../widgets/gradient_text.dart';
+import 'ladder_event_screen.dart';
 import 'subjects_screen.dart' show SubjectFolderSection;
 import 'settings_screen.dart';
 
@@ -174,6 +176,11 @@ class _HomeScreenState extends State<HomeScreen> {
           // ── Classes Section ────────────────────────────────────────
           SliverToBoxAdapter(
             child: _ClassesSection(colorScheme: colorScheme),
+          ),
+
+          // ── Event Banner ───────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: _EventBannerCard(colorScheme: colorScheme),
           ),
 
           // Subject Filter Chips
@@ -1150,6 +1157,105 @@ class _AiClassImportSheetState extends State<_AiClassImportSheet> {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Event Banner Card ─────────────────────────────────────────────────────────
+
+/// A compact Home-screen banner that links to [LadderEventScreen].
+/// Shows different copy depending on the event state.
+class _EventBannerCard extends StatelessWidget {
+  final ColorScheme colorScheme;
+
+  const _EventBannerCard({required this.colorScheme});
+
+  @override
+  Widget build(BuildContext context) {
+    final event = context.watch<EventProvider>();
+
+    String title;
+    String subtitle;
+    Color accentColor;
+    String emoji;
+
+    switch (event.state) {
+      case EventState.upcoming:
+        title = 'Assignments Ladder – Starting Soon!';
+        subtitle = 'Complete assignments Apr 20–24 for big rewards.';
+        accentColor = const Color(0xFFFF6B35);
+        emoji = '⏳';
+      case EventState.active:
+        final reached = event.highestReachedTier;
+        title = 'Assignments Ladder – Live Now!';
+        subtitle = reached > 0
+            ? 'Tier $reached reached · ${event.totalCompletedDuringEvent} completed'
+            : 'Start completing assignments to earn rewards!';
+        accentColor = Colors.green.shade600;
+        emoji = '🔥';
+      case EventState.ended:
+        final unclaimed = event.highestReachedTier - event.claimedTiers.length;
+        title = 'Assignments Ladder – Ended';
+        subtitle = unclaimed > 0
+            ? '$unclaimed unclaimed reward${unclaimed != 1 ? "s" : ""} waiting!'
+            : 'Thanks for participating!';
+        accentColor = colorScheme.onSurfaceVariant;
+        emoji = '🏁';
+    }
+
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const LadderEventScreen()),
+      ),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              accentColor.withAlpha(28),
+              colorScheme.primaryContainer.withAlpha(50),
+            ],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accentColor.withAlpha(90)),
+        ),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 26)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.lexend(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: accentColor,
+            ),
           ],
         ),
       ),
