@@ -92,7 +92,7 @@ class UpsellScreen extends StatelessWidget {
                 _Feature('500 coins on billing date', included: true),
               ],
               actionWidget: kIsWeb
-                  ? null
+                  ? _WebSubscribeButton(colorScheme: colorScheme)
                   : _PurchaseButton(
                       label: 'Start Free Trial',
                       // TODO(billing): wire up Google Play in_app_purchase
@@ -120,7 +120,7 @@ class UpsellScreen extends StatelessWidget {
                 _Feature('AI model choice (BYOK non-Gemini)', included: true),
               ],
               actionWidget: kIsWeb
-                  ? null
+                  ? _WebSubscribeButton(colorScheme: colorScheme)
                   : _PurchaseButton(
                       label: 'Start Free Trial',
                       // TODO(billing): wire up Google Play in_app_purchase
@@ -526,6 +526,35 @@ class _PurchaseButton extends StatelessWidget {
         icon: const Icon(Icons.shopping_bag_rounded, size: 18),
         label: Text(
           label,
+          style: GoogleFonts.lexend(fontWeight: FontWeight.w600),
+        ),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Web disabled subscribe button ──────────────────────────────────────────
+
+class _WebSubscribeButton extends StatelessWidget {
+  final ColorScheme colorScheme;
+
+  const _WebSubscribeButton({required this.colorScheme});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: null,
+        icon: const Icon(Icons.smartphone_rounded, size: 18),
+        label: Text(
+          'Subscribe on Android',
           style: GoogleFonts.lexend(fontWeight: FontWeight.w600),
         ),
         style: FilledButton.styleFrom(
