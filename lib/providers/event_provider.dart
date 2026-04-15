@@ -6,7 +6,7 @@ import '../services/database_service.dart';
 enum EventState { upcoming, active, ended }
 
 /// Manages the "Complete Assignments Ladder" limited-time event running
-/// 2026-04-20 through 2026-04-24 (inclusive, local time).
+/// 2026-04-24 through 2026-04-30 (inclusive, local time).
 ///
 /// Progress is driven by a single [totalCompletedDuringEvent] counter that
 /// increments once per unique assignment ID completed within the event window.
@@ -15,10 +15,10 @@ enum EventState { upcoming, active, ended }
 class EventProvider extends ChangeNotifier {
   // ── Event constants ──────────────────────────────────────────────────────
 
-  static const String eventId = 'ladder_2026_04_20';
+  static const String eventId = 'ladder_2026_04_24';
 
-  static final DateTime _eventStart = DateTime(2026, 4, 20);
-  static final DateTime _eventEnd = DateTime(2026, 4, 25); // exclusive boundary
+  static final DateTime _eventStart = DateTime(2026, 4, 24);
+  static final DateTime _eventEnd = DateTime(2026, 5, 1); // exclusive boundary (Apr 30 inclusive)
 
   /// Goals per tier (1-indexed; index 0 unused).
   static const List<int> tierGoals = [

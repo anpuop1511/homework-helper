@@ -1185,7 +1185,7 @@ class _EventBannerCard extends StatelessWidget {
     switch (event.state) {
       case EventState.upcoming:
         title = 'Assignments Ladder – Starting Soon!';
-        subtitle = 'Complete assignments Apr 20–24 for big rewards.';
+        subtitle = 'Complete assignments Apr 24–30 for big rewards.';
         accentColor = const Color(0xFFFF6B35);
         emoji = '⏳';
       case EventState.active:
