@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -190,7 +192,7 @@ class _MainScaffoldState extends State<MainScaffold> {
       );
     }
 
-    // ── Mobile: BottomNavigationBar layout ───────────────────────────
+    // ── Mobile: Floating glass bottom bar layout ─────────────────────
     return Scaffold(
       body: Stack(
         children: [
@@ -206,28 +208,64 @@ class _MainScaffoldState extends State<MainScaffold> {
           ),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: safeIndex,
-        onDestinationSelected: (index) =>
-            setState(() => _currentIndex = index),
-        destinations: visibleTabs.map((tab) {
-          final isSocial = tab == NavTab.social;
-          return NavigationDestination(
-            icon: isSocial
-                ? Badge(
-                    isLabelVisible: hasPendingRequests,
-                    child: Icon(tab.icon),
-                  )
-                : Icon(tab.icon),
-            selectedIcon: isSocial
-                ? Badge(
-                    isLabelVisible: hasPendingRequests,
-                    child: Icon(tab.selectedIcon),
-                  )
-                : Icon(tab.selectedIcon),
-            label: tab.label,
-          );
-        }).toList(),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withAlpha(190),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(36),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+              BoxShadow(
+                color: colorScheme.primary.withAlpha(20),
+                blurRadius: 18,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(30),
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: NavigationBar(
+                backgroundColor: colorScheme.surface.withAlpha(165),
+                selectedIndex: safeIndex,
+                labelBehavior: navBar.showLabels
+                    ? NavigationDestinationLabelBehavior.alwaysShow
+                    : NavigationDestinationLabelBehavior.alwaysHide,
+                onDestinationSelected: (index) =>
+                    setState(() => _currentIndex = index),
+                destinations: visibleTabs.map((tab) {
+                  final isSocial = tab == NavTab.social;
+                  return NavigationDestination(
+                    icon: isSocial
+                        ? Badge(
+                            isLabelVisible: hasPendingRequests,
+                            child: Icon(tab.icon),
+                          )
+                        : Icon(tab.icon),
+                    selectedIcon: isSocial
+                        ? Badge(
+                            isLabelVisible: hasPendingRequests,
+                            child: Icon(tab.selectedIcon),
+                          )
+                        : Icon(tab.selectedIcon),
+                    label: tab.label,
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

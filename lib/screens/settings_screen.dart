@@ -1227,6 +1227,22 @@ class _NavigationSettingsPage extends StatelessWidget {
         const SizedBox(height: 12),
         _SquircleCard(
           colorScheme: colorScheme,
+          child: SwitchListTile.adaptive(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            title: const Text('Show tab labels'),
+            subtitle: Text(
+              'When off, bottom navigation shows icons only.',
+              style: textTheme.bodySmall
+                  ?.copyWith(color: colorScheme.onSurfaceVariant),
+            ),
+            value: navBar.showLabels,
+            onChanged: (value) =>
+                context.read<NavBarProvider>().setShowLabels(value),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SquircleCard(
+          colorScheme: colorScheme,
           child: ReorderableListView(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
