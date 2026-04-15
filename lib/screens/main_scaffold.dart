@@ -250,10 +250,10 @@ class _MainScaffoldState extends State<MainScaffold> {
               iconTheme:
                   WidgetStateProperty.resolveWith<IconThemeData>((states) {
                 return IconThemeData(
-                  size: states.contains(WidgetState.selected) ? 26 : 24,
+                  size: states.contains(WidgetState.selected) ? 28 : 24,
                   color: states.contains(WidgetState.selected)
                       ? colorScheme.onSecondaryContainer
-                      : colorScheme.onSurfaceVariant.withAlpha(190),
+                      : colorScheme.onSurfaceVariant,
                 );
               }),
               labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((
@@ -264,7 +264,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   color: selected
                       ? colorScheme.onSurface
-                      : colorScheme.onSurfaceVariant.withAlpha(190),
+                      : colorScheme.onSurfaceVariant,
                 );
               }),
             ),
