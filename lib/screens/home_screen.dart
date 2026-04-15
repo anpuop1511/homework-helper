@@ -35,6 +35,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // Logical pixels of downward pull needed at top of Home before opening buddy.
   static const double _studyBuddyPullThresholdPixels = 74;
 
   String _selectedSubject = Subject.all;
