@@ -64,6 +64,8 @@ class MainScaffold extends StatefulWidget {
 }
 
 class _MainScaffoldState extends State<MainScaffold> {
+  static const double _mobileNavBarHeight = 72;
+
   int _currentIndex = 0;
 
   /// Use a NavigationRail instead of a BottomNavigationBar on wide screens
@@ -224,7 +226,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           child: NavigationBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            height: 72,
+            height: _mobileNavBarHeight,
             indicatorColor: colorScheme.secondaryContainer,
             selectedIconTheme:
                 IconThemeData(color: colorScheme.onSecondaryContainer),
