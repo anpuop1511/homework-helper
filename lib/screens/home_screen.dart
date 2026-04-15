@@ -11,6 +11,7 @@ import '../providers/assignments_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/classes_provider.dart';
+import '../providers/entitlements_provider.dart';
 import '../providers/event_provider.dart';
 import '../providers/subjects_provider.dart';
 import '../providers/user_provider.dart';
@@ -18,6 +19,7 @@ import '../widgets/assignment_card.dart';
 import '../widgets/add_task_sheet.dart';
 import '../widgets/gradient_text.dart';
 import 'ladder_event_screen.dart';
+import 'upsell_screen.dart';
 import 'subjects_screen.dart' show SubjectFolderSection;
 import 'settings_screen.dart';
 
@@ -600,11 +602,54 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
     );
 
     if (existing == null) {
-      classesProvider.addClass(updated);
+      classesProvider.addClass(updated).then((added) {
+        if (!mounted) return;
+        if (!added) {
+          _showClassLimitDialog(context);
+        } else {
+          Navigator.pop(context);
+        }
+      });
     } else {
       classesProvider.updateClass(updated);
+      Navigator.pop(context);
     }
-    Navigator.pop(context);
+  }
+
+  void _showClassLimitDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(
+          children: [
+            Text('✨', style: TextStyle(fontSize: 22)),
+            SizedBox(width: 8),
+            Text('Class Limit Reached'),
+          ],
+        ),
+        content: Text(
+          'Free accounts can create up to $kFreeClassLimit classes. '
+          'Upgrade to Helper+ or Helper Pass for unlimited classes!',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Maybe Later'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pop(context);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const UpsellScreen()),
+              );
+            },
+            child: const Text('Upgrade'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -957,20 +1002,47 @@ class _AiClassImportSheetState extends State<_AiClassImportSheet> {
 
   Future<void> _addSelected() async {
     final classesProvider = context.read<ClassesProvider>();
+    int addedCount = 0;
+    bool limitReached = false;
     for (final i in _selected) {
       if (i < _parsed.length) {
-        await classesProvider.addClass(_parsed[i]);
+        final added = await classesProvider.addClass(_parsed[i]);
+        if (added) {
+          addedCount++;
+        } else {
+          limitReached = true;
+          break; // Stop at first limit hit — no point trying more
+        }
       }
     }
     if (mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              '${_selected.length} class${_selected.length == 1 ? '' : 'es'} added! 🎉'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      if (limitReached) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              addedCount > 0
+                  ? '$addedCount class${addedCount == 1 ? '' : 'es'} added. Free limit reached — upgrade for more!'
+                  : 'Free class limit reached! Upgrade to Helper+ for unlimited classes.',
+            ),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Upgrade',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const UpsellScreen()),
+              ),
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                '$addedCount class${addedCount == 1 ? '' : 'es'} added! 🎉'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 

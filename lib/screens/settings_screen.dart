@@ -6,9 +6,11 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/assignment.dart';
+import '../models/entitlement_model.dart';
 import '../providers/assignments_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/entitlements_provider.dart';
 import '../providers/event_provider.dart';
 import '../providers/nav_bar_provider.dart';
 import '../providers/security_provider.dart';
@@ -16,6 +18,8 @@ import '../providers/social_provider.dart';
 import '../providers/subjects_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
+import '../services/database_service.dart';
+import 'upsell_screen.dart';
 import 'username_screen.dart';
 
 /// Email of the developer account that can see the hidden debug menu.
@@ -49,6 +53,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       color: Color(0xFF6750A4),
       title: 'Account',
       subtitle: 'Username, password, sign out',
+    ),
+    _CategoryData(
+      icon: Icons.star_rounded,
+      color: Color(0xFFB8860B),
+      title: 'Subscription',
+      subtitle: 'Helper+ & Helper Pass benefits',
     ),
     _CategoryData(
       icon: Icons.auto_awesome_rounded,
@@ -105,6 +115,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     switch (cat.title) {
       case 'Account':
         page = const _AccountSettingsPage();
+        break;
+      case 'Subscription':
+        page = const UpsellScreen();
         break;
       case 'AI & Models':
         page = const _AiModelsSettingsPage();
@@ -637,6 +650,7 @@ class _AiModelsSettingsPage extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final chat = context.watch<ChatProvider>();
     final security = context.watch<SecurityProvider>();
+    final entitlements = context.watch<EntitlementsProvider>();
     return _CategoryPage(
       title: 'AI & Models',
       children: [
@@ -668,28 +682,36 @@ class _AiModelsSettingsPage extends StatelessWidget {
                           Text('AI Model',
                               style: textTheme.bodyLarge
                                   ?.copyWith(fontWeight: FontWeight.w600)),
-                          Text('Choose the Gemini model to use.',
+                          Text('Choose the AI model to use.',
                               style: textTheme.bodySmall?.copyWith(
                                   color: colorScheme.onSurfaceVariant)),
                         ],
                       ),
                     ),
                     SizedBox(
-                      width: 160,
+                      width: 170,
                       child: DropdownButton<AiModel>(
                         value: chat.selectedModel,
                         isExpanded: true,
                         underline: const SizedBox.shrink(),
                         items: AiModel.values.map((m) {
+                          final isPassLocked =
+                              m.requiresPass && !entitlements.isPass;
                           return DropdownMenuItem(
                             value: m,
+                            enabled: !isPassLocked,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Flexible(
                                   child: Text(
                                     m.label,
-                                    style: textTheme.bodyMedium,
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color: isPassLocked
+                                          ? colorScheme.onSurfaceVariant
+                                              .withAlpha(120)
+                                          : null,
+                                    ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -711,26 +733,43 @@ class _AiModelsSettingsPage extends StatelessWidget {
                                     ),
                                   ),
                                 ],
+                                if (isPassLocked) ...[
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.lock_rounded, size: 12),
+                                ],
                               ],
                             ),
                           );
                         }).toList(),
                         onChanged: (m) {
-                          if (m != null) {
-                            context.read<ChatProvider>().setModel(m);
+                          if (m == null) return;
+                          if (m.requiresPass && !entitlements.isPass) {
+                            // Show upsell for Pass-only model.
+                            Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => const UpsellScreen(),
+                            ));
+                            return;
                           }
+                          context.read<ChatProvider>().setModel(m);
                         },
                       ),
                     ),
                   ],
                 ),
               ),
-              // BYOK key input -- only visible when Custom is selected
+              // Gemini BYOK key input -- only visible when Custom is selected
               if (chat.selectedModel == AiModel.custom) ...[
                 Divider(
                     height: 1,
                     color: colorScheme.outlineVariant.withAlpha(100)),
                 _ByokKeyField(colorScheme: colorScheme),
+              ],
+              // Pass BYOK (non-Gemini) fields -- only when passCustom is selected
+              if (chat.selectedModel == AiModel.passCustom) ...[
+                Divider(
+                    height: 1,
+                    color: colorScheme.outlineVariant.withAlpha(100)),
+                _PassByokFields(colorScheme: colorScheme),
               ],
               Divider(
                   height: 1,
@@ -884,6 +923,7 @@ class _AppearanceSettingsPage extends StatelessWidget {
     final themeProvider = context.watch<ThemeProvider>();
     final socialProvider = context.watch<SocialProvider>();
     final userProvider = context.watch<UserProvider>();
+    final entitlements = context.watch<EntitlementsProvider>();
     return _CategoryPage(
       title: 'Appearance',
       children: [
@@ -899,9 +939,14 @@ class _AppearanceSettingsPage extends StatelessWidget {
             children: AppVibe.values.map((vibe) {
               final isSelected = themeProvider.vibe == vibe;
               final isSpring = _springVibes.contains(vibe);
+              final isPremium = kPremiumVibes.contains(vibe);
               final cosmeticId = 'vibe_${vibe.name}';
-              final isUnlocked = !isSpring ||
-                  userProvider.unlockedCosmetics.contains(cosmeticId);
+              // A vibe is unlocked when:
+              //   • it is NOT a spring battle-pass vibe, OR the cosmetic is owned
+              //   • AND it is NOT a premium subscription vibe, OR the user has Plus/Pass
+              final isUnlocked = (!isSpring ||
+                      userProvider.unlockedCosmetics.contains(cosmeticId)) &&
+                  (!isPremium || entitlements.canUsePremiumThemes);
               final vibeScheme = ColorScheme.fromSeed(
                 seedColor: vibe.seedColor,
                 brightness: Theme.of(context).brightness,
@@ -911,30 +956,69 @@ class _AppearanceSettingsPage extends StatelessWidget {
                 vibeScheme: vibeScheme,
                 isSelected: isSelected,
                 isLocked: !isUnlocked,
+                isPremiumLocked: isPremium && !entitlements.canUsePremiumThemes,
                 onTap: () {
                   if (!isUnlocked) {
-                    showDialog<void>(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        title: Row(
-                          children: [
-                            Text(vibe.emoji),
-                            const SizedBox(width: 8),
-                            Text(vibe.label),
+                    if (isPremium && !entitlements.canUsePremiumThemes) {
+                      // Subscription upsell
+                      showDialog<void>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24)),
+                          title: Row(
+                            children: [
+                              Text(vibe.emoji),
+                              const SizedBox(width: 8),
+                              Flexible(child: Text(vibe.label)),
+                            ],
+                          ),
+                          content: const Text(
+                            'This is a premium theme available with '
+                            'Homework Helper+ or Helper Pass.\n\n'
+                            'Upgrade to unlock premium themes and many more features!',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Maybe Later'),
+                            ),
+                            FilledButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (_) => const UpsellScreen(),
+                                ));
+                              },
+                              child: const Text('Upgrade'),
+                            ),
                           ],
                         ),
-                        content: const Text(
-                          'This theme is part of the Spring Bloomin\' Battle Pass!\n\n'
-                          'Complete Battle Pass tiers or unlock it in the Season Shop.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Got it'),
+                      );
+                    } else {
+                      showDialog<void>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: Row(
+                            children: [
+                              Text(vibe.emoji),
+                              const SizedBox(width: 8),
+                              Text(vibe.label),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
+                          content: const Text(
+                            'This theme is part of the Spring Bloomin\' Battle Pass!\n\n'
+                            'Complete Battle Pass tiers or unlock it in the Season Shop.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Got it'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                     return;
                   }
                   context.read<ThemeProvider>().setVibe(vibe);
@@ -943,6 +1027,64 @@ class _AppearanceSettingsPage extends StatelessWidget {
                 colorScheme: colorScheme,
               );
             }).toList(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // ── Premium theme builder stubs ──────────────────────────────────
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: Column(
+            children: [
+              _SecurityTile(
+                icon: Icons.gradient_rounded,
+                title: 'Custom Gradient Theme',
+                subtitle: entitlements.canUseGradientThemeBuilder
+                    ? 'Create your own gradient color theme.'
+                    : 'Requires Helper+ or Helper Pass',
+                colorScheme: colorScheme,
+                onTap: entitlements.canUseGradientThemeBuilder
+                    ? () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            // TODO: implement gradient theme builder UI
+                            content:
+                                Text('Custom gradient theme builder coming soon!'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        )
+                    : () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const UpsellScreen(),
+                        )),
+                trailing: entitlements.canUseGradientThemeBuilder
+                    ? null
+                    : const Icon(Icons.lock_rounded, size: 18),
+              ),
+              Divider(
+                  height: 1,
+                  color: colorScheme.outlineVariant.withAlpha(100)),
+              _SecurityTile(
+                icon: Icons.light_mode_rounded,
+                title: 'Custom Light/Dark Theme',
+                subtitle: entitlements.canUseCustomLightDarkTheme
+                    ? 'Design your own light and dark color themes.'
+                    : 'Requires Helper+ or Helper Pass',
+                colorScheme: colorScheme,
+                onTap: entitlements.canUseCustomLightDarkTheme
+                    ? () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            // TODO: implement custom light/dark theme builder UI
+                            content:
+                                Text('Custom light/dark theme builder coming soon!'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        )
+                    : () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const UpsellScreen(),
+                        )),
+                trailing: entitlements.canUseCustomLightDarkTheme
+                    ? null
+                    : const Icon(Icons.lock_rounded, size: 18),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 12),
@@ -1948,6 +2090,176 @@ class _ByokKeyFieldState extends State<_ByokKeyField> {
   }
 }
 
+/// Pass-exclusive BYOK fields for non-Gemini providers (OpenAI-compatible).
+///
+/// TODO(billing): Once the non-Gemini BYOK backend is fully implemented,
+///   this section should route API calls through the selected endpoint using
+///   the provided key.  For now it stores the values safely and shows a stub
+///   response note.
+class _PassByokFields extends StatefulWidget {
+  final ColorScheme colorScheme;
+  const _PassByokFields({required this.colorScheme});
+
+  @override
+  State<_PassByokFields> createState() => _PassByokFieldsState();
+}
+
+class _PassByokFieldsState extends State<_PassByokFields> {
+  late final TextEditingController _keyController;
+  late final TextEditingController _endpointController;
+  bool _obscure = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final chat = context.read<ChatProvider>();
+    _keyController = TextEditingController(text: chat.passCustomApiKey);
+    _endpointController =
+        TextEditingController(text: chat.passCustomEndpoint);
+  }
+
+  @override
+  void dispose() {
+    _keyController.dispose();
+    _endpointController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = widget.colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB8860B).withAlpha(40),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.vpn_key_rounded,
+                    color: Color(0xFFB8860B), size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('Non-Gemini BYOK',
+                            style: textTheme.bodyLarge
+                                ?.copyWith(fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFB8860B).withAlpha(40),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Pass',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'OpenAI-compatible endpoint + key.',
+                      style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // API key field
+          TextField(
+            controller: _keyController,
+            obscureText: _obscure,
+            decoration: InputDecoration(
+              labelText: 'API Key',
+              hintText: 'sk-...',
+              filled: true,
+              fillColor: colorScheme.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: colorScheme.outlineVariant),
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                    _obscure
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    size: 20),
+                onPressed: () => setState(() => _obscure = !_obscure),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Endpoint field
+          TextField(
+            controller: _endpointController,
+            keyboardType: TextInputType.url,
+            decoration: InputDecoration(
+              labelText: 'API Endpoint',
+              hintText: 'https://api.openai.com/v1',
+              filled: true,
+              fillColor: colorScheme.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: colorScheme.outlineVariant),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonal(
+              onPressed: () async {
+                final chat = context.read<ChatProvider>();
+                await chat.setPassCustomApiKey(_keyController.text);
+                await chat.setPassCustomEndpoint(_endpointController.text);
+                if (context.mounted) {
+                  FocusScope.of(context).unfocus();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      // TODO(billing): remove this note once the non-Gemini
+                      //   chat backend is implemented.
+                      content: const Text(
+                          'Credentials saved. Non-Gemini chat responses '
+                          'are a TODO and will be wired in a future update.'),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: colorScheme.surfaceContainerHighest,
+                    ),
+                  );
+                }
+              },
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Save Credentials'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Squircle-style card with rounded corners and subtle border.
 class _SquircleCard extends StatelessWidget {
   final ColorScheme colorScheme;
@@ -1974,6 +2286,7 @@ class _VibeRow extends StatelessWidget {
   final ColorScheme vibeScheme;
   final bool isSelected;
   final bool isLocked;
+  final bool isPremiumLocked;
   final VoidCallback onTap;
   final bool showDivider;
   final ColorScheme colorScheme;
@@ -1986,6 +2299,7 @@ class _VibeRow extends StatelessWidget {
     required this.showDivider,
     required this.colorScheme,
     this.isLocked = false,
+    this.isPremiumLocked = false,
   });
 
   @override
@@ -2015,20 +2329,54 @@ class _VibeRow extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        vibe.label,
-                        style: TextStyle(
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          color: isSelected
-                              ? colorScheme.primary
-                              : colorScheme.onSurface,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            vibe.label,
+                            style: TextStyle(
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: isSelected
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurface,
+                            ),
+                          ),
+                          if (isPremiumLocked) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFB8860B).withAlpha(40),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                    color: const Color(0xFFB8860B)
+                                        .withAlpha(100)),
+                              ),
+                              child: Text(
+                                'Helper+',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      if (isLocked)
+                      if (isLocked && !isPremiumLocked)
                         Text(
                           '🔒 Unlock via Battle Pass',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      if (isPremiumLocked)
+                        Text(
+                          '🔒 Requires Helper+ or Helper Pass',
                           style: TextStyle(
                             fontSize: 10,
                             color: colorScheme.onSurfaceVariant,
@@ -2076,6 +2424,7 @@ class _SecurityTile extends StatelessWidget {
   final String subtitle;
   final ColorScheme colorScheme;
   final VoidCallback? onTap;
+  final Widget? trailing;
 
   const _SecurityTile({
     required this.icon,
@@ -2083,6 +2432,7 @@ class _SecurityTile extends StatelessWidget {
     required this.subtitle,
     required this.colorScheme,
     this.onTap,
+    this.trailing,
   });
 
   @override
@@ -2106,10 +2456,11 @@ class _SecurityTile extends StatelessWidget {
         style: TextStyle(
             fontSize: 12, color: colorScheme.onSurfaceVariant),
       ),
-      trailing: onTap != null
-          ? Icon(Icons.chevron_right,
-              color: colorScheme.onSurfaceVariant)
-          : null,
+      trailing: trailing ??
+          (onTap != null
+              ? Icon(Icons.chevron_right,
+                  color: colorScheme.onSurfaceVariant)
+              : null),
       onTap: onTap,
     );
   }
@@ -2583,6 +2934,89 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // ── Subscription entitlements ─────────────────────────────────
+          _DevCard(
+            title: 'Subscription (Firestore)',
+            colorScheme: colorScheme,
+            children: [
+              _DevButton(
+                icon: Icons.star_rounded,
+                label: 'Set tier → plus',
+                color: const Color(0xFF6750A4),
+                onTap: () {
+                  final auth = context.read<AuthProvider>();
+                  final uid = auth.uid;
+                  if (uid == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Sign in first to set entitlements.')),
+                    );
+                    return;
+                  }
+                  DatabaseService.instance.saveEntitlements(
+                    uid,
+                    SubscriptionEntitlement(
+                      tier: EntitlementTier.plus,
+                      expiresAt: DateTime.now().add(const Duration(days: 365)),
+                      platform: 'dev_override',
+                    ),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('✨ Entitlement → plus')),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              _DevButton(
+                icon: Icons.workspace_premium_rounded,
+                label: 'Set tier → pass',
+                color: const Color(0xFFB8860B),
+                onTap: () {
+                  final auth = context.read<AuthProvider>();
+                  final uid = auth.uid;
+                  if (uid == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Sign in first to set entitlements.')),
+                    );
+                    return;
+                  }
+                  DatabaseService.instance.saveEntitlements(
+                    uid,
+                    SubscriptionEntitlement(
+                      tier: EntitlementTier.pass,
+                      expiresAt: DateTime.now().add(const Duration(days: 365)),
+                      platform: 'dev_override',
+                    ),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('🏅 Entitlement → pass')),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              _DevButton(
+                icon: Icons.lock_reset_rounded,
+                label: 'Reset tier → free',
+                color: colorScheme.error,
+                onTap: () {
+                  final auth = context.read<AuthProvider>();
+                  final uid = auth.uid;
+                  if (uid == null) return;
+                  DatabaseService.instance.saveEntitlements(
+                    uid,
+                    SubscriptionEntitlement.free,
+                  );
+                  context.read<EntitlementsProvider>().clearCache();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('🔓 Entitlement → free')),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
           // ── Economy ───────────────────────────────────────────────────
           _DevCard(
             title: 'Economy',

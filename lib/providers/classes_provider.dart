@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/class_model.dart';
+import '../providers/entitlements_provider.dart';
 import '../services/database_service.dart';
 
 /// Manages the user's persistent list of [SchoolClass] objects.
@@ -13,7 +14,19 @@ class ClassesProvider extends ChangeNotifier {
   StreamSubscription<List<SchoolClass>>? _sub;
   final List<SchoolClass> _classes = [];
 
+  /// Injected by [ChangeNotifierProxyProvider] once EntitlementsProvider is
+  /// available.  May be null during the brief window before the first update.
+  EntitlementsProvider? _entitlements;
+
   List<SchoolClass> get classes => List.unmodifiable(_classes);
+
+  /// Called by [ChangeNotifierProxyProvider] to inject the current
+  /// [EntitlementsProvider] whenever it changes.
+  void updateEntitlements(EntitlementsProvider entitlements) {
+    _entitlements = entitlements;
+    // No notifyListeners() needed here; the UI already watches entitlements
+    // directly for limit checks.
+  }
 
   /// Called whenever the authenticated user changes (sign-in / sign-out).
   void setUid(String? uid) {
@@ -42,7 +55,18 @@ class ClassesProvider extends ChangeNotifier {
 
   /// Adds a new class.  If offline or UID is null, adds locally only until
   /// the next sync.
-  Future<void> addClass(SchoolClass schoolClass) async {
+  ///
+  /// Returns `false` (and does NOT add the class) when the free-tier class
+  /// limit would be exceeded.  The caller is responsible for showing the
+  /// upgrade CTA in that case.
+  Future<bool> addClass(SchoolClass schoolClass) async {
+    // Enforce free-tier class limit.
+    final entitlements = _entitlements;
+    if (entitlements != null &&
+        !entitlements.canAddClass(_classes.length)) {
+      return false;
+    }
+
     final uid = _uid;
     if (uid == null) {
       // Guest / offline — store in memory with a temporary ID.
@@ -50,7 +74,7 @@ class ClassesProvider extends ChangeNotifier {
           id: 'local_${DateTime.now().millisecondsSinceEpoch}');
       _classes.add(temp);
       notifyListeners();
-      return;
+      return true;
     }
     try {
       await DatabaseService.instance.addClass(uid, schoolClass);
@@ -63,6 +87,7 @@ class ClassesProvider extends ChangeNotifier {
       _classes.add(temp);
       notifyListeners();
     }
+    return true;
   }
 
   /// Updates an existing class.

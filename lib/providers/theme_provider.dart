@@ -16,7 +16,16 @@ enum AppVibe {
   cherryBlossom,
   skyBloom,
   daffodil,
+  // ── Premium vibes (requires Helper+ or Helper Pass) ──────────────────────
+  neonSunrise,
+  deepOcean,
 }
+
+/// The set of vibes that require an active Helper+ or Helper Pass subscription.
+const Set<AppVibe> kPremiumVibes = {
+  AppVibe.neonSunrise,
+  AppVibe.deepOcean,
+};
 
 extension AppVibeExtension on AppVibe {
   String get label {
@@ -45,6 +54,10 @@ extension AppVibeExtension on AppVibe {
         return 'Sky Bloom';
       case AppVibe.daffodil:
         return 'Daffodil';
+      case AppVibe.neonSunrise:
+        return 'Neon Sunrise';
+      case AppVibe.deepOcean:
+        return 'Deep Ocean';
     }
   }
 
@@ -74,6 +87,10 @@ extension AppVibeExtension on AppVibe {
         return '🩵';
       case AppVibe.daffodil:
         return '🌼';
+      case AppVibe.neonSunrise:
+        return '🌄';
+      case AppVibe.deepOcean:
+        return '🌌';
     }
   }
 
@@ -103,6 +120,10 @@ extension AppVibeExtension on AppVibe {
         return const Color(0xFF0288D1);
       case AppVibe.daffodil:
         return const Color(0xFFF9A825);
+      case AppVibe.neonSunrise:
+        return const Color(0xFFFF6B00); // vivid orange-red
+      case AppVibe.deepOcean:
+        return const Color(0xFF003D8F); // deep navy blue
     }
   }
 }
@@ -165,6 +186,18 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setInt(_prefKey, vibe.index);
     if (_uid != null) {
       await DatabaseService.instance.saveVibe(_uid!, vibe);
+    }
+  }
+
+  /// Reverts to the default vibe if the currently-set vibe requires a
+  /// subscription that is no longer active.
+  ///
+  /// Called by [ChangeNotifierProxyProvider] whenever [EntitlementsProvider]
+  /// changes.  The custom theme **configuration** is NOT deleted — it will
+  /// be restored when the user resubscribes.
+  Future<void> enforceEntitlements({required bool hasPlus}) async {
+    if (!hasPlus && kPremiumVibes.contains(_vibe)) {
+      await setVibe(AppVibe.defaultPurple);
     }
   }
 }

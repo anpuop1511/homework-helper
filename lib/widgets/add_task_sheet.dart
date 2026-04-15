@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../models/assignment.dart';
 import '../providers/assignments_provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/entitlements_provider.dart';
+import '../screens/upsell_screen.dart';
 
 /// A modal bottom sheet for adding a new assignment.
 /// Uses [ChoiceChip]s for subject selection and [showDatePicker] for the due date.
@@ -22,6 +24,9 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   String _selectedSubject = Subject.math;
   DateTime _dueDate = DateTime.now().add(const Duration(days: 1));
   bool _scanning = false;
+
+  /// Whether this assignment should repeat.  Gated behind Plus/Pass.
+  bool _isRepeatable = false;
 
   static const List<String> _subjectOptions = [
     Subject.math,
@@ -223,6 +228,12 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
               ),
             ),
             const SizedBox(height: 24),
+            // Repeatable task toggle (Plus/Pass only)
+            _RepeatableToggle(
+              isRepeatable: _isRepeatable,
+              onChanged: (value) => setState(() => _isRepeatable = value),
+            ),
+            const SizedBox(height: 24),
             // Submit button
             SizedBox(
               width: double.infinity,
@@ -239,6 +250,118 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
               ),
             ),
             const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Toggle for the repeatable-task feature.  Locked behind Helper+ / Helper Pass.
+///
+/// When the user is on the free tier, tapping the row opens the upsell screen
+/// instead of toggling the switch.
+class _RepeatableToggle extends StatelessWidget {
+  final bool isRepeatable;
+  final ValueChanged<bool> onChanged;
+
+  const _RepeatableToggle({
+    required this.isRepeatable,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final entitlements = context.watch<EntitlementsProvider>();
+    final hasAccess = entitlements.canUseRepeatableTasks;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: hasAccess
+          ? null
+          : () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const UpsellScreen()),
+              ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: hasAccess
+                ? colorScheme.outlineVariant.withAlpha(80)
+                : colorScheme.outlineVariant.withAlpha(40),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.repeat_rounded,
+              color: hasAccess
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant.withAlpha(120),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Repeatable Task',
+                        style: textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: hasAccess
+                              ? colorScheme.onSurface
+                              : colorScheme.onSurface.withAlpha(160),
+                        ),
+                      ),
+                      if (!hasAccess) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6750A4).withAlpha(40),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Helper+',
+                            style: GoogleFonts.outfit(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  Text(
+                    hasAccess
+                        ? 'Mark this task as repeatable.'
+                        : 'Upgrade to Helper+ to use repeatable tasks.',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (hasAccess)
+              Switch(
+                value: isRepeatable,
+                onChanged: onChanged,
+              )
+            else
+              Icon(
+                Icons.lock_rounded,
+                size: 18,
+                color: colorScheme.onSurfaceVariant,
+              ),
           ],
         ),
       ),

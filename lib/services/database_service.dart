@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:typed_data';
 import '../models/assignment.dart';
 import '../models/class_model.dart';
+import '../models/entitlement_model.dart';
 import '../models/social_models.dart';
 import '../providers/theme_provider.dart';
 
@@ -12,6 +13,7 @@ import '../providers/theme_provider.dart';
 /// All operations are scoped to the authenticated user's documents:
 ///   users/{uid}                  – XP, level, streak, vibe, email, username
 ///   users/{uid}/assignments/{id} – individual assignments
+///   users/{uid}/entitlements/subscription – subscription entitlement
 ///   users/{uid}/friends/{fid}    – accepted friends (sub-collection)
 ///   friend_requests/{id}         – global pending friend requests
 ///   usernames/{handle}           – username → uid mapping for uniqueness checks
@@ -78,6 +80,46 @@ class DatabaseService {
         'bp_equippedBadge': equippedBadge,
         'bp_equippedNameColor': equippedNameColor,
       },
+      SetOptions(merge: true),
+    );
+  }
+
+  // ── Subscription entitlements ────────────────────────────────────────────
+
+  DocumentReference<Map<String, dynamic>> _entitlementDoc(String uid) =>
+      _userDoc(uid).collection('entitlements').doc('subscription');
+
+  /// Returns a real-time [Stream] of the user's [SubscriptionEntitlement].
+  ///
+  /// Emits `null` when the document does not exist (caller should treat as
+  /// [SubscriptionEntitlement.free]).
+  Stream<SubscriptionEntitlement?> entitlementsStream(String uid) {
+    return _entitlementDoc(uid).snapshots().map((snap) {
+      final data = snap.data();
+      if (data == null) return null;
+      return SubscriptionEntitlement.fromFirestore(data);
+    });
+  }
+
+  /// Writes (merge) an entitlement document for [uid].
+  ///
+  /// The [updatedAt] field is always overwritten with a server timestamp so
+  /// the record has an authoritative modification time.
+  Future<void> saveEntitlements(
+      String uid, SubscriptionEntitlement entitlement) async {
+    await _entitlementDoc(uid).set(
+      entitlement.toFirestore(),
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Sets the one-time promo flag [field] to `true` on the entitlement
+  /// document (e.g. `earned_plus_30d_trial_from_ladder`).
+  ///
+  /// This is a targeted write so it does not clobber other entitlement fields.
+  Future<void> setEntitlementFlag(String uid, String field) async {
+    await _entitlementDoc(uid).set(
+      {field: true, 'updatedAt': FieldValue.serverTimestamp()},
       SetOptions(merge: true),
     );
   }

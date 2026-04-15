@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'bootstrap/firebase_bootstrap.dart';
+import 'providers/entitlements_provider.dart';
 import 'providers/event_provider.dart';
 import 'providers/assignments_provider.dart';
 import 'providers/auth_provider.dart';
@@ -46,7 +47,6 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => SecurityProvider()),
         ChangeNotifierProvider(create: (_) => NavBarProvider()),
@@ -83,12 +83,40 @@ Future<void> main() async {
             return provider;
           },
         ),
-        // ClassesProvider is wired to AuthProvider for Firestore sync.
-        ChangeNotifierProxyProvider<AuthProvider, ClassesProvider>(
-          create: (_) => ClassesProvider(),
+        // EntitlementsProvider subscribes to Firestore entitlement snapshots.
+        // Wired to AuthProvider so the UID is set on sign-in/out.
+        // Must be declared before ClassesProvider and ThemeProvider, which
+        // both depend on it.
+        ChangeNotifierProxyProvider<AuthProvider, EntitlementsProvider>(
+          create: (_) => EntitlementsProvider(),
           update: (_, auth, prev) {
+            final provider = prev ?? EntitlementsProvider();
+            provider.setUid(auth.uid);
+            return provider;
+          },
+        ),
+        // ThemeProvider is wired to AuthProvider (for cloud vibe sync) and to
+        // EntitlementsProvider so that premium vibes are reverted to default
+        // when the subscription expires.
+        ChangeNotifierProxyProvider2<AuthProvider, EntitlementsProvider,
+            ThemeProvider>(
+          create: (_) => ThemeProvider(),
+          update: (_, auth, entitlements, prev) {
+            final provider = prev ?? ThemeProvider();
+            provider.setUid(auth.uid);
+            provider.enforceEntitlements(hasPlus: entitlements.isPlus);
+            return provider;
+          },
+        ),
+        // ClassesProvider is wired to AuthProvider for Firestore sync and to
+        // EntitlementsProvider to enforce the free-tier class limit.
+        ChangeNotifierProxyProvider2<AuthProvider, EntitlementsProvider,
+            ClassesProvider>(
+          create: (_) => ClassesProvider(),
+          update: (_, auth, entitlements, prev) {
             final provider = prev ?? ClassesProvider();
             provider.setUid(auth.uid);
+            provider.updateEntitlements(entitlements);
             return provider;
           },
         ),
