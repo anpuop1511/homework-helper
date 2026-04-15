@@ -8,6 +8,7 @@ import '../providers/auth_provider.dart';
 import '../providers/projects_provider.dart';
 import '../providers/social_provider.dart';
 import '../widgets/nameplate_widget.dart';
+import 'chat_screen.dart';
 import 'group_projects_screen.dart';
 import 'nfc_bump_screen.dart';
 import 'public_profile_screen.dart';
@@ -596,6 +597,9 @@ class _SocialScreenState extends State<SocialScreen>
             child: _QuickActionsGrid(
               colorScheme: colorScheme,
               onAddFriend: () => _showAddFriendSheet(context),
+              onOpenStudyBuddy: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ChatScreen()),
+              ),
               onScanQr: () {
                 if (kIsWeb) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -1023,6 +1027,7 @@ class _PendingRequestCard extends StatelessWidget {
 class _QuickActionsGrid extends StatelessWidget {
   final ColorScheme colorScheme;
   final VoidCallback onAddFriend;
+  final VoidCallback onOpenStudyBuddy;
   final VoidCallback onScanQr;
   final VoidCallback? onMyQr;
   final VoidCallback onNfcBump;
@@ -1032,6 +1037,7 @@ class _QuickActionsGrid extends StatelessWidget {
   const _QuickActionsGrid({
     required this.colorScheme,
     required this.onAddFriend,
+    required this.onOpenStudyBuddy,
     required this.onScanQr,
     required this.onMyQr,
     required this.onNfcBump,
@@ -1048,6 +1054,13 @@ class _QuickActionsGrid extends StatelessWidget {
         color: colorScheme.primaryContainer,
         foreground: colorScheme.onPrimaryContainer,
         onTap: onAddFriend,
+      ),
+      _TileData(
+        icon: Icons.auto_awesome_rounded,
+        label: 'AI Study Buddy',
+        color: colorScheme.tertiaryContainer,
+        foreground: colorScheme.onTertiaryContainer,
+        onTap: onOpenStudyBuddy,
       ),
       _TileData(
         icon: Icons.qr_code_scanner_rounded,
