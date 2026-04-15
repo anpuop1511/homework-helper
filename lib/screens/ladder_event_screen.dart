@@ -238,7 +238,7 @@ class _EventHeader extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Apr 20 – Apr 24, 2026',
+            'Apr 24 – Apr 30, 2026',
             style: TextStyle(
               fontSize: 12,
               color: colorScheme.onSurfaceVariant,
@@ -285,7 +285,7 @@ class _EventHeader extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Event Live! · Apr 20 – 24',
+                'Event Live! · Apr 24 – 30',
                 style: GoogleFonts.lexend(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
