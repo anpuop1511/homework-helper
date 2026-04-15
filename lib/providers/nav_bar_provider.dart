@@ -74,15 +74,31 @@ extension NavTabExtension on NavTab {
 class NavBarProvider extends ChangeNotifier {
   static const _prefOrder = 'nav_tab_order';
   static const _prefHidden = 'nav_hidden_tabs';
+  static const _prefShowLabels = 'nav_show_labels';
 
   /// Tabs that are hidden by default (opt-in).
-  static const _kDefaultHidden = {NavTab.classes, NavTab.subjects};
+  static const _defaultHiddenTabs = {
+    NavTab.helper,
+    NavTab.classes,
+    NavTab.subjects,
+  };
+
+  static const _defaultTabOrder = [
+    NavTab.home,
+    NavTab.social,
+    NavTab.focus,
+    NavTab.helper,
+    NavTab.classes,
+    NavTab.subjects,
+  ];
 
   /// Ordered list of all tabs (visible + hidden).
-  List<NavTab> _tabOrder = List.of(NavTab.values);
+  List<NavTab> _tabOrder = List.of(_defaultTabOrder);
 
   /// Set of tabs the user has chosen to hide.
-  Set<NavTab> _hiddenTabs = Set.of(_kDefaultHidden);
+  Set<NavTab> _hiddenTabs = Set.of(_defaultHiddenTabs);
+
+  bool _showLabels = true;
 
   NavBarProvider() {
     _loadPrefs();
@@ -98,36 +114,46 @@ class NavBarProvider extends ChangeNotifier {
   /// Whether [tab] is currently hidden.
   bool isHidden(NavTab tab) => _hiddenTabs.contains(tab);
 
+  /// Whether labels are shown for bottom navigation tabs.
+  bool get showLabels => _showLabels;
+
   // ── Persistence ─────────────────────────────────────────────────────────
 
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     final orderRaw = prefs.getStringList(_prefOrder);
     final hiddenRaw = prefs.getStringList(_prefHidden);
+    final storedShowLabels = prefs.getBool(_prefShowLabels);
 
-    if (orderRaw == null || hiddenRaw == null) {
-      // First launch — apply factory defaults (classes + subjects hidden).
-      _hiddenTabs = Set.of(_kDefaultHidden);
+    if (orderRaw == null && hiddenRaw == null) {
+      // First launch — apply factory defaults.
+      _tabOrder = List.of(_defaultTabOrder);
+      _hiddenTabs = Set.of(_defaultHiddenTabs);
+      _showLabels = storedShowLabels ?? true;
       notifyListeners();
       return;
     }
 
-    // Existing user: restore their stored configuration.
-    final parsed = orderRaw
+    final orderToParse = orderRaw ?? _defaultTabOrder.map((t) => t.id).toList();
+    final hiddenToParse =
+        hiddenRaw ?? _defaultHiddenTabs.map((t) => t.id).toList();
+
+    // Existing user (or partially-corrupted prefs): restore stored values.
+    final parsed = orderToParse
         .map((s) => NavTab.values.where((t) => t.id == s).firstOrNull)
         .whereType<NavTab>()
         .toList();
-    final storedHidden = hiddenRaw
+    final storedHidden = hiddenToParse
         .map((s) => NavTab.values.where((t) => t.id == s).firstOrNull)
         .whereType<NavTab>()
         .toSet();
 
     // Append any tabs added in newer app versions.
-    // Opt-in tabs (_kDefaultHidden) start hidden; all others start visible.
+    // Opt-in tabs (_defaultHiddenTabs) start hidden; all others start visible.
     for (final tab in NavTab.values) {
       if (!parsed.contains(tab)) {
         parsed.add(tab);
-        if (_kDefaultHidden.contains(tab)) {
+        if (_defaultHiddenTabs.contains(tab)) {
           storedHidden.add(tab);
         }
       }
@@ -137,6 +163,7 @@ class NavBarProvider extends ChangeNotifier {
     _hiddenTabs = storedHidden;
     // Home is always visible.
     _hiddenTabs.remove(NavTab.home);
+    _showLabels = storedShowLabels ?? true;
     _ensureOneVisible();
     notifyListeners();
   }
@@ -146,6 +173,7 @@ class NavBarProvider extends ChangeNotifier {
     await prefs.setStringList(_prefOrder, _tabOrder.map((t) => t.id).toList());
     await prefs.setStringList(
         _prefHidden, _hiddenTabs.map((t) => t.id).toList());
+    await prefs.setBool(_prefShowLabels, _showLabels);
   }
 
   // ── Mutations ────────────────────────────────────────────────────────────
@@ -183,8 +211,17 @@ class NavBarProvider extends ChangeNotifier {
 
   /// Resets the tab order and visibility to the factory defaults.
   void resetToDefaults() {
-    _tabOrder = List.of(NavTab.values);
-    _hiddenTabs = Set.of(_kDefaultHidden);
+    _tabOrder = List.of(_defaultTabOrder);
+    _hiddenTabs = Set.of(_defaultHiddenTabs);
+    _showLabels = true;
+    notifyListeners();
+    _savePrefs().ignore();
+  }
+
+  /// Toggles whether labels are shown for bottom navigation tabs.
+  void setShowLabels(bool value) {
+    if (_showLabels == value) return;
+    _showLabels = value;
     notifyListeners();
     _savePrefs().ignore();
   }

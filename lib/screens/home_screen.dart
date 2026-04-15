@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -22,6 +23,7 @@ import 'ladder_event_screen.dart';
 import 'upsell_screen.dart';
 import 'subjects_screen.dart' show SubjectFolderSection;
 import 'settings_screen.dart';
+import 'chat_screen.dart';
 
 /// The main dashboard screen featuring Material 3 Expressive design.
 /// Displays a motivational header, subject filter chips, and assignment list.
@@ -33,8 +35,13 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // Logical pixels of downward pull needed at top of Home before opening buddy.
+  static const double _studyBuddyPullThresholdPixels = 74;
+
   String _selectedSubject = Subject.all;
   bool _showCompleted = false;
+  bool _isStudyBuddySheetOpen = false;
+  double _pullDistance = 0;
 
   // Sample motivational quotes for the daily motivation header
   static const List<String> _motivationQuotes = [
@@ -102,6 +109,88 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'there';
   }
 
+  bool _onHomeScroll(ScrollNotification notification) {
+    if (notification.depth != 0) return false;
+
+    if (notification is ScrollStartNotification &&
+        notification.dragDetails != null &&
+        notification.metrics.extentBefore == 0) {
+      _pullDistance = 0;
+      return false;
+    }
+
+    if (notification is OverscrollNotification &&
+        notification.metrics.extentBefore == 0 &&
+        notification.overscroll < 0) {
+      _pullDistance += notification.overscroll.abs();
+      _maybeOpenStudyBuddy();
+      return false;
+    }
+
+    if (notification is ScrollUpdateNotification &&
+        notification.metrics.extentBefore == 0 &&
+        notification.dragDetails != null) {
+      final dragDelta = notification.dragDetails!.delta.dy;
+      if (dragDelta > 0) {
+        _pullDistance += dragDelta;
+        _maybeOpenStudyBuddy();
+      } else if (dragDelta < 0) {
+        _pullDistance = 0;
+      }
+      return false;
+    }
+
+    if (notification is ScrollEndNotification) {
+      _pullDistance = 0;
+      return false;
+    }
+
+    return false;
+  }
+
+  void _maybeOpenStudyBuddy() {
+    if (_isStudyBuddySheetOpen ||
+        _pullDistance < _studyBuddyPullThresholdPixels) {
+      return;
+    }
+    _pullDistance = 0;
+    _openStudyBuddyTopSheet();
+  }
+
+  Future<void> _openStudyBuddyTopSheet() async {
+    _isStudyBuddySheetOpen = true;
+    try {
+      await showGeneralDialog<void>(
+        context: context,
+        barrierLabel: 'AI Study Buddy',
+        barrierDismissible: true,
+        barrierColor: Colors.black.withAlpha(80),
+        transitionDuration: const Duration(milliseconds: 260),
+        pageBuilder: (_, __, ___) => const _StudyBuddyTopSheet(),
+        transitionBuilder: (context, animation, _, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, -0.12),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
+          );
+        },
+      );
+    } finally {
+      _isStudyBuddySheetOpen = false;
+      _pullDistance = 0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -116,8 +205,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      body: CustomScrollView(
-        slivers: [
+      body: NotificationListener<ScrollNotification>(
+        onNotification: _onHomeScroll,
+        child: CustomScrollView(
+          slivers: [
           // Expressive App Bar with gradient header
           SliverAppBar(
             expandedHeight: 220,
@@ -288,12 +379,78 @@ class _HomeScreenState extends State<HomeScreen> {
           SliverToBoxAdapter(
             child: SubjectFolderSection(colorScheme: colorScheme),
           ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddAssignmentSheet,
         icon: const Icon(Icons.add),
         label: const Text('Add Task'),
+      ),
+    );
+  }
+}
+
+class _StudyBuddyTopSheet extends StatelessWidget {
+  const _StudyBuddyTopSheet();
+
+  static const int _sheetBackgroundAlpha = 228;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final size = MediaQuery.of(context).size;
+
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 700,
+              maxHeight: size.height * 0.76,
+            ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withAlpha(190),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(46),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: ColoredBox(
+                    color: colorScheme.surface.withAlpha(_sheetBackgroundAlpha),
+                    child: Stack(
+                      children: [
+                        const Positioned.fill(child: ChatScreen()),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: IconButton.filledTonal(
+                            tooltip: 'Close',
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
