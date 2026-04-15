@@ -35,6 +35,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const double _studyBuddyPullThresholdPixels = 74;
+
   String _selectedSubject = Subject.all;
   bool _showCompleted = false;
   bool _isStudyBuddySheetOpen = false;
@@ -109,7 +111,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _onHomeScroll(ScrollNotification notification) {
     if (notification.depth != 0) return false;
 
-    if (notification is ScrollStartNotification) {
+    if (notification is ScrollStartNotification &&
+        notification.dragDetails != null &&
+        notification.metrics.extentBefore == 0) {
       _pullDistance = 0;
       return false;
     }
@@ -117,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (notification is OverscrollNotification &&
         notification.metrics.extentBefore == 0 &&
         notification.overscroll < 0) {
-      _pullDistance += -notification.overscroll;
+      _pullDistance += notification.overscroll.abs();
       _maybeOpenStudyBuddy();
       return false;
     }
@@ -144,7 +148,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _maybeOpenStudyBuddy() {
-    if (_isStudyBuddySheetOpen || _pullDistance < 74) return;
+    if (_isStudyBuddySheetOpen ||
+        _pullDistance < _studyBuddyPullThresholdPixels) {
+      return;
+    }
     _pullDistance = 0;
     _openStudyBuddyTopSheet();
   }
@@ -386,6 +393,8 @@ class _HomeScreenState extends State<HomeScreen> {
 class _StudyBuddyTopSheet extends StatelessWidget {
   const _StudyBuddyTopSheet();
 
+  static const int _sheetBackgroundAlpha = 228;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -420,7 +429,7 @@ class _StudyBuddyTopSheet extends StatelessWidget {
                 child: BackdropFilter(
                   filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                   child: ColoredBox(
-                    color: colorScheme.surface.withAlpha(228),
+                    color: colorScheme.surface.withAlpha(_sheetBackgroundAlpha),
                     child: Stack(
                       children: [
                         const Positioned.fill(child: ChatScreen()),

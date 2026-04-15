@@ -77,13 +77,13 @@ class NavBarProvider extends ChangeNotifier {
   static const _prefShowLabels = 'nav_show_labels';
 
   /// Tabs that are hidden by default (opt-in).
-  static const _kDefaultHidden = {
+  static const _defaultHiddenTabs = {
     NavTab.helper,
     NavTab.classes,
     NavTab.subjects,
   };
 
-  static const _kDefaultOrder = [
+  static const _defaultTabOrder = [
     NavTab.home,
     NavTab.social,
     NavTab.focus,
@@ -93,10 +93,10 @@ class NavBarProvider extends ChangeNotifier {
   ];
 
   /// Ordered list of all tabs (visible + hidden).
-  List<NavTab> _tabOrder = List.of(_kDefaultOrder);
+  List<NavTab> _tabOrder = List.of(_defaultTabOrder);
 
   /// Set of tabs the user has chosen to hide.
-  Set<NavTab> _hiddenTabs = Set.of(_kDefaultHidden);
+  Set<NavTab> _hiddenTabs = Set.of(_defaultHiddenTabs);
 
   bool _showLabels = true;
 
@@ -125,31 +125,35 @@ class NavBarProvider extends ChangeNotifier {
     final hiddenRaw = prefs.getStringList(_prefHidden);
     final storedShowLabels = prefs.getBool(_prefShowLabels);
 
-    if (orderRaw == null || hiddenRaw == null) {
+    if (orderRaw == null && hiddenRaw == null) {
       // First launch — apply factory defaults.
-      _tabOrder = List.of(_kDefaultOrder);
-      _hiddenTabs = Set.of(_kDefaultHidden);
+      _tabOrder = List.of(_defaultTabOrder);
+      _hiddenTabs = Set.of(_defaultHiddenTabs);
       _showLabels = storedShowLabels ?? true;
       notifyListeners();
       return;
     }
 
-    // Existing user: restore their stored configuration.
-    final parsed = orderRaw
+    final orderToParse = orderRaw ?? _defaultTabOrder.map((t) => t.id).toList();
+    final hiddenToParse =
+        hiddenRaw ?? _defaultHiddenTabs.map((t) => t.id).toList();
+
+    // Existing user (or partially-corrupted prefs): restore stored values.
+    final parsed = orderToParse
         .map((s) => NavTab.values.where((t) => t.id == s).firstOrNull)
         .whereType<NavTab>()
         .toList();
-    final storedHidden = hiddenRaw
+    final storedHidden = hiddenToParse
         .map((s) => NavTab.values.where((t) => t.id == s).firstOrNull)
         .whereType<NavTab>()
         .toSet();
 
     // Append any tabs added in newer app versions.
-    // Opt-in tabs (_kDefaultHidden) start hidden; all others start visible.
+    // Opt-in tabs (_defaultHiddenTabs) start hidden; all others start visible.
     for (final tab in NavTab.values) {
       if (!parsed.contains(tab)) {
         parsed.add(tab);
-        if (_kDefaultHidden.contains(tab)) {
+        if (_defaultHiddenTabs.contains(tab)) {
           storedHidden.add(tab);
         }
       }
@@ -207,8 +211,8 @@ class NavBarProvider extends ChangeNotifier {
 
   /// Resets the tab order and visibility to the factory defaults.
   void resetToDefaults() {
-    _tabOrder = List.of(_kDefaultOrder);
-    _hiddenTabs = Set.of(_kDefaultHidden);
+    _tabOrder = List.of(_defaultTabOrder);
+    _hiddenTabs = Set.of(_defaultHiddenTabs);
     _showLabels = true;
     notifyListeners();
     _savePrefs().ignore();

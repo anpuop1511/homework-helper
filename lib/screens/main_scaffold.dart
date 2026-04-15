@@ -66,6 +66,8 @@ class MainScaffold extends StatefulWidget {
 }
 
 class _MainScaffoldState extends State<MainScaffold> {
+  static const int _glassBackgroundAlpha = 165;
+
   int _currentIndex = 0;
 
   /// Use a NavigationRail instead of a BottomNavigationBar on wide screens
@@ -237,7 +239,8 @@ class _MainScaffoldState extends State<MainScaffold> {
             child: BackdropFilter(
               filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
               child: NavigationBar(
-                backgroundColor: colorScheme.surface.withAlpha(165),
+                backgroundColor:
+                    colorScheme.surface.withAlpha(_glassBackgroundAlpha),
                 selectedIndex: safeIndex,
                 labelBehavior: navBar.showLabels
                     ? NavigationDestinationLabelBehavior.alwaysShow
