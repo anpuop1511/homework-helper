@@ -942,6 +942,7 @@ class _MotivationHeader extends StatelessWidget {
             colorScheme.secondaryContainer,
             colorScheme.tertiaryContainer,
           ],
+          stops: const [0, 0.56, 1],
         ),
       ),
       child: SafeArea(
