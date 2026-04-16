@@ -1216,6 +1216,7 @@ class _TileData {
 }
 
 class _QsTile extends StatelessWidget {
+  static const double _surfaceBlend = 0.12;
   final _TileData data;
   const _QsTile({required this.data});
 
@@ -1232,7 +1233,7 @@ class _QsTile extends StatelessWidget {
               ? LinearGradient(
                   colors: [
                     data.color,
-                    Color.lerp(data.color, data.foreground, 0.11)!,
+                    Color.lerp(data.color, data.foreground, _surfaceBlend)!,
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
