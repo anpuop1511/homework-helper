@@ -37,6 +37,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   // Logical pixels of downward pull needed at top of Home before opening buddy.
   static const double _studyBuddyPullThresholdPixels = 74;
+  static const double _expandedHeaderHeight = 248;
 
   String _selectedSubject = Subject.all;
   bool _showCompleted = false;
@@ -211,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
           slivers: [
           // Expressive App Bar with gradient header
           SliverAppBar(
-            expandedHeight: 248,
+            expandedHeight: _expandedHeaderHeight,
             pinned: true,
             title: Text(
               'Home',
@@ -940,9 +941,7 @@ class _MotivationHeader extends StatelessWidget {
           colors: [
             colorScheme.primaryContainer,
             colorScheme.secondaryContainer,
-            colorScheme.tertiaryContainer,
           ],
-          stops: const [0, 0.6, 1],
         ),
       ),
       child: SafeArea(
