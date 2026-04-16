@@ -211,8 +211,12 @@ class _HomeScreenState extends State<HomeScreen> {
           slivers: [
           // Expressive App Bar with gradient header
           SliverAppBar(
-            expandedHeight: 220,
+            expandedHeight: 248,
             pinned: true,
+            title: Text(
+              'Home',
+              style: GoogleFonts.lexend(fontWeight: FontWeight.w700),
+            ),
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.pin,
               background: _MotivationHeader(
@@ -226,11 +230,21 @@ class _HomeScreenState extends State<HomeScreen> {
               Consumer<UserProvider>(
                 builder: (context, user, _) => Container(
                   margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      colors: [
+                        colorScheme.primaryContainer,
+                        colorScheme.secondaryContainer,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: colorScheme.outlineVariant.withAlpha(140),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -276,52 +290,75 @@ class _HomeScreenState extends State<HomeScreen> {
             child: _EventBannerCard(colorScheme: colorScheme),
           ),
 
-          // Subject Filter Chips
+          // Command center: filters + quick status
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Filter by Subject',
-                    style: textTheme.labelMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: Subject.allSubjects.map((subject) {
-                        final isSelected = _selectedSubject == subject;
-                        final subjects = context.watch<SubjectsProvider>();
-                        final displayLabel = subject == Subject.all
-                            ? subject
-                            : subjects.displayName(subject);
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: FilterChip(
-                            label: Text(displayLabel),
-                            selected: isSelected,
-                            onSelected: (_) => setState(
-                                () => _selectedSubject = subject),
-                            showCheckmark: false,
-                            avatar: isSelected
-                                ? Icon(
-                                    Icons.check,
-                                    size: 16,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onPrimaryContainer,
-                                  )
-                                : null,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: colorScheme.outlineVariant),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.space_dashboard_rounded,
+                            color: colorScheme.primary, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Command Center',
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
                           ),
-                        );
-                      }).toList(),
+                        ),
+                        const Spacer(),
+                        FilterChip(
+                          label: Text(_showCompleted
+                              ? 'Completed: ON'
+                              : 'Completed: OFF'),
+                          selected: _showCompleted,
+                          showCheckmark: false,
+                          onSelected: (_) =>
+                              setState(() => _showCompleted = !_showCompleted),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: Subject.allSubjects.map((subject) {
+                          final isSelected = _selectedSubject == subject;
+                          final subjects = context.watch<SubjectsProvider>();
+                          final displayLabel = subject == Subject.all
+                              ? subject
+                              : subjects.displayName(subject);
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              label: Text(displayLabel),
+                              selected: isSelected,
+                              onSelected: (_) =>
+                                  setState(() => _selectedSubject = subject),
+                              showCheckmark: false,
+                              avatar: isSelected
+                                  ? Icon(
+                                      Icons.check_rounded,
+                                      size: 16,
+                                      color: colorScheme.onPrimaryContainer,
+                                    )
+                                  : null,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -903,6 +940,7 @@ class _MotivationHeader extends StatelessWidget {
           colors: [
             colorScheme.primaryContainer,
             colorScheme.secondaryContainer,
+            colorScheme.tertiaryContainer,
           ],
         ),
       ),
@@ -945,16 +983,26 @@ class _MotivationHeader extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              GradientText(
-                greeting,
-                style: GoogleFonts.outfit(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 260),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface.withAlpha(128),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: colorScheme.outline.withAlpha(60)),
                 ),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF7B61FF), Color(0xFF00CFFF)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
+                child: GradientText(
+                  greeting,
+                  style: GoogleFonts.outfit(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7B61FF), Color(0xFF00CFFF)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
                 ),
               ),
               Text(
@@ -1022,10 +1070,17 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: 88,
+            height: 88,
             decoration: BoxDecoration(
-              color: colorScheme.primaryContainer,
+              gradient: LinearGradient(
+                colors: [
+                  colorScheme.primaryContainer,
+                  colorScheme.secondaryContainer,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               shape: BoxShape.circle,
             ),
             child: Icon(

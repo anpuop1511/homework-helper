@@ -267,11 +267,34 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
     final profileUrl = identifier.isNotEmpty
         ? 'https://homework-helper-web-dun.vercel.app/invite/${Uri.encodeComponent(identifier)}'
         : 'https://homework-helper-web-dun.vercel.app';
+    final hasStatus = _statusMessage != null && _statusMessage!.isNotEmpty;
+    final isError = hasStatus && !_success && !_bumping;
+    final stateLabel = _success
+        ? 'Connected'
+        : _bumping
+            ? 'Searching'
+            : isError
+                ? 'Try Again'
+                : 'Ready';
+    final stateIcon = _success
+        ? Icons.check_circle_rounded
+        : _bumping
+            ? Icons.radar_rounded
+            : isError
+                ? Icons.error_outline_rounded
+                : Icons.nfc_rounded;
+    final stateColor = _success
+        ? Colors.green
+        : _bumping
+            ? _electricBlue
+            : isError
+                ? colorScheme.error
+                : colorScheme.primary;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: colorScheme.surface,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'Bump to Study',
@@ -280,31 +303,77 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           child: Column(
             children: [
-              // ── Glow orb ────────────────────────────────────────────
-              _GlowOrb(
-                pulseAnim: _pulseAnim,
-                bumping: _bumping,
-                success: _success,
-                electricBlue: _electricBlue,
-                colorScheme: colorScheme,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      colorScheme.primaryContainer.withAlpha(140),
+                      colorScheme.secondaryContainer.withAlpha(110),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: colorScheme.outlineVariant),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(stateIcon, size: 18, color: stateColor),
+                        const SizedBox(width: 8),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          child: Text(
+                            stateLabel,
+                            key: ValueKey(stateLabel),
+                            style: GoogleFonts.lexend(
+                              fontWeight: FontWeight.w700,
+                              color: stateColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _GlowOrb(
+                      pulseAnim: _pulseAnim,
+                      bumping: _bumping,
+                      success: _success,
+                      electricBlue: _electricBlue,
+                      colorScheme: colorScheme,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 18),
 
-              // ── Status message ───────────────────────────────────────
-              if (_statusMessage != null)
+              if (hasStatus)
                 FadeIn(
                   duration: const Duration(milliseconds: 300),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: _success
                           ? colorScheme.primaryContainer
-                          : colorScheme.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(16),
+                          : isError
+                              ? colorScheme.errorContainer
+                              : colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: _success
+                            ? colorScheme.primary.withAlpha(90)
+                            : isError
+                                ? colorScheme.error.withAlpha(110)
+                                : colorScheme.outlineVariant,
+                      ),
                     ),
                     child: Text(
                       _statusMessage!,
@@ -313,7 +382,9 @@ class _NfcBumpScreenState extends State<NfcBumpScreen>
                         fontWeight: FontWeight.w600,
                         color: _success
                             ? colorScheme.onPrimaryContainer
-                            : colorScheme.onSurface,
+                            : isError
+                                ? colorScheme.onErrorContainer
+                                : colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -451,14 +522,23 @@ class _NfcSection extends StatelessWidget {
       children: [
         FadeInUp(
           duration: const Duration(milliseconds: 350),
-          child: Text(
-            bumping
-                ? 'Hold phones back-to-back to connect ✨'
-                : 'Tap the button and hold your phones together.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 15,
-              color: colorScheme.onSurfaceVariant,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: Text(
+              bumping
+                  ? 'Hold phones back-to-back to connect ✨'
+                  : 'Tap the button and hold your phones together.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ),
@@ -490,8 +570,7 @@ class _NfcSection extends StatelessWidget {
                   ),
                 ),
         ),
-        const SizedBox(height: 32),
-        const Divider(),
+        const SizedBox(height: 28),
         const SizedBox(height: 16),
         Text(
           'Or share your QR code instead',
@@ -526,12 +605,21 @@ class _WebQrSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(
-          label ?? 'Share your QR code to add friends instantly.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 15,
-            color: colorScheme.onSurfaceVariant,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: colorScheme.outlineVariant),
+          ),
+          child: Text(
+            label ?? 'Share your QR code to add friends instantly.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
         const SizedBox(height: 20),

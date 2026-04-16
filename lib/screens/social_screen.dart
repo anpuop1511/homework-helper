@@ -440,10 +440,15 @@ class _SocialScreenState extends State<SocialScreen>
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: _kElectricBlue.withAlpha(28),
-                borderRadius: BorderRadius.circular(10),
+                gradient: LinearGradient(
+                  colors: [
+                    _kElectricBlue.withAlpha(38),
+                    colorScheme.primaryContainer.withAlpha(210),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
                 Icons.groups_2_rounded,
@@ -452,59 +457,86 @@ class _SocialScreenState extends State<SocialScreen>
               ),
             ),
             const SizedBox(width: 10),
-            Text(
-              'Social Quad',
-              style: GoogleFonts.lexend(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: colorScheme.onSurface,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Social Quad',
+                  style: GoogleFonts.lexend(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                Text(
+                  'Connect, bump, and study together',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        bottom: TabBar(
-          controller: _tabController,
-          indicator: BoxDecoration(
-            color: _kElectricBlue.withAlpha(28),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _kElectricBlue.withAlpha(80), width: 1),
-          ),
-          indicatorSize: TabBarIndicatorSize.tab,
-          indicatorPadding:
-              const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-          labelColor: _kElectricBlue,
-          unselectedLabelColor: colorScheme.onSurfaceVariant,
-          dividerColor: Colors.transparent,
-          labelStyle: GoogleFonts.lexend(
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-          ),
-          unselectedLabelStyle: GoogleFonts.lexend(
-            fontWeight: FontWeight.w500,
-            fontSize: 13,
-          ),
-          tabs: [
-            const Tab(
-              icon: Icon(Icons.group_rounded),
-              text: 'Friends',
-            ),
-            Tab(
-              child: _BadgeTab(
-                icon: Icons.notifications_rounded,
-                label: 'Requests',
-                count: requestCount,
-                colorScheme: colorScheme,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(52),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+            child: Container(
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colorScheme.outlineVariant),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  color: _kElectricBlue.withAlpha(24),
+                  borderRadius: BorderRadius.circular(12),
+                  border:
+                      Border.all(color: _kElectricBlue.withAlpha(70), width: 1),
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicatorPadding:
+                    const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+                labelColor: _kElectricBlue,
+                unselectedLabelColor: colorScheme.onSurfaceVariant,
+                dividerColor: Colors.transparent,
+                labelStyle: GoogleFonts.lexend(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+                unselectedLabelStyle: GoogleFonts.lexend(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                ),
+                tabs: [
+                  const Tab(
+                    icon: Icon(Icons.group_rounded),
+                    text: 'Friends',
+                  ),
+                  Tab(
+                    child: _BadgeTab(
+                      icon: Icons.notifications_rounded,
+                      label: 'Requests',
+                      count: requestCount,
+                      colorScheme: colorScheme,
+                    ),
+                  ),
+                  Tab(
+                    child: _BadgeTab(
+                      icon: Icons.schedule_rounded,
+                      label: 'Pending',
+                      count: pendingCount,
+                      colorScheme: colorScheme,
+                    ),
+                  ),
+                ],
               ),
             ),
-            Tab(
-              child: _BadgeTab(
-                icon: Icons.schedule_rounded,
-                label: 'Pending',
-                count: pendingCount,
-                colorScheme: colorScheme,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
       body: CustomScrollView(
@@ -594,49 +626,79 @@ class _SocialScreenState extends State<SocialScreen>
           // ── Quick Actions Panel ──────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: _QuickActionsGrid(
-              colorScheme: colorScheme,
-              onAddFriend: () => _showAddFriendSheet(context),
-              onOpenStudyBuddy: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ChatScreen()),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: colorScheme.outlineVariant),
               ),
-              onScanQr: () {
-                if (kIsWeb) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'QR scanning is not supported on web. '
-                        'Share your profile link instead.',
-                      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Quick Actions',
+                    style: GoogleFonts.lexend(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
                     ),
-                  );
-                  return;
-                }
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const QrScanScreen()),
-                );
-              },
-              onMyQr: (myHandle != null && myHandle.isNotEmpty) ||
-                      (auth.email?.isNotEmpty == true)
-                  ? () {
-                      final identifier =
-                          (myHandle != null && myHandle.isNotEmpty)
-                              ? myHandle!
-                              : auth.email!;
-                      _showMyQr(
-                        context,
-                        identifier,
-                        isEmail: myHandle == null || myHandle.isEmpty,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Everything you need to connect in one place.',
+                    style: GoogleFonts.outfit(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _QuickActionsGrid(
+                    colorScheme: colorScheme,
+                    onAddFriend: () => _showAddFriendSheet(context),
+                    onOpenStudyBuddy: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ChatScreen()),
+                    ),
+                    onScanQr: () {
+                      if (kIsWeb) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'QR scanning is not supported on web. '
+                              'Share your profile link instead.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const QrScanScreen()),
                       );
-                    }
-                  : null,
-              onNfcBump: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const NfcBumpScreen()),
+                    },
+                    onMyQr: (myHandle != null && myHandle.isNotEmpty) ||
+                            (auth.email?.isNotEmpty == true)
+                        ? () {
+                            final identifier =
+                                (myHandle != null && myHandle.isNotEmpty)
+                                    ? myHandle!
+                                    : auth.email!;
+                            _showMyQr(
+                              context,
+                              identifier,
+                              isEmail: myHandle == null || myHandle.isEmpty,
+                            );
+                          }
+                        : null,
+                    onNfcBump: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const NfcBumpScreen()),
+                    ),
+                    onCreateProject: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const GroupProjectsScreen()),
+                    ),
+                    onJoinProject: () => _showJoinProjectSheet(context),
+                  ),
+                ],
               ),
-              onCreateProject: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const GroupProjectsScreen()),
-              ),
-              onJoinProject: () => _showJoinProjectSheet(context),
             ),
           ),
         ],
@@ -946,8 +1008,15 @@ class _PendingRequestCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: colorScheme.outlineVariant.withAlpha(160)),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withAlpha(16),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -1109,7 +1178,7 @@ class _QuickActionsGrid extends StatelessWidget {
         final crossAxisCount = availableWidth >= 500 ? 3 : 2;
         // Keep tiles square-ish: wider screens need a larger ratio because
         // each tile is narrower relative to its fixed-height content.
-        final aspectRatio = crossAxisCount == 3 ? 1.6 : 1.55;
+        final aspectRatio = crossAxisCount == 3 ? 1.5 : 1.45;
 
         return GridView.builder(
           physics: const NeverScrollableScrollPhysics(),
@@ -1153,70 +1222,76 @@ class _QsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = !data.disabled;
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: active
-            ? LinearGradient(
-                colors: [
-                  data.color,
-                  // Blend 14% toward the foreground for a subtle sheen gradient
-                  Color.lerp(data.color, data.foreground, 0.14)!,
+    return AnimatedScale(
+      duration: const Duration(milliseconds: 180),
+      scale: active ? 1 : 0.98,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          gradient: active
+              ? LinearGradient(
+                  colors: [
+                    data.color,
+                    Color.lerp(data.color, data.foreground, 0.11)!,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: active ? null : data.color.withAlpha(60),
+          border: Border.all(
+            color: active
+                ? data.foreground.withAlpha(36)
+                : data.foreground.withAlpha(20),
+          ),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: data.foreground.withAlpha(36),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(22),
+          child: InkWell(
+            onTap: active ? data.onTap : null,
+            borderRadius: BorderRadius.circular(22),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: data.foreground.withAlpha(active ? 32 : 16),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      data.icon,
+                      color:
+                          active ? data.foreground : data.foreground.withAlpha(100),
+                      size: 20,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    data.label,
+                    style: GoogleFonts.lexend(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: active
+                          ? data.foreground
+                          : data.foreground.withAlpha(100),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : null,
-        color: active ? null : data.color.withAlpha(60),
-        boxShadow: active
-            ? [
-                BoxShadow(
-                  color: data.foreground.withAlpha(45),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ]
-            : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          onTap: active ? data.onTap : null,
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    color:
-                        data.foreground.withAlpha(active ? 32 : 16),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    data.icon,
-                    color: active
-                        ? data.foreground
-                        : data.foreground.withAlpha(100),
-                    size: 20,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  data.label,
-                  style: GoogleFonts.lexend(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                    color: active
-                        ? data.foreground
-                        : data.foreground.withAlpha(100),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -1310,7 +1385,7 @@ class _RequestCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
             color: _kElectricBlue.withAlpha(50)),
         boxShadow: [
@@ -1452,7 +1527,7 @@ class _FriendCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: colorScheme.outlineVariant.withAlpha(160)),
         boxShadow: [
           BoxShadow(
@@ -1646,8 +1721,15 @@ class _EmptyFriendsCard extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(26),
         border: Border.all(color: _kElectricBlue.withAlpha(40)),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withAlpha(14),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
