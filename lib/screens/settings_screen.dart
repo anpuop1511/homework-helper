@@ -3244,11 +3244,12 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                           lastDate: DateTime(2030),
                         );
                         if (picked != null && context.mounted) {
-                          // Preserve existing time-of-day if already overriding,
-                          // otherwise keep 12:00.
+                          // Preserve existing time-of-day when overriding;
+                          // use current time when setting an override for the
+                          // first time.
                           final tod = devClock.isOverrideActive
                               ? devClock.nowUtc().toLocal()
-                              : DateTime(base.year, base.month, base.day, 12);
+                              : base;
                           context.read<DevClockProvider>().setOverride(
                                 DateTime(
                                   picked.year,

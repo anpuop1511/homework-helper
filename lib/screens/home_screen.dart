@@ -88,7 +88,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Returns a time-based greeting word based on the current hour.
+  /// Returns a time-based greeting word based on the given datetime.
+  ///
+  /// [now] is expected to be in UTC (from [DevClockProvider.nowUtc]).  The
+  /// hour is read in local time so the greeting matches what the user sees.
   static String _timeGreeting(DateTime now) {
     final hour = now.toLocal().hour;
     if (hour >= 5 && hour < 12) return 'Good morning';

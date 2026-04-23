@@ -75,7 +75,7 @@ class _TimedShopItem extends _ShopItem {
   /// Whether the item is unlocked relative to the given UTC instant.
   /// Use this to respect the dev clock override.
   bool isUnlockedAt(DateTime utcNow) =>
-      !utcNow.toUtc().isBefore(unlocksAt.toUtc());
+      !utcNow.isBefore(unlocksAt.toUtc());
 }
 
 const _season1PermanentItems = [
