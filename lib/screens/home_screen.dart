@@ -13,6 +13,7 @@ import '../providers/assignments_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/classes_provider.dart';
+import '../providers/dev_clock_provider.dart';
 import '../providers/entitlements_provider.dart';
 import '../providers/event_provider.dart';
 import '../providers/subjects_provider.dart';
@@ -55,8 +56,8 @@ class _HomeScreenState extends State<HomeScreen> {
     '"Study while others are sleeping; work while others are loafing." — William A. Ward',
   ];
 
-  String get _dailyQuote {
-    final dayOfYear = DateTime.now().difference(DateTime(DateTime.now().year)).inDays;
+  String _dailyQuoteFor(DateTime now) {
+    final dayOfYear = now.difference(DateTime(now.year)).inDays;
     return _motivationQuotes[dayOfYear % _motivationQuotes.length];
   }
 
@@ -88,8 +89,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Returns a time-based greeting word based on the current hour.
-  static String _timeGreeting() {
-    final hour = DateTime.now().hour;
+  static String _timeGreeting(DateTime now) {
+    final hour = now.toLocal().hour;
     if (hour >= 5 && hour < 12) return 'Good morning';
     if (hour >= 12 && hour < 17) return 'Good afternoon';
     if (hour >= 17 && hour < 22) return 'Good evening';
@@ -200,10 +201,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final provider = context.watch<AssignmentsProvider>();
     final auth = context.watch<AuthProvider>();
     final user = context.watch<UserProvider>();
+    final effectiveNow = context.watch<DevClockProvider>().nowUtc();
     final filtered = _filteredAssignments(provider.assignments.toList());
     final pendingCount = provider.pendingCount;
     final greeting =
-        '${_timeGreeting()}, ${_resolveGreetingName(auth, user)}';
+        '${_timeGreeting(effectiveNow)}, ${_resolveGreetingName(auth, user)}';
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -222,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.pin,
               background: _MotivationHeader(
-                quote: _dailyQuote,
+                quote: _dailyQuoteFor(effectiveNow),
                 pendingCount: pendingCount,
                 colorScheme: colorScheme,
                 greeting: greeting,
@@ -507,8 +509,9 @@ class _ClassesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final classes = context.watch<ClassesProvider>().classes;
+    final effectiveNow = context.watch<DevClockProvider>().nowUtc();
     final season2Enabled =
-        !DateTime.now().toUtc().isBefore(kSeason2.startsAtUtc);
+        !effectiveNow.isBefore(kSeason2.startsAtUtc);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 0, 0),
@@ -1067,7 +1070,9 @@ class _MotivationHeader extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          DateFormat('EEEE, MMMM d').format(DateTime.now()),
+                          DateFormat('EEEE, MMMM d').format(
+                            context.watch<DevClockProvider>().nowUtc().toLocal(),
+                          ),
                           style: GoogleFonts.outfit(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
