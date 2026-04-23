@@ -3,8 +3,10 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/season_live_ops.dart';
 import '../config/secrets.dart';
 import '../models/assignment.dart';
@@ -573,28 +575,13 @@ class _ClassesSection extends StatelessWidget {
                 children: [
                   ActionChip(
                     avatar: const Icon(Icons.folder_copy_rounded, size: 16),
-                    label: const Text('Study guides organizing'),
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content:
-                            Text('Study guides organizing is now enabled for Season 2.'),
-                      ),
-                    ),
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.camera_alt_rounded, size: 16),
-                    label: const Text('Take pics'),
-                    onPressed: () => _openStudyBuddy(context),
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.auto_awesome_rounded, size: 16),
-                    label: const Text('Gemini organize'),
-                    onPressed: () => _openGeminiOrganizer(context),
+                    label: const Text('Create Study Guide'),
+                    onPressed: () => _openStudyGuideCreate(context),
                   ),
                   ActionChip(
                     avatar: const Icon(Icons.upload_file_rounded, size: 16),
-                    label: const Text('Upload notes'),
-                    onPressed: () => _openStudyBuddy(context),
+                    label: const Text('Upload Notes'),
+                    onPressed: () => _openNoteUpload(context),
                   ),
                 ],
               ),
@@ -638,21 +625,28 @@ class _ClassesSection extends StatelessWidget {
     );
   }
 
-  void _openGeminiOrganizer(BuildContext context) {
-    final chat = context.read<ChatProvider>();
-    final hasApiKey =
-        chat.customApiKey.isNotEmpty || AppSecrets.geminiApiKey.isNotEmpty;
-    if (!hasApiKey) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Gemini organizer needs an API key. Add one in Settings → AI & Models.',
-          ),
-        ),
-      );
-      return;
-    }
-    _showAiImportSheet(context);
+  void _openStudyGuideCreate(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => const _StudyGuideCreateSheet(),
+    );
+  }
+
+  Future<void> _openNoteUpload(BuildContext context) async {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => const _NoteUploadSheet(),
+    );
   }
 
   void _showSeason2LockedMessage(BuildContext context) {
@@ -666,31 +660,26 @@ class _ClassesSection extends StatelessWidget {
     );
   }
 
-  Future<void> _openStudyBuddy(BuildContext context) async {
-    await showGeneralDialog<void>(
+  Future<void> _openNoteUpload(BuildContext context) async {
+    showModalBottomSheet<void>(
       context: context,
-      barrierLabel: 'AI Study Buddy',
-      barrierDismissible: true,
-      barrierColor: Colors.black.withAlpha(80),
-      transitionDuration: const Duration(milliseconds: 260),
-      pageBuilder: (_, __, ___) => const _StudyBuddyTopSheet(),
-      transitionBuilder: (context, animation, _, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
-        return FadeTransition(
-          opacity: curved,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, -0.12),
-              end: Offset.zero,
-            ).animate(curved),
-            child: child,
-          ),
-        );
-      },
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => const _NoteUploadSheet(),
+    );
+  }
+
+  void _showSeason2LockedMessage(BuildContext context) {
+    final starts = kSeason2.startsAtUtc;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Season 2 features unlock on ${starts.month}/${starts.day}/${starts.year} (UTC).',
+        ),
+      ),
     );
   }
 }
@@ -1646,6 +1635,401 @@ class _EventBannerCard extends StatelessWidget {
               color: accentColor,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Study Guide Create Sheet ──────────────────────────────────────────────────
+
+/// Bottom sheet for creating a new study guide.
+///
+/// Saves entries in SharedPreferences under the key 'study_guides' as a
+/// JSON-encoded list, so guides persist across app restarts without requiring
+/// a server model.
+class _StudyGuideCreateSheet extends StatefulWidget {
+  const _StudyGuideCreateSheet();
+
+  @override
+  State<_StudyGuideCreateSheet> createState() => _StudyGuideCreateSheetState();
+}
+
+class _StudyGuideCreateSheetState extends State<_StudyGuideCreateSheet> {
+  static const _prefKey = 'study_guides';
+
+  final _titleCtrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
+  String _selectedSubject = Subject.other;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _notesCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final title = _titleCtrl.text.trim();
+    if (title.isEmpty) return;
+
+    setState(() => _saving = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final existing =
+          (prefs.getStringList(_prefKey) ?? []).cast<String>();
+      final entry = jsonEncode({
+        'title': title,
+        'subject': _selectedSubject,
+        'notes': _notesCtrl.text.trim(),
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+      existing.add(entry);
+      await prefs.setStringList(_prefKey, existing);
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('📚 Study guide "$title" saved!'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final subjectOptions = Subject.allSubjects
+        .where((s) => s != Subject.all)
+        .toList();
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.75,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, scrollCtrl) => Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(28)),
+            border:
+                Border(top: BorderSide(color: colorScheme.outlineVariant)),
+          ),
+          child: ListView(
+            controller: scrollCtrl,
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  const Text('📚', style: TextStyle(fontSize: 24)),
+                  const SizedBox(width: 10),
+                  Text(
+                    'New Study Guide',
+                    style: GoogleFonts.lexend(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: _titleCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Title *',
+                  hintText: 'e.g. Chapter 5 – Cell Biology',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                autofocus: true,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Subject',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: subjectOptions.map((s) {
+                  final selected = _selectedSubject == s;
+                  return FilterChip(
+                    label: Text(s),
+                    selected: selected,
+                    onSelected: (_) =>
+                        setState(() => _selectedSubject = s),
+                    showCheckmark: selected,
+                    visualDensity: VisualDensity.compact,
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _notesCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Notes (optional)',
+                  hintText: 'Key concepts, topics to review…',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  alignLabelWithHint: true,
+                ),
+                maxLines: 5,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _saving ? null : _save,
+                icon: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.save_rounded),
+                label: const Text('Save Study Guide'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Note Upload Sheet ─────────────────────────────────────────────────────────
+
+/// Bottom sheet for uploading a note image (from camera or gallery).
+///
+/// Lets the user pick an image, add an optional label, and then saves the
+/// note reference in SharedPreferences under 'uploaded_notes'.
+class _NoteUploadSheet extends StatefulWidget {
+  const _NoteUploadSheet();
+
+  @override
+  State<_NoteUploadSheet> createState() => _NoteUploadSheetState();
+}
+
+class _NoteUploadSheetState extends State<_NoteUploadSheet> {
+  static const _prefKey = 'uploaded_notes';
+
+  final _labelCtrl = TextEditingController();
+  XFile? _pickedFile;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _labelCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(
+      source: source,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 85,
+    );
+    if (file != null && mounted) {
+      setState(() => _pickedFile = file);
+    }
+  }
+
+  Future<void> _save() async {
+    if (_pickedFile == null) return;
+    setState(() => _saving = true);
+    try {
+      final label = _labelCtrl.text.trim();
+      final displayName = label.isNotEmpty
+          ? label
+          : _pickedFile!.name;
+      final prefs = await SharedPreferences.getInstance();
+      final existing =
+          (prefs.getStringList(_prefKey) ?? []).cast<String>();
+      final entry = jsonEncode({
+        'label': displayName,
+        'path': _pickedFile!.path,
+        'savedAt': DateTime.now().toIso8601String(),
+      });
+      existing.add(entry);
+      await prefs.setStringList(_prefKey, existing);
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('📎 Note "$displayName" saved!'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.65,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        builder: (_, scrollCtrl) => Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(28)),
+            border:
+                Border(top: BorderSide(color: colorScheme.outlineVariant)),
+          ),
+          child: ListView(
+            controller: scrollCtrl,
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  const Text('📎', style: TextStyle(fontSize: 24)),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Upload Notes',
+                    style: GoogleFonts.lexend(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Source buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickImage(ImageSource.camera),
+                      icon: const Icon(Icons.camera_alt_rounded),
+                      label: const Text('Camera'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickImage(ImageSource.gallery),
+                      icon: const Icon(Icons.photo_library_rounded),
+                      label: const Text('Gallery'),
+                    ),
+                  ),
+                ],
+              ),
+              if (_pickedFile != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer.withAlpha(80),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: colorScheme.primary.withAlpha(80)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.image_rounded, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _pickedFile!.name,
+                          style: const TextStyle(fontSize: 13),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const Icon(Icons.check_circle_rounded,
+                          color: Colors.green, size: 18),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _labelCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Note label (optional)',
+                    hintText: 'e.g. Chapter 3 Review',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: _saving ? null : _save,
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white),
+                        )
+                      : const Icon(Icons.upload_rounded),
+                  label: const Text('Save Note'),
+                ),
+              ] else ...[
+                const SizedBox(height: 24),
+                Text(
+                  'Choose a source above to pick your note image.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

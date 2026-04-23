@@ -3310,6 +3310,43 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                   onTap: () => context.read<DevClockProvider>().clearOverride(),
                 ),
               ],
+              const SizedBox(height: 8),
+              // Force Season 2 toggle
+              Container(
+                decoration: BoxDecoration(
+                  color: devClock.forceSeason2
+                      ? Colors.deepPurple.withAlpha(40)
+                      : colorScheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: devClock.forceSeason2
+                        ? Colors.deepPurple.withAlpha(120)
+                        : colorScheme.outlineVariant,
+                  ),
+                ),
+                child: SwitchListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  secondary: Icon(
+                    Icons.skip_next_rounded,
+                    color: devClock.forceSeason2
+                        ? Colors.deepPurple
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                  title: const Text(
+                    'Force Season 2 (debug)',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  subtitle: const Text(
+                    'Override: effective time = Season 2 start (highest priority)',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  value: devClock.forceSeason2,
+                  onChanged: (v) =>
+                      context.read<DevClockProvider>().setForceSeason2(v),
+                ),
+              ),
             ],
           ),
 
