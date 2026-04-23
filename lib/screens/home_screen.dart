@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../config/season_live_ops.dart';
 import '../config/secrets.dart';
 import '../models/assignment.dart';
 import '../models/class_model.dart';
@@ -506,6 +507,8 @@ class _ClassesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final classes = context.watch<ClassesProvider>().classes;
+    final season2Enabled =
+        !DateTime.now().toUtc().isBefore(kSeason2.startsAtUtc);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 0, 0),
@@ -528,7 +531,9 @@ class _ClassesSection extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextButton.icon(
-                      onPressed: () => _showAiImportSheet(context),
+                      onPressed: season2Enabled
+                          ? () => _showAiImportSheet(context)
+                          : () => _showSeason2LockedMessage(context),
                       icon: const Icon(Icons.auto_awesome_outlined, size: 16),
                       label: const Text('AI Import'),
                       style: TextButton.styleFrom(
@@ -553,6 +558,42 @@ class _ClassesSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
+          if (season2Enabled) ...[
+            Padding(
+              padding: const EdgeInsets.only(right: 16, bottom: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ActionChip(
+                    avatar: const Icon(Icons.folder_copy_rounded, size: 16),
+                    label: const Text('Study guides organizing'),
+                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content:
+                            Text('Study guides organizing is now enabled for Season 2.'),
+                      ),
+                    ),
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.camera_alt_rounded, size: 16),
+                    label: const Text('Take pics'),
+                    onPressed: () => _openStudyBuddy(context),
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.auto_awesome_rounded, size: 16),
+                    label: const Text('Gemini organize'),
+                    onPressed: () => _openGeminiOrganizer(context),
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.upload_file_rounded, size: 16),
+                    label: const Text('Upload notes'),
+                    onPressed: () => _openStudyBuddy(context),
+                  ),
+                ],
+              ),
+            ),
+          ],
           // Horizontal list
           SizedBox(
             height: 120,
@@ -588,6 +629,62 @@ class _ClassesSection extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const _AiClassImportSheet(),
+    );
+  }
+
+  void _openGeminiOrganizer(BuildContext context) {
+    final chat = context.read<ChatProvider>();
+    final hasApiKey =
+        chat.customApiKey.isNotEmpty || AppSecrets.geminiApiKey.isNotEmpty;
+    if (!hasApiKey) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Gemini organizer needs an API key. Add one in Settings → AI & Models.',
+          ),
+        ),
+      );
+      return;
+    }
+    _showAiImportSheet(context);
+  }
+
+  void _showSeason2LockedMessage(BuildContext context) {
+    final starts = kSeason2.startsAtUtc;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Season 2 features unlock on ${starts.month}/${starts.day}/${starts.year} (UTC).',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openStudyBuddy(BuildContext context) async {
+    await showGeneralDialog<void>(
+      context: context,
+      barrierLabel: 'AI Study Buddy',
+      barrierDismissible: true,
+      barrierColor: Colors.black.withAlpha(80),
+      transitionDuration: const Duration(milliseconds: 260),
+      pageBuilder: (_, __, ___) => const _StudyBuddyTopSheet(),
+      transitionBuilder: (context, animation, _, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, -0.12),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
     );
   }
 }

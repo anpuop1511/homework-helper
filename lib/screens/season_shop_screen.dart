@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../config/season_live_ops.dart';
 import '../providers/user_provider.dart';
 import '../widgets/nameplate_widget.dart';
 
@@ -34,6 +35,7 @@ enum _CosmeticType { badge, nameplate, nameColor }
 // ── Shop item models ─────────────────────────────────────────────────────────
 
 class _ShopItem {
+  final String seasonId;
   final String id;
   final String name;
   final String description;
@@ -42,6 +44,7 @@ class _ShopItem {
   final _CosmeticType cosmeticType;
 
   const _ShopItem({
+    required this.seasonId,
     required this.id,
     required this.name,
     required this.description,
@@ -56,6 +59,7 @@ class _TimedShopItem extends _ShopItem {
   final DateTime unlocksAt;
 
   const _TimedShopItem({
+    required super.seasonId,
     required super.id,
     required super.name,
     required super.description,
@@ -65,65 +69,12 @@ class _TimedShopItem extends _ShopItem {
     required this.unlocksAt,
   });
 
-  bool get isUnlocked => DateTime.now().isAfter(unlocksAt);
+  bool get isUnlocked => !DateTime.now().toUtc().isBefore(unlocksAt.toUtc());
 }
 
-// ── Season drop schedule ─────────────────────────────────────────────────────
-//
-// A single fixed "season start" anchors the 4-drop cadence so timers are
-// deterministic across all sessions and devices.
-//
-// Drop cadence (from season start):
-//   Drop A  +4 days
-//   Drop B  +7 days  (4 + 3)
-//   Drop C  +10 days (4 + 3 + 3)
-//   Drop D  +12 days (4 + 3 + 3 + 2)
-
-final _kSeasonDropStart = DateTime.utc(2026, 4, 14); // April 14 2026 00:00 UTC
-
-final _timedDropItems = [
-  _TimedShopItem(
-    id: 'aurora_purple',
-    name: 'Aurora Purple Nameplate',
-    description: 'A dreamy purple-gradient plate behind your name.',
-    emoji: '💜',
-    price: 220,
-    cosmeticType: _CosmeticType.nameplate,
-    unlocksAt: _kSeasonDropStart.add(const Duration(days: 4)),
-  ),
-  _TimedShopItem(
-    id: 'night_owl_badge',
-    name: 'Night Owl Badge',
-    description: 'Show off your late-night study sessions.',
-    emoji: '🦉',
-    price: 180,
-    cosmeticType: _CosmeticType.badge,
-    unlocksAt: _kSeasonDropStart.add(const Duration(days: 7)), // +3
-  ),
-  _TimedShopItem(
-    id: 'crimson_name',
-    name: 'Crimson Name Color',
-    description: 'Make your username glow in bold crimson.',
-    emoji: '🔴',
-    price: 250,
-    cosmeticType: _CosmeticType.nameColor,
-    unlocksAt: _kSeasonDropStart.add(const Duration(days: 10)), // +3
-  ),
-  _TimedShopItem(
-    id: 'ocean_deep',
-    name: 'Ocean Deep Nameplate',
-    description: 'A deep teal-to-cyan plate, calm as the sea.',
-    emoji: '🌊',
-    price: 220,
-    cosmeticType: _CosmeticType.nameplate,
-    unlocksAt: _kSeasonDropStart.add(const Duration(days: 12)), // +2
-  ),
-];
-
-// ── Always-available items ────────────────────────────────────────────────────
-
-const _permanentItems = [
+const _season1PermanentItems = [
   _ShopItem(
+    seasonId: 'season_1',
     id: 'spring_petal_badge',
     name: 'Spring Petal Badge',
     description: 'A delicate cherry blossom badge for your profile.',
@@ -132,6 +83,7 @@ const _permanentItems = [
     cosmeticType: _CosmeticType.badge,
   ),
   _ShopItem(
+    seasonId: 'season_1',
     id: 'blue_sky',
     name: 'Blue Sky Nameplate',
     description: 'A serene sky-blue plate behind your username.',
@@ -140,6 +92,7 @@ const _permanentItems = [
     cosmeticType: _CosmeticType.nameplate,
   ),
   _ShopItem(
+    seasonId: 'season_1',
     id: 'daffodil_yellow',
     name: 'Daffodil Yellow Nameplate',
     description: 'A bright daffodil-yellow plate behind your username.',
@@ -148,6 +101,7 @@ const _permanentItems = [
     cosmeticType: _CosmeticType.nameplate,
   ),
   _ShopItem(
+    seasonId: 'season_1',
     id: 'study_streak_frame',
     name: 'Study Streak Badge',
     description: 'Show off your dedication with a flame-bordered badge.',
@@ -156,6 +110,7 @@ const _permanentItems = [
     cosmeticType: _CosmeticType.badge,
   ),
   _ShopItem(
+    seasonId: 'season_1',
     id: 'rainbow_name_color',
     name: 'Rainbow Name Color',
     description: 'Make your name shine in vibrant purple-rainbow.',
@@ -165,6 +120,163 @@ const _permanentItems = [
   ),
 ];
 
+const _season2PermanentItems = [
+  _ShopItem(
+    seasonId: 'season_2',
+    id: 'finals_champion_badge',
+    name: 'Finals Champion Badge',
+    description: 'A badge for conquering finals week.',
+    emoji: '🏆',
+    price: 240,
+    cosmeticType: _CosmeticType.badge,
+  ),
+  _ShopItem(
+    seasonId: 'season_2',
+    id: 'honor_roll_badge',
+    name: 'Honor Roll Badge',
+    description: 'Show your top-tier study grind.',
+    emoji: '🥇',
+    price: 220,
+    cosmeticType: _CosmeticType.badge,
+  ),
+  _ShopItem(
+    seasonId: 'season_2',
+    id: 'glow_name_card',
+    name: 'Glow Name Card',
+    description: 'A glowing battle-card style plate around your name.',
+    emoji: '🃏',
+    price: 280,
+    cosmeticType: _CosmeticType.nameplate,
+  ),
+];
+
+const _season1TimedTemplates = [
+  _ShopItem(
+    seasonId: 'season_1',
+    id: 'aurora_purple',
+    name: 'Aurora Purple Nameplate',
+    description: 'A dreamy purple-gradient plate behind your name.',
+    emoji: '💜',
+    price: 220,
+    cosmeticType: _CosmeticType.nameplate,
+  ),
+  _ShopItem(
+    seasonId: 'season_1',
+    id: 'night_owl_badge',
+    name: 'Night Owl Badge',
+    description: 'Show off your late-night study sessions.',
+    emoji: '🦉',
+    price: 180,
+    cosmeticType: _CosmeticType.badge,
+  ),
+  _ShopItem(
+    seasonId: 'season_1',
+    id: 'crimson_name',
+    name: 'Crimson Name Color',
+    description: 'Make your username glow in bold crimson.',
+    emoji: '🔴',
+    price: 250,
+    cosmeticType: _CosmeticType.nameColor,
+  ),
+  _ShopItem(
+    seasonId: 'season_1',
+    id: 'ocean_deep',
+    name: 'Ocean Deep Nameplate',
+    description: 'A deep teal-to-cyan plate, calm as the sea.',
+    emoji: '🌊',
+    price: 220,
+    cosmeticType: _CosmeticType.nameplate,
+  ),
+];
+
+const _season2TimedTemplates = [
+  _ShopItem(
+    seasonId: 'season_2',
+    id: 'exam_master_card',
+    name: 'Exam Master Card',
+    description: 'A finals glow card with a bright animated edge.',
+    emoji: '💫',
+    price: 290,
+    cosmeticType: _CosmeticType.nameplate,
+  ),
+  _ShopItem(
+    seasonId: 'season_2',
+    id: 'all_nighter_badge',
+    name: 'All-Nighter Badge',
+    description: 'For those who always finish strong.',
+    emoji: '🌃',
+    price: 190,
+    cosmeticType: _CosmeticType.badge,
+  ),
+  _ShopItem(
+    seasonId: 'season_2',
+    id: 'valedictorian_card',
+    name: 'Valedictorian Card',
+    description: 'A polished card that frames your profile name.',
+    emoji: '🎓',
+    price: 300,
+    cosmeticType: _CosmeticType.nameplate,
+  ),
+  _ShopItem(
+    seasonId: 'season_2',
+    id: 'finals_fire_badge',
+    name: 'Finals Fire Badge',
+    description: 'A hot-streak badge for finals season.',
+    emoji: '🔥',
+    price: 210,
+    cosmeticType: _CosmeticType.badge,
+  ),
+];
+
+const _season1RolloverRules = [
+  (
+    id: 'badge_spring_sprout',
+    name: 'Spring Sprout Badge',
+    description: 'Season 1 pass reward now available in the shop.',
+    emoji: '🌱',
+    price: 260,
+    cosmeticType: _CosmeticType.badge,
+  ),
+  (
+    id: 'badge_blossom_brawler',
+    name: 'Blossom Brawler Badge',
+    description: 'Season 1 pass reward now available in the shop.',
+    emoji: '🌸',
+    price: 270,
+    cosmeticType: _CosmeticType.badge,
+  ),
+  (
+    id: 'Cherry Blossom',
+    name: 'Cherry Blossom Nameplate',
+    description: 'Season 1 final reward now available in the shop.',
+    emoji: '🌸',
+    price: 340,
+    cosmeticType: _CosmeticType.nameplate,
+  ),
+];
+
+List<_TimedShopItem> _buildTimedDrops(
+  String seasonId,
+  DateTime startsAtUtc,
+  List<_ShopItem> templates,
+) {
+  final offsets =
+      deterministicDropOffsets(seasonId: seasonId, itemCount: templates.length);
+  return List.generate(templates.length, (index) {
+    final item = templates[index];
+    return _TimedShopItem(
+      seasonId: seasonId,
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      emoji: item.emoji,
+      price: item.price,
+      cosmeticType: item.cosmeticType,
+      unlocksAt: startsAtUtc.add(Duration(days: offsets[index])),
+    );
+  });
+}
+
 // ── Shop body ────────────────────────────────────────────────────────────────
 
 class _ShopBody extends StatelessWidget {
@@ -173,7 +285,9 @@ class _ShopBody extends StatelessWidget {
   void _purchase(BuildContext context, _ShopItem item) {
     final user = context.read<UserProvider>();
 
-    if (user.unlockedCosmetics.contains(item.id)) {
+    final alreadyOwned = user.unlockedCosmetics.contains(item.id) ||
+        user.unlockedCosmetics.contains('nameplate_${item.id}');
+    if (alreadyOwned) {
       _autoEquip(context, user, item);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${item.emoji} ${item.name} equipped!')),
@@ -219,11 +333,50 @@ class _ShopBody extends StatelessWidget {
     final user = context.watch<UserProvider>();
     final colorScheme = Theme.of(context).colorScheme;
     final timeTravelEnabled = user.shopTimeTravelEnabled;
+    final activeSeason = activeSeasonNowUtc();
+    final nowUtc = DateTime.now().toUtc();
+
+    final currentPermanent = activeSeason.id == kSeason2.id
+        ? _season2PermanentItems
+        : _season1PermanentItems;
+    final currentTimed = _buildTimedDrops(
+      activeSeason.id,
+      activeSeason.startsAtUtc,
+      activeSeason.id == kSeason2.id
+          ? _season2TimedTemplates
+          : _season1TimedTemplates,
+    );
+    final legacyTimed = _buildTimedDrops(
+      kSeason1.id,
+      kSeason1.startsAtUtc,
+      _season1TimedTemplates,
+    );
+    final rolloverItems = _season1RolloverRules
+        .where((_) => isShopEligibleForPastPassReward(
+              seasonId: kSeason1.id,
+              utcNow: nowUtc,
+            ))
+        .map(
+          (r) => _ShopItem(
+            seasonId: kSeason1.id,
+            id: r.id,
+            name: r.name,
+            description: r.description,
+            emoji: r.emoji,
+            price: r.price,
+            cosmeticType: r.cosmeticType,
+          ),
+        )
+        .toList();
 
     final unlockedDrops =
-        _timedDropItems.where((i) => i.isUnlocked || timeTravelEnabled).toList();
+        currentTimed.where((i) => i.isUnlocked || timeTravelEnabled).toList();
     final lockedDrops =
-        _timedDropItems.where((i) => !i.isUnlocked && !timeTravelEnabled).toList();
+        currentTimed.where((i) => !i.isUnlocked && !timeTravelEnabled).toList();
+    final unlockedLegacyDrops = legacyTimed
+        .where((i) =>
+            i.isUnlocked || timeTravelEnabled || activeSeason.id != kSeason1.id)
+        .toList();
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -267,11 +420,11 @@ class _ShopBody extends StatelessWidget {
         // ── Available Now ──────────────────────────────────────────────
         _SectionHeader(
           title: 'Available Now',
-          subtitle: 'Spring Collection — limited this season!',
+          subtitle: 'Season ${activeSeason.number} featured collection',
           colorScheme: colorScheme,
         ),
         const SizedBox(height: 12),
-        ..._permanentItems.map((item) {
+        ...currentPermanent.map((item) {
           final owned = user.unlockedCosmetics.contains(item.id);
           final equipped = _isEquipped(user, item);
           return _ShopItemCard(
@@ -299,12 +452,59 @@ class _ShopBody extends StatelessWidget {
           }),
         ],
 
+        if (activeSeason.id == kSeason2.id) ...[
+          const SizedBox(height: 12),
+          _SectionHeader(
+            title: 'Season 1 Legacy Collection',
+            subtitle: 'Previous season items are preserved and still purchasable.',
+            colorScheme: colorScheme,
+          ),
+          const SizedBox(height: 12),
+          ..._season1PermanentItems.map((item) {
+            final owned = user.unlockedCosmetics.contains(item.id);
+            final equipped = _isEquipped(user, item);
+            return _ShopItemCard(
+              item: item,
+              owned: owned,
+              equipped: equipped,
+              colorScheme: colorScheme,
+              onTap: () => _purchase(context, item),
+            );
+          }),
+          ...unlockedLegacyDrops.map((item) {
+            final owned = user.unlockedCosmetics.contains(item.id);
+            final equipped = _isEquipped(user, item);
+            return _ShopItemCard(
+              item: item,
+              owned: owned,
+              equipped: equipped,
+              colorScheme: colorScheme,
+              onTap: () => _purchase(context, item),
+            );
+          }),
+          if (rolloverItems.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...rolloverItems.map((item) {
+              final owned = user.unlockedCosmetics.contains(item.id) ||
+                  user.unlockedCosmetics.contains('nameplate_${item.id}');
+              final equipped = _isEquipped(user, item);
+              return _ShopItemCard(
+                item: item,
+                owned: owned,
+                equipped: equipped,
+                colorScheme: colorScheme,
+                onTap: () => _purchase(context, item),
+              );
+            }),
+          ],
+        ],
+
         // ── Coming Soon ────────────────────────────────────────────────
         if (lockedDrops.isNotEmpty) ...[
           const SizedBox(height: 16),
           _SectionHeader(
             title: 'Coming Soon',
-            subtitle: 'New drops unlock automatically — stay tuned!',
+            subtitle: 'Deterministic drops unlock every 5–7 days.',
             colorScheme: colorScheme,
           ),
           const SizedBox(height: 12),
@@ -520,8 +720,8 @@ class _LockedItemCardState extends State<_LockedItemCard> {
   }
 
   void _updateRemaining() {
-    final now = DateTime.now();
-    final diff = widget.item.unlocksAt.difference(now);
+    final now = DateTime.now().toUtc();
+    final diff = widget.item.unlocksAt.toUtc().difference(now);
     _remaining = diff.isNegative ? Duration.zero : diff;
   }
 
@@ -628,4 +828,3 @@ class _LockedItemCardState extends State<_LockedItemCard> {
     );
   }
 }
-

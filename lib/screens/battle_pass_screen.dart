@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../config/season_live_ops.dart';
 import '../providers/user_provider.dart';
 import '../widgets/coin_cup_reveal_widget.dart';
 import 'season_shop_screen.dart';
@@ -11,6 +12,25 @@ const _kOrange = Color(0xFFFFB347);
 const _kGoldDark = Color(0xFFB8860B);
 const _kPremiumGradient = [Color(0xFFFFD700), Color(0xFFFF8C00)];
 const _kFreeGradient = [Color(0xFF64B5F6), Color(0xFF1976D2)];
+
+String _monthDay(DateTime utc) {
+  const month = [
+    '',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
+  ];
+  return '${month[utc.month]} ${utc.day}';
+}
 
 /// The Homework Battle Pass screen — Season 1: Spring Bloomin' 🌸
 class BattlePassScreen extends StatelessWidget {
@@ -31,6 +51,12 @@ class _BattlePassBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final user = context.watch<UserProvider>();
+    final activeSeason = activeSeasonNowUtc();
+    final freeRewards =
+        activeSeason.id == kSeason2.id ? _season2FreeRewards : _freeRewards;
+    final premiumRewards = activeSeason.id == kSeason2.id
+        ? _season2PremiumRewards
+        : _premiumRewards;
 
     return CustomScrollView(
       slivers: [
@@ -63,7 +89,7 @@ class _BattlePassBody extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Season 1: Spring Bloomin'",
+                                  'Season ${activeSeason.number}: ${activeSeason.name}',
                                   style: GoogleFonts.lexend(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w800,
@@ -71,7 +97,7 @@ class _BattlePassBody extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  'April 13 – May 1',
+                                  '${_monthDay(activeSeason.startsAtUtc)} – ${_monthDay(activeSeason.endsAtUtc)}',
                                   style: GoogleFonts.outfit(
                                     fontSize: 13,
                                     color: Colors.white70,
@@ -178,6 +204,12 @@ class _BattlePassBody extends StatelessWidget {
           child: _PassPurchaseSection(user: user, colorScheme: Theme.of(context).colorScheme),
         ),
 
+        SliverToBoxAdapter(
+          child: _UnclaimedRewardsSection(
+            season: activeSeason,
+          ),
+        ),
+
         // ── Season Shop banner ───────────────────────────────────────
         SliverToBoxAdapter(
           child: Padding(
@@ -210,17 +242,23 @@ class _BattlePassBody extends StatelessWidget {
                   return Column(
                     children: [
                       _MilestoneMarker(tier: tier - 1),
-                      _TierRow(
-                        tier: tier,
-                        user: user,
-                        colorScheme: Theme.of(context).colorScheme,
-                      ),
+                        _TierRow(
+                          tier: tier,
+                          user: user,
+                          season: activeSeason,
+                          freeRewards: freeRewards,
+                          premiumRewards: premiumRewards,
+                          colorScheme: Theme.of(context).colorScheme,
+                        ),
                     ],
                   );
                 }
                 return _TierRow(
                   tier: tier,
                   user: user,
+                  season: activeSeason,
+                  freeRewards: freeRewards,
+                  premiumRewards: premiumRewards,
                   colorScheme: Theme.of(context).colorScheme,
                 );
               },
@@ -366,6 +404,7 @@ class _PassPurchaseSection extends StatelessWidget {
   /// Shows a "Learn More" dialog with perks before confirming the purchase.
   void _showPassDialog(BuildContext context, String type, int price) {
     final isPlus = type == 'plus';
+    final season = activeSeasonNowUtc();
     showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -392,14 +431,29 @@ class _PassPurchaseSection extends StatelessWidget {
               const _PerkRow(emoji: '✅', text: 'Access to the Plus reward track'),
               const _PerkRow(emoji: '🎁', text: 'Exclusive Plus badges & nameplates'),
               const _PerkRow(emoji: '[+]', text: '[+] icon shown next to your name'),
-              const _PerkRow(emoji: '🌿', text: 'Spring Mint theme unlock'),
+              _PerkRow(
+                emoji: season.id == kSeason2.id ? '🎓' : '🌿',
+                text: season.id == kSeason2.id
+                    ? 'Finals-themed cosmetics and cards'
+                    : 'Spring Mint theme unlock',
+              ),
             ] else ...[
               const _PerkRow(emoji: '✅', text: 'Access to the Premium reward track'),
               const _PerkRow(emoji: '🚀', text: '+3 Tiers instantly on purchase'),
               const _PerkRow(emoji: '🏆', text: 'Golden & Magical Coin Cups'),
-              const _PerkRow(emoji: '✨', text: 'Animated Golden Cherry Blossom Nameplate at Tier 50'),
+              _PerkRow(
+                emoji: '✨',
+                text: season.id == kSeason2.id
+                    ? 'Animated A+ Nameplate at Tier 50'
+                    : 'Animated Golden Cherry Blossom Nameplate at Tier 50',
+              ),
               const _PerkRow(emoji: '[★]', text: '[★] icon shown next to your name'),
-              const _PerkRow(emoji: '🌼', text: 'Daffodil & Cherry Blossom themes'),
+              _PerkRow(
+                emoji: season.id == kSeason2.id ? '🃏' : '🌼',
+                text: season.id == kSeason2.id
+                    ? 'Exclusive finals cards, badges, and themes'
+                    : 'Daffodil & Cherry Blossom themes',
+              ),
             ],
             const SizedBox(height: 12),
             Text(
@@ -811,26 +865,330 @@ const _premiumRewards = <_TierReward>[
   _TierReward(label: 'Animated Golden Cherry Blossom Nameplate', emoji: '✨', type: _RewardType.nameplate, value: 'animated_golden_cherry_blossom'),
 ];
 
+const _season2FreeRewards = <_TierReward>[
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: 'Finals Focus Badge', emoji: '🎯', type: _RewardType.badge, value: 'finals_focus'),
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: 'Exam Ace Badge', emoji: '🏅', type: _RewardType.badge, value: 'exam_ace'),
+  _TierReward(label: 'Finals Theme: Midnight Cram', emoji: '🌙', type: _RewardType.theme, value: 'midnightCram'),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Top of Class Badge', emoji: '🎓', type: _RewardType.badge, value: 'top_of_class'),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: 'Finals Theme: Victory Lap', emoji: '🏁', type: _RewardType.theme, value: 'victoryLap'),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: 'Shiny Coin Cup', emoji: '✨', type: _RewardType.coins, cupRarity: CupRarity.shiny),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: 'Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Shiny Coin Cup', emoji: '✨', type: _RewardType.coins, cupRarity: CupRarity.shiny),
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: 'Finals Nameplate', emoji: '🎓', type: _RewardType.nameplate, value: 'finals_nameplate'),
+];
+
+const _season2PremiumRewards = <_TierReward>[
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: 'Finals Glow Card', emoji: '🃏', type: _RewardType.nameplate, value: 'finals_glow_card'),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Finals Theme: Gold Notes', emoji: '📒', type: _RewardType.theme, value: 'goldNotes'),
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: 'Honor Roll Card', emoji: '🪪', type: _RewardType.nameplate, value: 'honor_roll_card'),
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  _TierReward(label: 'Animated A+ Nameplate', emoji: '✨', type: _RewardType.nameplate, value: 'animated_aplus_nameplate'),
+];
+
+List<_TierReward> _freeRewardsForSeason(String seasonId) {
+  return seasonId == kSeason2.id ? _season2FreeRewards : _freeRewards;
+}
+
+List<_TierReward> _premiumRewardsForSeason(String seasonId) {
+  return seasonId == kSeason2.id ? _season2PremiumRewards : _premiumRewards;
+}
+
+class _UnclaimedRewardsSection extends StatelessWidget {
+  final SeasonDefinition season;
+
+  const _UnclaimedRewardsSection({
+    required this.season,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (season.number <= 1) return const SizedBox.shrink();
+    final user = context.watch<UserProvider>();
+    final items = <_PastRewardClaim>[];
+    for (final s in kAllSeasons) {
+      if (s.id == season.id || s.startsAtUtc.isAfter(season.startsAtUtc)) {
+        continue;
+      }
+      final reached = user.tierForSeason(s.id);
+      if (reached <= 0) continue;
+      final free = _freeRewardsForSeason(s.id);
+      final premium = _premiumRewardsForSeason(s.id);
+      for (var tier = 1; tier <= reached && tier <= 50; tier++) {
+        if (!user.isTierRewardClaimed(tier, side: 'free', seasonId: s.id)) {
+          items.add(
+            _PastRewardClaim(
+              season: s,
+              tier: tier,
+              side: 'free',
+              reward: free[tier - 1],
+              locked: false,
+            ),
+          );
+        }
+        final needs = tier == 50 ? 'premium' : 'plus';
+        final hasEntitlement = passMeetsRequirement(
+          user.passTypeForSeason(s.id),
+          needs,
+        );
+        if (!user.isTierRewardClaimed(tier, side: 'premium', seasonId: s.id)) {
+          items.add(
+            _PastRewardClaim(
+              season: s,
+              tier: tier,
+              side: 'premium',
+              reward: premium[tier - 1],
+              locked: !hasEntitlement,
+            ),
+          );
+        }
+      }
+    }
+    if (items.isEmpty) return const SizedBox.shrink();
+    final displayItems = items.take(8).toList();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Unclaimed Rewards',
+              style: GoogleFonts.lexend(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Claim eligible rewards from previous seasons.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...displayItems.map(
+              (item) => ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Text(item.reward.emoji),
+                title: Text(
+                  'S${item.season.number} T${item.tier} • ${item.reward.label}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(item.side == 'free' ? 'Free' : 'Pass track'),
+                trailing: TextButton(
+                  onPressed: () => item.locked
+                      ? _showLocked(context, item.season)
+                      : _claim(context, item),
+                  child: Text(item.locked ? 'Locked' : 'Claim'),
+                ),
+              ),
+            ),
+            if (items.length > displayItems.length)
+              Text(
+                '+${items.length - displayItems.length} more rewards available',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLocked(BuildContext context, SeasonDefinition season) {
+    final availableAt = shopEligibleAtForPastPassReward(seasonId: season.id);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Locked Cosmetic'),
+        content: Text(
+          'This cosmetic was for Season ${season.number} Battle Pass holders.\n'
+          'It will be available after 60 days when the season ends.\n'
+          'Available on ${_monthDay(availableAt)} ${availableAt.year} (UTC).',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _claim(BuildContext context, _PastRewardClaim item) {
+    final user = context.read<UserProvider>();
+    final reward = item.reward;
+    switch (reward.type) {
+      case _RewardType.coins:
+        showCoinCupReveal(
+          context,
+          initialRarity: reward.cupRarity,
+          onClaimed: (coins) {
+            user.awardCoins(coins);
+            user.claimTierReward(
+              item.tier,
+              side: item.side,
+              seasonId: item.season.id,
+            );
+          },
+        );
+      case _RewardType.nameplate:
+        user.setActiveNameplate(reward.value);
+        user.unlockCosmetic('nameplate_${reward.value}');
+        user.claimTierReward(item.tier, side: item.side, seasonId: item.season.id);
+      case _RewardType.xpBoost:
+        user.awardXp(reward.xpAmount);
+        user.claimTierReward(item.tier, side: item.side, seasonId: item.season.id);
+      case _RewardType.badge:
+        user.unlockCosmetic('badge_${reward.value}');
+        user.claimTierReward(item.tier, side: item.side, seasonId: item.season.id);
+      case _RewardType.theme:
+        user.unlockCosmetic('vibe_${reward.value}');
+        user.claimTierReward(item.tier, side: item.side, seasonId: item.season.id);
+    }
+  }
+}
+
+class _PastRewardClaim {
+  final SeasonDefinition season;
+  final int tier;
+  final String side;
+  final _TierReward reward;
+  final bool locked;
+
+  const _PastRewardClaim({
+    required this.season,
+    required this.tier,
+    required this.side,
+    required this.reward,
+    required this.locked,
+  });
+}
+
 // ── Tier Row ───────────────────────────────────────────────────────────────
 
 class _TierRow extends StatelessWidget {
   final int tier;
   final UserProvider user;
+  final SeasonDefinition season;
+  final List<_TierReward> freeRewards;
+  final List<_TierReward> premiumRewards;
   final ColorScheme colorScheme;
 
   const _TierRow({
     required this.tier,
     required this.user,
+    required this.season,
+    required this.freeRewards,
+    required this.premiumRewards,
     required this.colorScheme,
   });
 
-  bool get _isReached => user.seasonTier >= tier;
-  bool get _isFreeClaimed => user.isTierRewardClaimed(tier, side: 'free');
-  bool get _isPremiumClaimed => user.isTierRewardClaimed(tier, side: 'premium');
-  bool get _isCurrent => user.seasonTier == tier;
+  bool get _isReached => user.tierForSeason(season.id) >= tier;
+  bool get _isFreeClaimed =>
+      user.isTierRewardClaimed(tier, side: 'free', seasonId: season.id);
+  bool get _isPremiumClaimed =>
+      user.isTierRewardClaimed(tier, side: 'premium', seasonId: season.id);
+  bool get _isCurrent =>
+      season.id == user.activeSeasonId && user.seasonTier == tier;
 
-  _TierReward get _freeReward => _freeRewards[tier - 1];
-  _TierReward get _premiumReward => _premiumRewards[tier - 1];
+  _TierReward get _freeReward => freeRewards[tier - 1];
+  _TierReward get _premiumReward => premiumRewards[tier - 1];
 
   @override
   Widget build(BuildContext context) {
@@ -977,31 +1335,31 @@ class _TierRow extends StatelessWidget {
           initialRarity: reward.cupRarity,
           onClaimed: (coins) {
             user.awardCoins(coins);
-            user.claimTierReward(tier, side: 'free');
+            user.claimTierReward(tier, side: 'free', seasonId: season.id);
           },
         );
       case _RewardType.nameplate:
         user.setActiveNameplate(reward.value);
         user.unlockCosmetic('nameplate_${reward.value}');
-        user.claimTierReward(tier, side: 'free');
+        user.claimTierReward(tier, side: 'free', seasonId: season.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('🌸 ${reward.label} equipped!')),
         );
       case _RewardType.xpBoost:
         user.awardXp(reward.xpAmount);
-        user.claimTierReward(tier, side: 'free');
+        user.claimTierReward(tier, side: 'free', seasonId: season.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('⚡ ${reward.label} applied! +${reward.xpAmount} XP')),
         );
       case _RewardType.badge:
         user.unlockCosmetic('badge_${reward.value}');
-        user.claimTierReward(tier, side: 'free');
+        user.claimTierReward(tier, side: 'free', seasonId: season.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${reward.emoji} ${reward.label} unlocked!')),
         );
       case _RewardType.theme:
         user.unlockCosmetic('vibe_${reward.value}');
-        user.claimTierReward(tier, side: 'free');
+        user.claimTierReward(tier, side: 'free', seasonId: season.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${reward.emoji} ${reward.label} theme unlocked! Find it in Settings → Appearance.')),
         );
@@ -1010,15 +1368,15 @@ class _TierRow extends StatelessWidget {
 
   void _claimPremium(BuildContext context) {
     final user = context.read<UserProvider>();
-    final hasAccess = user.passType == 'plus' || user.passType == 'premium';
+    final hasAccess = passMeetsRequirement(
+      user.passTypeForSeason(season.id),
+      tier == 50 ? 'premium' : 'plus',
+    );
     if (!hasAccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Unlock Plus or Premium Pass to claim this reward!')),
-      );
+      _showPastPassLockedDialog(context);
       return;
     }
-    if (tier == 50 && user.passType != 'premium') {
+    if (tier == 50 && user.passTypeForSeason(season.id) != 'premium') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text(
@@ -1034,35 +1392,56 @@ class _TierRow extends StatelessWidget {
           initialRarity: reward.cupRarity,
           onClaimed: (coins) {
             user.awardCoins(coins);
-            user.claimTierReward(tier, side: 'premium');
+            user.claimTierReward(tier, side: 'premium', seasonId: season.id);
           },
         );
       case _RewardType.nameplate:
         user.setActiveNameplate(reward.value);
         user.unlockCosmetic('nameplate_${reward.value}');
-        user.claimTierReward(tier, side: 'premium');
+        user.claimTierReward(tier, side: 'premium', seasonId: season.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('✨ ${reward.label} equipped!')),
         );
       case _RewardType.xpBoost:
         user.awardXp(reward.xpAmount);
-        user.claimTierReward(tier, side: 'premium');
+        user.claimTierReward(tier, side: 'premium', seasonId: season.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('⚡ ${reward.label} applied! +${reward.xpAmount} XP')),
         );
       case _RewardType.badge:
         user.unlockCosmetic('badge_${reward.value}');
-        user.claimTierReward(tier, side: 'premium');
+        user.claimTierReward(tier, side: 'premium', seasonId: season.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${reward.emoji} ${reward.label} unlocked!')),
         );
       case _RewardType.theme:
         user.unlockCosmetic('vibe_${reward.value}');
-        user.claimTierReward(tier, side: 'premium');
+        user.claimTierReward(tier, side: 'premium', seasonId: season.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${reward.emoji} ${reward.label} theme unlocked! Find it in Settings → Appearance.')),
         );
     }
+  }
+
+  void _showPastPassLockedDialog(BuildContext context) {
+    final availableAt = shopEligibleAtForPastPassReward(seasonId: season.id);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Locked Cosmetic'),
+        content: Text(
+          'This cosmetic was for Season ${season.number} Battle Pass holders.\n'
+          'It will be available after 60 days when the season ends.\n'
+          'Available on ${_monthDay(availableAt)} ${availableAt.year} (UTC).',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
