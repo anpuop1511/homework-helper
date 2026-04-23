@@ -16,6 +16,20 @@ List<Color> nameplateGradientColors(String id) {
       return [const Color(0xFFFF80AB), const Color(0xFFFF4081)];
     case 'animated_golden_cherry_blossom':
       return [const Color(0xFFFFD700), const Color(0xFFFF69B4)];
+    case 'finals_nameplate':
+      return [const Color(0xFF4A148C), const Color(0xFF311B92)];
+    case 'finals_glow_card':
+      return [const Color(0xFF00E5FF), const Color(0xFF2962FF)];
+    case 'honor_roll_card':
+      return [const Color(0xFFFFD54F), const Color(0xFFFF8F00)];
+    case 'glow_name_card':
+      return [const Color(0xFF80DEEA), const Color(0xFF00ACC1)];
+    case 'exam_master_card':
+      return [const Color(0xFFB39DDB), const Color(0xFF512DA8)];
+    case 'valedictorian_card':
+      return [const Color(0xFFA5D6A7), const Color(0xFF2E7D32)];
+    case 'animated_aplus_nameplate':
+      return [const Color(0xFFFFD600), const Color(0xFFFF6D00)];
     case 'aurora_purple':
       return [const Color(0xFFCE93D8), const Color(0xFF7B1FA2)];
     case 'ocean_deep':
@@ -69,6 +83,20 @@ String badgeEmoji(String id) {
       return '🌟';
     case 'badge_grand_blossom':
       return '🌺';
+    case 'badge_finals_focus':
+      return '🎯';
+    case 'badge_exam_ace':
+      return '🏅';
+    case 'badge_top_of_class':
+      return '🎓';
+    case 'finals_champion_badge':
+      return '🏆';
+    case 'honor_roll_badge':
+      return '🥇';
+    case 'all_nighter_badge':
+      return '🌃';
+    case 'finals_fire_badge':
+      return '🔥';
     default:
       return '';
   }
@@ -102,7 +130,8 @@ Color? nameColorValue(String id) {
 
 /// Returns `true` when the nameplate ID uses a looping animation.
 bool isAnimatedNameplate(String id) {
-  return id == 'animated_golden_cherry_blossom';
+  return id == 'animated_golden_cherry_blossom' ||
+      id == 'animated_aplus_nameplate';
 }
 
 /// Renders a username (or any text) inside a coloured nameplate background.

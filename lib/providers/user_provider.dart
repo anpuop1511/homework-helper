@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/season_live_ops.dart';
 import '../services/database_service.dart';
 import '../services/widget_service.dart';
 
@@ -26,6 +27,9 @@ class UserProvider extends ChangeNotifier {
   static const _prefBpClaimedTiers = 'bp_claimed_tiers';
   static const _prefBpEquippedBadge = 'bp_equipped_badge';
   static const _prefBpEquippedNameColor = 'bp_equipped_name_color';
+  static const _prefBpActiveSeasonId = 'bp_active_season_id';
+  static const _prefBpSeasonTierHistory = 'bp_season_tier_history';
+  static const _prefBpSeasonPassHistory = 'bp_season_pass_history';
 
   /// XP required to advance from level N to N+1 = baseXp * N.
   static const int _baseXp = 100;
@@ -42,11 +46,14 @@ class UserProvider extends ChangeNotifier {
   int _seasonTier = 1;
   int _seasonXp = 0;
   String _passType = 'free';
+  String _activeSeasonId = kSeason1.id;
   List<String> _unlockedCosmetics = [];
   String _activeNameplate = '';
   List<int> _claimedTiers = [];
   String _equippedBadge = '';
   String _equippedNameColor = '';
+  Map<String, int> _seasonTierHistory = {};
+  Map<String, String> _seasonPassHistory = {};
 
   /// In-memory dev flag: when true the Season Shop shows all timed drops as
   /// available regardless of the real-time unlock date.  Not persisted.
@@ -66,11 +73,15 @@ class UserProvider extends ChangeNotifier {
   int get seasonTier => _seasonTier;
   int get seasonXp => _seasonXp;
   String get passType => _passType;
+  String get activeSeasonId => _activeSeasonId;
   List<String> get unlockedCosmetics => List.unmodifiable(_unlockedCosmetics);
   String get activeNameplate => _activeNameplate;
   List<int> get claimedTiers => List.unmodifiable(_claimedTiers);
   String get equippedBadge => _equippedBadge;
   String get equippedNameColor => _equippedNameColor;
+  Map<String, int> get seasonTierHistory => Map.unmodifiable(_seasonTierHistory);
+  Map<String, String> get seasonPassHistory =>
+      Map.unmodifiable(_seasonPassHistory);
 
   /// Dev-only: when true the Season Shop shows all timed drops as available.
   bool get shopTimeTravelEnabled => _shopTimeTravelEnabled;
@@ -110,6 +121,7 @@ class UserProvider extends ChangeNotifier {
     _seasonTier = prefs.getInt(_prefBpSeasonTier) ?? 1;
     _seasonXp = prefs.getInt(_prefBpSeasonXp) ?? 0;
     _passType = prefs.getString(_prefBpPassType) ?? 'free';
+    _activeSeasonId = prefs.getString(_prefBpActiveSeasonId) ?? kSeason1.id;
     _unlockedCosmetics =
         prefs.getStringList(_prefBpUnlockedCosmetics) ?? [];
     _activeNameplate = prefs.getString(_prefBpActiveNameplate) ?? '';
@@ -119,6 +131,11 @@ class UserProvider extends ChangeNotifier {
             .toList();
     _equippedBadge = prefs.getString(_prefBpEquippedBadge) ?? '';
     _equippedNameColor = prefs.getString(_prefBpEquippedNameColor) ?? '';
+    _seasonTierHistory =
+        _decodeIntMap(prefs.getStringList(_prefBpSeasonTierHistory));
+    _seasonPassHistory =
+        _decodeStringMap(prefs.getStringList(_prefBpSeasonPassHistory));
+    _rollSeasonIfNeeded();
     _updateStreak();
     notifyListeners();
   }
@@ -138,12 +155,21 @@ class UserProvider extends ChangeNotifier {
     await prefs.setInt(_prefBpSeasonTier, _seasonTier);
     await prefs.setInt(_prefBpSeasonXp, _seasonXp);
     await prefs.setString(_prefBpPassType, _passType);
+    await prefs.setString(_prefBpActiveSeasonId, _activeSeasonId);
     await prefs.setStringList(_prefBpUnlockedCosmetics, _unlockedCosmetics);
     await prefs.setString(_prefBpActiveNameplate, _activeNameplate);
     await prefs.setStringList(
         _prefBpClaimedTiers, _claimedTiers.map((t) => t.toString()).toList());
     await prefs.setString(_prefBpEquippedBadge, _equippedBadge);
     await prefs.setString(_prefBpEquippedNameColor, _equippedNameColor);
+    await prefs.setStringList(
+      _prefBpSeasonTierHistory,
+      _encodeMap(_seasonTierHistory),
+    );
+    await prefs.setStringList(
+      _prefBpSeasonPassHistory,
+      _encodeMap(_seasonPassHistory),
+    );
   }
 
   // ── Cloud (Firestore) sync ───────────────────────────────────────────────
@@ -220,6 +246,19 @@ class UserProvider extends ChangeNotifier {
     _seasonTier = (data['bp_seasonTier'] as int?) ?? _seasonTier;
     _seasonXp = (data['bp_seasonXp'] as int?) ?? _seasonXp;
     _passType = (data['bp_passType'] as String?) ?? _passType;
+    _activeSeasonId = (data['bp_activeSeasonId'] as String?) ?? _activeSeasonId;
+    final rawSeasonTierHistory = data['bp_seasonTierHistory'];
+    if (rawSeasonTierHistory is Map) {
+      _seasonTierHistory = rawSeasonTierHistory.map(
+        (key, value) => MapEntry(key.toString(), (value as num).toInt()),
+      );
+    }
+    final rawSeasonPassHistory = data['bp_seasonPassHistory'];
+    if (rawSeasonPassHistory is Map) {
+      _seasonPassHistory = rawSeasonPassHistory.map(
+        (key, value) => MapEntry(key.toString(), value.toString()),
+      );
+    }
     final rawCosmetics = data['bp_unlockedCosmetics'];
     if (rawCosmetics is List) {
       _unlockedCosmetics = rawCosmetics.cast<String>();
@@ -233,6 +272,7 @@ class UserProvider extends ChangeNotifier {
     _equippedBadge = (data['bp_equippedBadge'] as String?) ?? _equippedBadge;
     _equippedNameColor =
         (data['bp_equippedNameColor'] as String?) ?? _equippedNameColor;
+    _rollSeasonIfNeeded();
     notifyListeners();
     updateStudyWidget(streak: _streak, level: _level);
   }
@@ -254,9 +294,12 @@ class UserProvider extends ChangeNotifier {
         seasonTier: _seasonTier,
         seasonXp: _seasonXp,
         passType: _passType,
+        activeSeasonId: _activeSeasonId,
         unlockedCosmetics: _unlockedCosmetics,
         activeNameplate: _activeNameplate,
         claimedTiers: _claimedTiers,
+        seasonTierHistory: _seasonTierHistory,
+        seasonPassHistory: _seasonPassHistory,
         equippedBadge: _equippedBadge,
         equippedNameColor: _equippedNameColor,
       );
@@ -326,6 +369,8 @@ class UserProvider extends ChangeNotifier {
   /// Sets the Battle Pass type ('free', 'plus', 'premium').
   void setPassType(String type) {
     _passType = type;
+    final old = _seasonPassHistory[_activeSeasonId] ?? 'free';
+    _seasonPassHistory[_activeSeasonId] = _strongerPassType(old, type);
     notifyListeners();
     _saveLocal();
     _syncToCloud();
@@ -396,10 +441,17 @@ class UserProvider extends ChangeNotifier {
   /// [side] should be 'free' or 'premium' to track each track independently.
   /// This allows claiming both the free and premium reward for the same tier.
   /// The key is stored as a cosmetic entry: 'claimed_free_5' or 'claimed_premium_10'.
-  void claimTierReward(int tier, {String side = 'free'}) {
-    final cosmeticKey = 'claimed_${side}_$tier';
+  void claimTierReward(int tier, {String side = 'free', String? seasonId}) {
+    final sid = seasonId ?? _activeSeasonId;
+    final cosmeticKey = 'claimed_${sid}_${side}_$tier';
     if (!_unlockedCosmetics.contains(cosmeticKey)) {
       _unlockedCosmetics = [..._unlockedCosmetics, cosmeticKey];
+      if (sid == kSeason1.id) {
+        final legacy = 'claimed_${side}_$tier';
+        if (!_unlockedCosmetics.contains(legacy)) {
+          _unlockedCosmetics = [..._unlockedCosmetics, legacy];
+        }
+      }
       notifyListeners();
       _saveLocal();
       _syncToCloud();
@@ -407,9 +459,25 @@ class UserProvider extends ChangeNotifier {
   }
 
   /// Returns true if a specific tier+side reward has been claimed.
-  bool isTierRewardClaimed(int tier, {String side = 'free'}) {
-    final cosmeticKey = 'claimed_${side}_$tier';
-    return _unlockedCosmetics.contains(cosmeticKey);
+  bool isTierRewardClaimed(int tier,
+      {String side = 'free', String? seasonId}) {
+    final sid = seasonId ?? _activeSeasonId;
+    final cosmeticKey = 'claimed_${sid}_${side}_$tier';
+    if (_unlockedCosmetics.contains(cosmeticKey)) return true;
+    if (sid == kSeason1.id) {
+      return _unlockedCosmetics.contains('claimed_${side}_$tier');
+    }
+    return false;
+  }
+
+  int tierForSeason(String seasonId) {
+    if (seasonId == _activeSeasonId) return _seasonTier;
+    return _seasonTierHistory[seasonId] ?? 0;
+  }
+
+  String passTypeForSeason(String seasonId) {
+    if (seasonId == _activeSeasonId) return _passType;
+    return _seasonPassHistory[seasonId] ?? 'free';
   }
 
   /// Records activity for the day (call when user opens the app or completes a task).
@@ -460,15 +528,21 @@ class UserProvider extends ChangeNotifier {
     const all = [
       // Season Shop badges
       'spring_petal_badge', 'study_streak_frame', 'night_owl_badge',
+      'finals_champion_badge', 'honor_roll_badge', 'all_nighter_badge',
+      'finals_fire_badge',
       // Season Shop nameplates
       'blue_sky', 'daffodil_yellow', 'aurora_purple', 'ocean_deep',
+      'glow_name_card', 'exam_master_card', 'valedictorian_card',
       // Season Shop name colors
       'rainbow_name_color', 'crimson_name',
       // Battle-pass nameplates
       'nameplate_Cherry Blossom', 'animated_golden_cherry_blossom',
+      'nameplate_finals_nameplate', 'nameplate_finals_glow_card',
+      'nameplate_honor_roll_card', 'nameplate_animated_aplus_nameplate',
       // Battle-pass badges (free track)
       'badge_spring_sprout', 'badge_blossom_brawler', 'badge_petal_collector',
       'badge_bloom_scholar', 'badge_blossom_warrior',
+      'badge_finals_focus', 'badge_exam_ace', 'badge_top_of_class',
       // Battle-pass badges (premium track)
       'badge_sakura_storm', 'badge_petal_warrior', 'badge_spring_royale',
       'badge_sakura_legend', 'badge_grand_blossom',
@@ -497,11 +571,14 @@ class UserProvider extends ChangeNotifier {
     _seasonTier = 1;
     _seasonXp = 0;
     _passType = 'free';
+    _activeSeasonId = activeSeasonNowUtc().id;
     _unlockedCosmetics = [];
     _activeNameplate = '';
     _claimedTiers = [];
     _equippedBadge = '';
     _equippedNameColor = '';
+    _seasonTierHistory = {};
+    _seasonPassHistory = {};
     notifyListeners();
     await _saveLocal();
     await _syncToCloud();
@@ -520,11 +597,14 @@ class UserProvider extends ChangeNotifier {
     _seasonTier = 1;
     _seasonXp = 0;
     _passType = 'free';
+    _activeSeasonId = activeSeasonNowUtc().id;
     _unlockedCosmetics = [];
     _activeNameplate = '';
     _claimedTiers = [];
     _equippedBadge = '';
     _equippedNameColor = '';
+    _seasonTierHistory = {};
+    _seasonPassHistory = {};
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefXp);
@@ -536,6 +616,9 @@ class UserProvider extends ChangeNotifier {
     await prefs.remove(_prefBpSeasonTier);
     await prefs.remove(_prefBpSeasonXp);
     await prefs.remove(_prefBpPassType);
+    await prefs.remove(_prefBpActiveSeasonId);
+    await prefs.remove(_prefBpSeasonTierHistory);
+    await prefs.remove(_prefBpSeasonPassHistory);
     await prefs.remove(_prefBpUnlockedCosmetics);
     await prefs.remove(_prefBpActiveNameplate);
     await prefs.remove(_prefBpClaimedTiers);
@@ -545,4 +628,55 @@ class UserProvider extends ChangeNotifier {
 
   static DateTime _dateOnly(DateTime dt) =>
       DateTime(dt.year, dt.month, dt.day);
+
+  void _rollSeasonIfNeeded() {
+    final nowSeason = activeSeasonNowUtc().id;
+    if (_activeSeasonId.isEmpty) {
+      _activeSeasonId = nowSeason;
+    }
+    if (_activeSeasonId == nowSeason) {
+      _seasonPassHistory[_activeSeasonId] =
+          _strongerPassType(_seasonPassHistory[_activeSeasonId] ?? 'free', _passType);
+      return;
+    }
+    _seasonTierHistory[_activeSeasonId] = _seasonTier;
+    _seasonPassHistory[_activeSeasonId] =
+        _strongerPassType(_seasonPassHistory[_activeSeasonId] ?? 'free', _passType);
+    _activeSeasonId = nowSeason;
+    _seasonTier = 1;
+    _seasonXp = 0;
+    _passType = 'free';
+    _claimedTiers = [];
+    _seasonPassHistory[_activeSeasonId] ??= 'free';
+    _saveLocal();
+  }
+
+  static Map<String, int> _decodeIntMap(List<String>? rows) {
+    final out = <String, int>{};
+    for (final row in rows ?? const <String>[]) {
+      final split = row.split('=');
+      if (split.length != 2) continue;
+      out[split[0]] = int.tryParse(split[1]) ?? 0;
+    }
+    return out;
+  }
+
+  static Map<String, String> _decodeStringMap(List<String>? rows) {
+    final out = <String, String>{};
+    for (final row in rows ?? const <String>[]) {
+      final split = row.split('=');
+      if (split.length != 2) continue;
+      out[split[0]] = split[1];
+    }
+    return out;
+  }
+
+  static List<String> _encodeMap(Map<String, Object> map) {
+    return map.entries.map((e) => '${e.key}=${e.value}').toList();
+  }
+
+  static String _strongerPassType(String a, String b) {
+    const rank = {'free': 0, 'plus': 1, 'premium': 2};
+    return (rank[a] ?? 0) >= (rank[b] ?? 0) ? a : b;
+  }
 }

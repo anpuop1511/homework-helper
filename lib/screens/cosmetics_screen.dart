@@ -90,6 +90,48 @@ const _allCosmetics = [
     emoji: '🌊',
     type: _CosmeticType.nameplate,
   ),
+  _CosmeticInfo(
+    id: 'finals_nameplate',
+    label: 'Finals Nameplate',
+    emoji: '🎓',
+    type: _CosmeticType.nameplate,
+  ),
+  _CosmeticInfo(
+    id: 'animated_aplus_nameplate',
+    label: 'Animated A+ Nameplate',
+    emoji: '✨',
+    type: _CosmeticType.nameplate,
+  ),
+  _CosmeticInfo(
+    id: 'finals_glow_card',
+    label: 'Finals Glow Card',
+    emoji: '🃏',
+    type: _CosmeticType.nameplate,
+  ),
+  _CosmeticInfo(
+    id: 'honor_roll_card',
+    label: 'Honor Roll Card',
+    emoji: '🪪',
+    type: _CosmeticType.nameplate,
+  ),
+  _CosmeticInfo(
+    id: 'glow_name_card',
+    label: 'Glow Name Card',
+    emoji: '💫',
+    type: _CosmeticType.nameplate,
+  ),
+  _CosmeticInfo(
+    id: 'exam_master_card',
+    label: 'Exam Master Card',
+    emoji: '📘',
+    type: _CosmeticType.nameplate,
+  ),
+  _CosmeticInfo(
+    id: 'valedictorian_card',
+    label: 'Valedictorian Card',
+    emoji: '🏅',
+    type: _CosmeticType.nameplate,
+  ),
   // ── Badges (Season Shop) ────────────────────────────────────────────
   _CosmeticInfo(
     id: 'spring_petal_badge',
@@ -169,6 +211,48 @@ const _allCosmetics = [
     id: 'badge_grand_blossom',
     label: 'Grand Blossom',
     emoji: '🌺',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'badge_finals_focus',
+    label: 'Finals Focus',
+    emoji: '🎯',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'badge_exam_ace',
+    label: 'Exam Ace',
+    emoji: '🏅',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'badge_top_of_class',
+    label: 'Top of Class',
+    emoji: '🎓',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'finals_champion_badge',
+    label: 'Finals Champion',
+    emoji: '🏆',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'honor_roll_badge',
+    label: 'Honor Roll',
+    emoji: '🥇',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'all_nighter_badge',
+    label: 'All-Nighter',
+    emoji: '🌃',
+    type: _CosmeticType.badge,
+  ),
+  _CosmeticInfo(
+    id: 'finals_fire_badge',
+    label: 'Finals Fire',
+    emoji: '🔥',
     type: _CosmeticType.badge,
   ),
   // ── Name Colors ─────────────────────────────────────────────────────
