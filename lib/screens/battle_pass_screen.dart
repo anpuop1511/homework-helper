@@ -1096,8 +1096,8 @@ class _UnclaimedRewardsSection extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Locked Cosmetic'),
         content: Text(
-          'This theme was for Season ${season.number} Battle Pass holders.\n'
-          'It will be available in 60 days after the season ends.\n'
+          'This cosmetic was for Season ${season.number} Battle Pass holders.\n'
+          'It will be available after 60 days when the season ends.\n'
           'Available on ${_monthDay(availableAt)} ${availableAt.year} (UTC).',
         ),
         actions: [
@@ -1430,8 +1430,8 @@ class _TierRow extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Locked Cosmetic'),
         content: Text(
-          'This theme was for Season ${season.number} Battle Pass holders.\n'
-          'It will be available in 60 days after the season ends.\n'
+          'This cosmetic was for Season ${season.number} Battle Pass holders.\n'
+          'It will be available after 60 days when the season ends.\n'
           'Available on ${_monthDay(availableAt)} ${availableAt.year} (UTC).',
         ),
         actions: [

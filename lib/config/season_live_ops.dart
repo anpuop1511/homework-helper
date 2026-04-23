@@ -93,4 +93,3 @@ bool passMeetsRequirement(String ownedPassType, String requiredPassType) {
   const rank = {'free': 0, 'plus': 1, 'premium': 2};
   return (rank[ownedPassType] ?? 0) >= (rank[requiredPassType] ?? 0);
 }
-
