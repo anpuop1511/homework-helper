@@ -8,7 +8,7 @@ class SeasonDefinition {
   final DateTime startsAtUtc;
   final DateTime endsAtUtc;
 
-  const SeasonDefinition({
+  SeasonDefinition({
     required this.id,
     required this.number,
     required this.name,
@@ -17,7 +17,7 @@ class SeasonDefinition {
   });
 }
 
-const kSeason1 = SeasonDefinition(
+final kSeason1 = SeasonDefinition(
   id: 'season_1',
   number: 1,
   name: 'Spring Bloomin\'',
@@ -25,7 +25,7 @@ const kSeason1 = SeasonDefinition(
   endsAtUtc: DateTime.utc(2026, 5, 1),
 );
 
-const kSeason2 = SeasonDefinition(
+final kSeason2 = SeasonDefinition(
   id: 'season_2',
   number: 2,
   name: 'Finals Frenzy',
@@ -33,7 +33,7 @@ const kSeason2 = SeasonDefinition(
   endsAtUtc: DateTime.utc(2026, 8, 1),
 );
 
-const kAllSeasons = <SeasonDefinition>[kSeason1, kSeason2];
+final kAllSeasons = <SeasonDefinition>[kSeason1, kSeason2];
 
 SeasonDefinition activeSeasonAt(DateTime utcNow) {
   final now = utcNow.toUtc();
