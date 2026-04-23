@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../config/season_live_ops.dart';
+import '../providers/dev_clock_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/nameplate_widget.dart';
 
@@ -70,6 +71,11 @@ class _TimedShopItem extends _ShopItem {
   });
 
   bool get isUnlocked => !DateTime.now().toUtc().isBefore(unlocksAt.toUtc());
+
+  /// Whether the item is unlocked relative to the given UTC instant.
+  /// Use this to respect the dev clock override.
+  bool isUnlockedAt(DateTime utcNow) =>
+      !utcNow.isBefore(unlocksAt.toUtc());
 }
 
 const _season1PermanentItems = [
@@ -333,8 +339,8 @@ class _ShopBody extends StatelessWidget {
     final user = context.watch<UserProvider>();
     final colorScheme = Theme.of(context).colorScheme;
     final timeTravelEnabled = user.shopTimeTravelEnabled;
-    final activeSeason = activeSeasonNowUtc();
-    final nowUtc = DateTime.now().toUtc();
+    final nowUtc = context.watch<DevClockProvider>().nowUtc();
+    final activeSeason = activeSeasonAt(nowUtc);
 
     final currentPermanent = activeSeason.id == kSeason2.id
         ? _season2PermanentItems
@@ -369,13 +375,17 @@ class _ShopBody extends StatelessWidget {
         )
         .toList();
 
-    final unlockedDrops =
-        currentTimed.where((i) => i.isUnlocked || timeTravelEnabled).toList();
-    final lockedDrops =
-        currentTimed.where((i) => !i.isUnlocked && !timeTravelEnabled).toList();
+    final unlockedDrops = currentTimed
+        .where((i) => i.isUnlockedAt(nowUtc) || timeTravelEnabled)
+        .toList();
+    final lockedDrops = currentTimed
+        .where((i) => !i.isUnlockedAt(nowUtc) && !timeTravelEnabled)
+        .toList();
     final unlockedLegacyDrops = legacyTimed
         .where((i) =>
-            i.isUnlocked || timeTravelEnabled || activeSeason.id != kSeason1.id)
+            i.isUnlockedAt(nowUtc) ||
+            timeTravelEnabled ||
+            activeSeason.id != kSeason1.id)
         .toList();
 
     return ListView(

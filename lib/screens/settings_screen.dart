@@ -5,11 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../config/season_live_ops.dart';
 import '../models/assignment.dart';
 import '../models/entitlement_model.dart';
 import '../providers/assignments_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/dev_clock_provider.dart';
 import '../providers/entitlements_provider.dart';
 import '../providers/event_provider.dart';
 import '../providers/nav_bar_provider.dart';
@@ -2937,6 +2939,7 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final user = context.watch<UserProvider>();
+    final devClock = context.watch<DevClockProvider>();
 
     return Scaffold(
       appBar: AppBar(
@@ -3154,6 +3157,161 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
             ],
           ),
           const SizedBox(height: 12),
+
+          // ── Date / Time Override ──────────────────────────────────────
+          _DevCard(
+            title: 'Date / Time Override',
+            colorScheme: colorScheme,
+            children: [
+              // Status chip showing the effective time
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: devClock.isOverrideActive
+                      ? Colors.amber.withAlpha(40)
+                      : colorScheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: devClock.isOverrideActive
+                        ? Colors.amber.withAlpha(120)
+                        : colorScheme.outlineVariant,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      devClock.isOverrideActive
+                          ? Icons.schedule_rounded
+                          : Icons.access_time_rounded,
+                      size: 16,
+                      color: devClock.isOverrideActive
+                          ? Colors.amber.shade700
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            devClock.isOverrideActive
+                                ? 'Override active'
+                                : 'Using real clock',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: devClock.isOverrideActive
+                                  ? Colors.amber.shade700
+                                  : colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          Text(
+                            () {
+                              final t = devClock.nowUtc().toLocal();
+                              return '${t.year}-${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')}  '
+                                  '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}  '
+                                  '(${activeSeasonAt(devClock.nowUtc()).name})';
+                            }(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _DevButton(
+                      icon: Icons.calendar_today_rounded,
+                      label: 'Pick Date',
+                      color: Colors.teal,
+                      onTap: () async {
+                        final base = devClock.isOverrideActive
+                            ? devClock.nowUtc().toLocal()
+                            : DateTime.now();
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: base,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (picked != null && context.mounted) {
+                          // Preserve existing time-of-day when overriding;
+                          // use current time when setting an override for the
+                          // first time.
+                          final tod = devClock.isOverrideActive
+                              ? devClock.nowUtc().toLocal()
+                              : base;
+                          context.read<DevClockProvider>().setOverride(
+                                DateTime(
+                                  picked.year,
+                                  picked.month,
+                                  picked.day,
+                                  tod.hour,
+                                  tod.minute,
+                                ),
+                              );
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _DevButton(
+                      icon: Icons.access_time_filled_rounded,
+                      label: 'Pick Time',
+                      color: Colors.indigo,
+                      onTap: () async {
+                        final base = devClock.isOverrideActive
+                            ? devClock.nowUtc().toLocal()
+                            : DateTime.now();
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay(
+                            hour: base.hour,
+                            minute: base.minute,
+                          ),
+                        );
+                        if (picked != null && context.mounted) {
+                          // Preserve the override date; default to today if
+                          // no date override is active yet.
+                          final date = devClock.isOverrideActive
+                              ? devClock.nowUtc().toLocal()
+                              : base;
+                          context.read<DevClockProvider>().setOverride(
+                                DateTime(
+                                  date.year,
+                                  date.month,
+                                  date.day,
+                                  picked.hour,
+                                  picked.minute,
+                                ),
+                              );
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              if (devClock.isOverrideActive) ...[
+                const SizedBox(height: 8),
+                _DevButton(
+                  icon: Icons.restore_rounded,
+                  label: 'Clear Override (use real clock)',
+                  color: colorScheme.error,
+                  onTap: () => context.read<DevClockProvider>().clearOverride(),
+                ),
+              ],
+            ],
+          ),
 
           // ── QA Release Readiness Checklist ─────────────────────────────
           Card(
