@@ -7,7 +7,7 @@ class AuthEmailService {
 
   static const String _backendBaseUrl = String.fromEnvironment(
     'AUTH_EMAIL_API_BASE_URL',
-    defaultValue: 'https://homework-helper-web-dun.vercel.app/api',
+    defaultValue: 'https://www.hwhelper.tech/api',
   );
 
   static Uri get _sendAuthEmailUri =>
