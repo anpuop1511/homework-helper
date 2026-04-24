@@ -86,13 +86,16 @@ bool _isAuthHandlerUri(Uri uri) {
   if (!hasActionQuery) return false;
 
   // Accept any of these paths:
-  // - /auth-handler?...
+  // - /app?...
   // - /auth-handler?...
   // - / or empty path with query params
   // - /index.html with query params
   return uri.path.isEmpty ||
       uri.path == '/' ||
+      uri.path == '/app' ||
       uri.path == '/index.html' ||
       uri.path == '/auth-handler' ||
-      (uri.pathSegments.isNotEmpty && uri.pathSegments.first == 'auth-handler');
+      (uri.pathSegments.isNotEmpty &&
+          (uri.pathSegments.first == 'auth-handler' ||
+              uri.pathSegments.first == 'app'));
 }
