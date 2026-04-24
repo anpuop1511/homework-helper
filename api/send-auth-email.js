@@ -1,13 +1,32 @@
-const { onRequest } = require('firebase-functions/v2/https');
-const { initializeApp } = require('firebase-admin/app');
-const { getAuth } = require('firebase-admin/auth');
 const { Resend } = require('resend');
-
-initializeApp();
+const admin = require('firebase-admin');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const fromAddress = process.env.RESEND_FROM || 'Homework Helper <no-reply@hwhelper.tech>';
+const fromAddress =
+  process.env.RESEND_FROM || 'Homework Helper <no-reply@hwhelper.tech>';
 const authHandlerUrl = 'https://hwhelper.tech/auth-handler';
+
+function initializeFirebaseAdmin() {
+  if (admin.apps.length > 0) return;
+
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+  if (!projectId || !clientEmail || !privateKey) {
+    throw new Error(
+      'Missing Firebase Admin credentials. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY.',
+    );
+  }
+
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId,
+      clientEmail,
+      privateKey,
+    }),
+  });
+}
 
 function escapeHtml(value) {
   return String(value)
@@ -18,7 +37,15 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function buildEmailLayout({ title, greeting, headline, body, ctaText, ctaUrl, footer }) {
+function buildEmailLayout({
+  title,
+  greeting,
+  headline,
+  body,
+  ctaText,
+  ctaUrl,
+  footer,
+}) {
   const safeTitle = escapeHtml(title);
   const safeGreeting = greeting ? escapeHtml(greeting) : '';
   const safeHeadline = escapeHtml(headline);
@@ -153,12 +180,12 @@ async function sendAuthEmail({ to, action, displayName }) {
   const email = String(to || '').trim();
   if (!email) throw new Error('Email is required.');
 
+  initializeFirebaseAdmin();
+  const auth = admin.auth();
   const actionCodeSettings = {
     url: authHandlerUrl,
     handleCodeInApp: true,
   };
-
-  const auth = getAuth();
 
   let link;
   let subject;
@@ -190,7 +217,7 @@ async function sendAuthEmail({ to, action, displayName }) {
 
   const greetingName = displayName ? `Hi ${displayName},` : 'Hi there,';
 
-  return resend.emails.send({
+  await resend.emails.send({
     from: fromAddress,
     to: [email],
     subject,
@@ -206,13 +233,22 @@ async function sendAuthEmail({ to, action, displayName }) {
   });
 }
 
-exports.sendAuthEmail = onRequest({ cors: true }, async (req, res) => {
-  try {
-    if (req.method !== 'POST') {
-      res.status(405).json({ error: 'method-not-allowed' });
-      return;
-    }
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'method-not-allowed' });
+    return;
+  }
+
+  try {
     const { action, email, displayName } = req.body || {};
     if (!action || !email) {
       res.status(400).json({ error: 'action-and-email-required' });
@@ -222,10 +258,10 @@ exports.sendAuthEmail = onRequest({ cors: true }, async (req, res) => {
     await sendAuthEmail({ action, to: email, displayName });
     res.json({ ok: true });
   } catch (error) {
-    console.error('[sendAuthEmail] failed:', error);
+    console.error('[send-auth-email] failed:', error);
     res.status(500).json({
       error: 'send-failed',
       message: error instanceof Error ? error.message : String(error),
     });
   }
-});
+};

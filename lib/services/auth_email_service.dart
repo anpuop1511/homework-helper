@@ -6,11 +6,12 @@ class AuthEmailService {
   AuthEmailService._();
 
   static const String _backendBaseUrl = String.fromEnvironment(
-    'AUTH_EMAIL_FUNCTION_BASE_URL',
-    defaultValue: 'https://us-central1-hwhelp-9390f.cloudfunctions.net',
+    'AUTH_EMAIL_API_BASE_URL',
+    defaultValue: 'https://homework-helper-web-dun.vercel.app/api',
   );
 
-  static Uri get _sendAuthEmailUri => Uri.parse('$_backendBaseUrl/sendAuthEmail');
+  static Uri get _sendAuthEmailUri =>
+      Uri.parse('$_backendBaseUrl/send-auth-email');
 
   static Future<void> sendVerificationEmail({
     required String email,
