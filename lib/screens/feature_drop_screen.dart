@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// The unique preference key used to track whether this feature-drop
 /// splash has already been shown.  Bump the suffix for each new drop.
-const _kShownKey = 'feature_drop_v4_shown';
+const _kShownKey = 'feature_drop_v5_shown';
 
 /// Checks (once) whether the Feature Drop screen should be shown, and if so,
 /// pushes it as a full-screen route.  Call from a post-frame callback.
@@ -26,11 +26,11 @@ Future<void> showFeatureDropIfNeeded(BuildContext context) async {
 }
 
 /// A "What's New" full-screen overlay shown exactly once after the Feature
-/// Drop update.  Summarises the four major new features:
-///   1. Customisable bottom bar (Home always visible + new tabs)
-///   2. Subject renaming & class linking
-///   3. Google Classroom AI import
-///   4. Battle Pass + Season redesign
+/// Drop update.  Summarises the April Drop:
+///   1. Notepad with photo attachments and Gemini note reading
+///   2. Study guide photo quizzes powered by Gemini
+///   3. Classes with Google Classroom links and better organization
+///   4. A cleaner, more useful home page
 class FeatureDropScreen extends StatelessWidget {
   const FeatureDropScreen({super.key});
 
@@ -82,7 +82,7 @@ class FeatureDropScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        'FEATURE DROP',
+                        'APRIL DROP',
                         style: GoogleFonts.lexend(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
@@ -93,7 +93,7 @@ class FeatureDropScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      "What's New ✨",
+                      "April Drop ✨",
                       style: GoogleFonts.lexend(
                         fontSize: 30,
                         fontWeight: FontWeight.w800,
@@ -103,7 +103,7 @@ class FeatureDropScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'A batch of powerful new features just landed.',
+                      'New tools for notes, quizzes, classes, and a much better home page.',
                       style: GoogleFonts.outfit(
                         fontSize: 14,
                         color: colorScheme.onSurfaceVariant,
@@ -122,42 +122,39 @@ class FeatureDropScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       _FeatureCard(
-                        emoji: '🧭',
-                        title: 'Customisable Navigation',
+                        emoji: '🗒️',
+                        title: 'Notepad + Sticky Notes',
                         description:
-                            'Reorder, hide, or reveal tabs in the bottom bar. '
-                            'Home is always pinned, and new Classes & Subjects tabs are now available!',
+                            'Save quick notes, pin sticky thoughts, and attach photos so important facts stay in one place. '
+                            'If you connect a Gemini API key, it can read your notes back and help explain them.',
                         color: colorScheme.primary,
                         onSurface: colorScheme.onPrimary,
                       ),
                       const SizedBox(height: 12),
                       _FeatureCard(
-                        emoji: '📚',
-                        title: 'Subject Renaming & Linking',
+                        emoji: '🧠',
+                        title: 'Practice Quizzes',
                         description:
-                            'Go to Settings → Subjects to rename any subject '
-                            '(e.g. "Science" → "Bio"). Then link your classes to those subjects directly.',
+                            'Turn study guide photos into practice quizzes and review with Gemini-backed prompts. '
+                            'Requires a Gemini API key.',
                         color: colorScheme.secondary,
                         onSurface: colorScheme.onSecondary,
                       ),
                       const SizedBox(height: 12),
                       _FeatureCard(
-                        emoji: '🤖',
-                        title: 'AI Classroom Import',
+                        emoji: '🏫',
+                        title: 'Google Classroom Links',
                         description:
-                            'Paste your Google Classroom homepage text into the '
-                            'new import tool and Gemini will intelligently extract your class names and subjects. '
-                            'Requires your Gemini API key in Settings → AI & Models.',
+                            'Classes are cleaner and more organized, with direct Google Classroom links so students can jump into the right place faster.',
                         color: colorScheme.tertiary,
                         onSurface: colorScheme.onTertiary,
                       ),
                       const SizedBox(height: 12),
                       _FeatureCard(
-                        emoji: '🏆',
-                        title: 'Battle Pass Redesign',
+                        emoji: '🏠',
+                        title: 'Better Home Page',
                         description:
-                            'The Season Battle Pass has a fresh new look with '
-                            'enhanced reward tiers, smoother progress tracking, and more exciting cosmetics.',
+                            'The home page is cleaner, more useful, and easier to scan so you can see what matters right away.',
                         color: const Color(0xFFE65100),
                         onSurface: Colors.white,
                       ),
@@ -184,7 +181,7 @@ class FeatureDropScreen extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      "Let's go! 🚀",
+                      "Open the April Drop",
                       style: GoogleFonts.lexend(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
