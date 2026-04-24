@@ -11,9 +11,18 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function buildEmailLayout({ title, headline, body, ctaText, ctaUrl, footer }) {
+function buildEmailLayout({
+  title,
+  headline,
+  greeting,
+  body,
+  ctaText,
+  ctaUrl,
+  footer,
+}) {
   const safeTitle = escapeHtml(title);
   const safeHeadline = escapeHtml(headline);
+  const safeGreeting = greeting ? escapeHtml(greeting) : '';
   const safeBody = escapeHtml(body);
   const safeCtaText = escapeHtml(ctaText);
   const safeCtaUrl = escapeHtml(ctaUrl);
@@ -158,6 +167,7 @@ function buildEmailLayout({ title, headline, body, ctaText, ctaUrl, footer }) {
       <div class="card">
         <div class="hero">
           <span class="brand">HwHelper.tech</span>
+          ${safeGreeting ? `<p style="margin-top: 18px; color: #2442b5; font-weight: 700;">${safeGreeting}</p>` : ''}
           <h1>${safeHeadline}</h1>
           <p>${safeBody}</p>
         </div>
@@ -182,6 +192,7 @@ export async function sendVerificationEmail({ to, verifyUrl }) {
     subject: 'Verify your Homework Helper email',
     html: buildEmailLayout({
       title: 'Verify your email',
+      greeting: 'Hi there,',
       headline: 'Verify your email to finish setting up your account.',
       body: 'Click the button below to confirm this email address and keep your account secure.',
       ctaText: 'Verify Email',
@@ -199,6 +210,7 @@ export async function sendPasswordResetEmail({ to, resetUrl }) {
     subject: 'Reset your Homework Helper password',
     html: buildEmailLayout({
       title: 'Reset your password',
+      greeting: 'Hi there,',
       headline: 'Reset your password securely.',
       body: 'Use the button below to choose a new password for your account.',
       ctaText: 'Reset Password',

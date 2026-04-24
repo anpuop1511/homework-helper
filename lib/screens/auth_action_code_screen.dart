@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/auth_provider.dart';
+import '../providers/auth_provider.dart' as app_auth;
 import '../services/auth_email_workflow.dart';
 
 class AuthActionCodeScreen extends StatefulWidget {
@@ -85,7 +85,7 @@ class _AuthActionCodeScreenState extends State<AuthActionCodeScreen> {
     setState(() => _loading = true);
     try {
       await FirebaseAuth.instance.applyActionCode(code);
-      await context.read<AuthProvider>().refreshCurrentUser();
+      await context.read<app_auth.AuthProvider>().refreshCurrentUser();
       if (!mounted) return;
       setState(() {
         _loading = false;
