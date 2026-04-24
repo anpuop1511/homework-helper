@@ -357,13 +357,12 @@ class _ShopBody extends StatelessWidget {
       kSeason1.startsAtUtc,
       _season1TimedTemplates,
     );
+    final rolloverUnlockAt = shopEligibleAtForPastPassReward(
+      seasonId: kSeason1.id,
+    );
     final rolloverItems = _season1RolloverRules
-        .where((_) => isShopEligibleForPastPassReward(
-              seasonId: kSeason1.id,
-              utcNow: nowUtc,
-            ))
         .map(
-          (r) => _ShopItem(
+          (r) => _TimedShopItem(
             seasonId: kSeason1.id,
             id: r.id,
             name: r.name,
@@ -371,8 +370,15 @@ class _ShopBody extends StatelessWidget {
             emoji: r.emoji,
             price: r.price,
             cosmeticType: r.cosmeticType,
+            unlocksAt: rolloverUnlockAt,
           ),
         )
+        .toList();
+    final unlockedRolloverItems = rolloverItems
+        .where((item) => item.isUnlockedAt(nowUtc) || timeTravelEnabled)
+        .toList();
+    final lockedRolloverItems = rolloverItems
+        .where((item) => !item.isUnlockedAt(nowUtc) && !timeTravelEnabled)
         .toList();
 
     final unlockedDrops = currentTimed
@@ -466,7 +472,8 @@ class _ShopBody extends StatelessWidget {
           const SizedBox(height: 12),
           _SectionHeader(
             title: 'Season 1 Legacy Collection',
-            subtitle: 'Previous season items are preserved and still purchasable.',
+            subtitle:
+                'Missed rewards unlock in the shop after 60 days with a live timer.',
             colorScheme: colorScheme,
           ),
           const SizedBox(height: 12),
@@ -481,7 +488,7 @@ class _ShopBody extends StatelessWidget {
               onTap: () => _purchase(context, item),
             );
           }),
-          ...unlockedLegacyDrops.map((item) {
+          ...unlockedRolloverItems.map((item) {
             final owned = user.unlockedCosmetics.contains(item.id);
             final equipped = _isEquipped(user, item);
             return _ShopItemCard(
@@ -492,20 +499,12 @@ class _ShopBody extends StatelessWidget {
               onTap: () => _purchase(context, item),
             );
           }),
-          if (rolloverItems.isNotEmpty) ...[
+          if (lockedRolloverItems.isNotEmpty) ...[
             const SizedBox(height: 8),
-            ...rolloverItems.map((item) {
-              final owned = user.unlockedCosmetics.contains(item.id) ||
-                  user.unlockedCosmetics.contains('nameplate_${item.id}');
-              final equipped = _isEquipped(user, item);
-              return _ShopItemCard(
-                item: item,
-                owned: owned,
-                equipped: equipped,
-                colorScheme: colorScheme,
-                onTap: () => _purchase(context, item),
-              );
-            }),
+            ...lockedRolloverItems.map((item) => _LockedItemCard(
+                  item: item,
+                  colorScheme: colorScheme,
+                )),
           ],
         ],
 

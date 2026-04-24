@@ -61,7 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       icon: Icons.star_rounded,
       color: Color(0xFFB8860B),
       title: 'Subscription',
-      subtitle: 'Helper+ & Helper Pass benefits',
+      subtitle: 'Season Pass benefits',
     ),
     _CategoryData(
       icon: Icons.auto_awesome_rounded,
@@ -951,6 +951,19 @@ class _AppearanceSettingsPage extends StatelessWidget {
     final entitlements = context.watch<EntitlementsProvider>();
     final effectiveNow = context.watch<DevClockProvider>().nowUtc();
     final season2Unlocked = !effectiveNow.isBefore(kSeason2.startsAtUtc);
+    final season3Unlocked = !effectiveNow.isBefore(kSeason3.startsAtUtc);
+
+    String formatCountdown(Duration remaining) {
+      if (remaining <= Duration.zero) return 'available now';
+      final days = remaining.inDays;
+      final hours = remaining.inHours % 24;
+      final minutes = remaining.inMinutes % 60;
+      if (days > 0) {
+        return '${days}d ${hours}h ${minutes}m';
+      }
+      return '${hours}h ${minutes}m';
+    }
+
     return _CategoryPage(
       title: 'Appearance',
       children: [
@@ -1006,9 +1019,8 @@ class _AppearanceSettingsPage extends StatelessWidget {
                             ],
                           ),
                           content: const Text(
-                            'This is a premium theme available with '
-                            'Homework Helper+ or Helper Pass.\n\n'
-                            'Upgrade to unlock premium themes and many more features!',
+                            'This is a premium theme available with Helper Pass.\n\n'
+                            'Premium themes are now free to use for everyone.',
                           ),
                           actions: [
                             TextButton(
@@ -1028,13 +1040,14 @@ class _AppearanceSettingsPage extends StatelessWidget {
                         ),
                       );
                     } else {
-                      final seasonLockedMessage = isSeason2
+                        final seasonLockedMessage = isSeason2
                           ? 'This theme is part of Season ${kSeason2.number}: ${kSeason2.name}.\n\n'
-                              'It unlocks when the new season starts on '
-                              '${kSeason2.startsAtUtc.month}/${kSeason2.startsAtUtc.day}/${kSeason2.startsAtUtc.year} UTC, '
-                              'or when you unlock it in the Season Shop.'
-                          : 'This theme is part of the Spring Bloomin\' Battle Pass!\n\n'
-                              'Complete Battle Pass tiers or unlock it in the Season Shop.';
+                            'It unlocks when the new season starts on '
+                            '${kSeason2.startsAtUtc.month}/${kSeason2.startsAtUtc.day}/${kSeason2.startsAtUtc.year} UTC, '
+                            'or when you unlock it in the Season Shop.'
+                          : 'This theme was part of the Spring Bloomin\' Battle Pass.\n\n'
+                            'If you missed it, it unlocks in the Season Shop in '
+                            '${formatCountdown(shopEligibleAtForPastPassReward(seasonId: kSeason1.id).difference(effectiveNow))}.';
                       showDialog<void>(
                         context: context,
                         builder: (_) => AlertDialog(
@@ -1075,8 +1088,8 @@ class _AppearanceSettingsPage extends StatelessWidget {
                 icon: Icons.gradient_rounded,
                 title: 'Custom Gradient Theme',
                 subtitle: entitlements.canUseGradientThemeBuilder
-                    ? 'Create your own gradient color theme.'
-                    : 'Requires Helper+ or Helper Pass',
+                  ? 'Create your own gradient color theme.'
+                  : 'Available in Season 3',
                 colorScheme: colorScheme,
                 onTap: entitlements.canUseGradientThemeBuilder
                     ? () => ScaffoldMessenger.of(context).showSnackBar(
@@ -1087,9 +1100,24 @@ class _AppearanceSettingsPage extends StatelessWidget {
                             behavior: SnackBarBehavior.floating,
                           ),
                         )
-                    : () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => const UpsellScreen(),
-                        )),
+                    : () => showDialog<void>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24)),
+                            title: const Text('Season 3 Unlock'),
+                            content: Text(
+                              'Custom gradient themes unlock in Season 3 on '
+                              '${kSeason3.startsAtUtc.month}/${kSeason3.startsAtUtc.day}/${kSeason3.startsAtUtc.year} UTC.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          ),
+                        ),
                 trailing: entitlements.canUseGradientThemeBuilder
                     ? null
                     : const Icon(Icons.lock_rounded, size: 18),
@@ -1100,8 +1128,8 @@ class _AppearanceSettingsPage extends StatelessWidget {
                 icon: Icons.light_mode_rounded,
                 title: 'Custom Light/Dark Theme',
                 subtitle: entitlements.canUseCustomLightDarkTheme
-                    ? 'Design your own light and dark color themes.'
-                    : 'Requires Helper+ or Helper Pass',
+                  ? 'Design your own light and dark color themes.'
+                  : 'Available in Season 3',
                 colorScheme: colorScheme,
                 onTap: entitlements.canUseCustomLightDarkTheme
                     ? () => ScaffoldMessenger.of(context).showSnackBar(
@@ -1112,9 +1140,24 @@ class _AppearanceSettingsPage extends StatelessWidget {
                             behavior: SnackBarBehavior.floating,
                           ),
                         )
-                    : () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => const UpsellScreen(),
-                        )),
+                    : () => showDialog<void>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24)),
+                            title: const Text('Season 3 Unlock'),
+                            content: Text(
+                              'Custom light and dark themes unlock in Season 3 on '
+                              '${kSeason3.startsAtUtc.month}/${kSeason3.startsAtUtc.day}/${kSeason3.startsAtUtc.year} UTC.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          ),
+                        ),
                 trailing: entitlements.canUseCustomLightDarkTheme
                     ? null
                     : const Icon(Icons.lock_rounded, size: 18),
@@ -2396,7 +2439,7 @@ class _VibeRow extends StatelessWidget {
                                         const Color(0xFFB8860B).withAlpha(100)),
                               ),
                               child: Text(
-                                'Helper+',
+                                'Pass',
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
@@ -2417,7 +2460,7 @@ class _VibeRow extends StatelessWidget {
                         ),
                       if (isPremiumLocked)
                         Text(
-                          '🔒 Requires Helper+ or Helper Pass',
+                          '🔒 Available with Helper Pass',
                           style: TextStyle(
                             fontSize: 10,
                             color: colorScheme.onSurfaceVariant,

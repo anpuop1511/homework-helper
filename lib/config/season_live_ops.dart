@@ -33,7 +33,15 @@ final kSeason2 = SeasonDefinition(
   endsAtUtc: DateTime.utc(2026, 8, 1),
 );
 
-final kAllSeasons = <SeasonDefinition>[kSeason1, kSeason2];
+final kSeason3 = SeasonDefinition(
+  id: 'season_3',
+  number: 3,
+  name: 'Season Three',
+  startsAtUtc: DateTime.utc(2026, 8, 1),
+  endsAtUtc: DateTime.utc(2026, 11, 1),
+);
+
+final kAllSeasons = <SeasonDefinition>[kSeason1, kSeason2, kSeason3];
 
 SeasonDefinition activeSeasonAt(DateTime utcNow) {
   final now = utcNow.toUtc();

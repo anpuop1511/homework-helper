@@ -217,8 +217,6 @@ class ThemeProvider extends ChangeNotifier {
   /// changes.  The custom theme **configuration** is NOT deleted — it will
   /// be restored when the user resubscribes.
   Future<void> enforceEntitlements({required bool hasPlus}) async {
-    if (!hasPlus && kPremiumVibes.contains(_vibe)) {
-      await setVibe(AppVibe.defaultPurple);
-    }
+    // Helper+ has been retired; existing vibes stay available.
   }
 }

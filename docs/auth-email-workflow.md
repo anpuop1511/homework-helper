@@ -30,7 +30,7 @@ Keep the `hwhelper.tech` domain verified in Resend.
 
 ## Endpoint contract
 
-The client posts to `/api/send-auth-email` with:
+The client posts to `https://homework-helper-web-dun.vercel.app/api/send-auth-email` by default, or to the `AUTH_EMAIL_API_BASE_URL` override if you set one. The payload is:
 
 - `action`: `verifyEmail` or `resetPassword`
 - `email`: recipient email

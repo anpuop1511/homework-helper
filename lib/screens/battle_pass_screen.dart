@@ -1020,7 +1020,8 @@ class _UnclaimedRewardsSection extends StatelessWidget {
           user.passTypeForSeason(s.id),
           needs,
         );
-        if (!user.isTierRewardClaimed(tier, side: 'premium', seasonId: s.id)) {
+        if (hasEntitlement &&
+            !user.isTierRewardClaimed(tier, side: 'premium', seasonId: s.id)) {
           items.add(
             _PastRewardClaim(
               season: s,

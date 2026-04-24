@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/entitlement_model.dart';
 import '../providers/entitlements_provider.dart';
 
-/// Upsell screen for Homework Helper+ and Helper Pass subscriptions.
+/// Upsell screen for Helper Pass and seasonal purchases.
 ///
 /// On **Android** it shows the tier benefits and placeholder purchase buttons
 /// (the actual Google Play billing integration should be wired here once
@@ -74,36 +74,6 @@ class UpsellScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _TierCard(
-              emoji: '✨',
-              name: 'Homework Helper+',
-              price: r'$1.99/month  ·  $19.99/year',
-              trialText: '14-day free trial',
-              ladderPromoText:
-                  'Complete the Ladder event → one-time 30-day free trial',
-              highlightColor: const Color(0xFF6750A4),
-              isCurrentTier: entitlements.tier == EntitlementTier.plus,
-              features: const [
-                _Feature('Unlimited classes & subjects', included: true),
-                _Feature('Repeatable tasks', included: true),
-                _Feature('2 premium themes (Neon Sunrise, Deep Ocean)',
-                    included: true),
-                _Feature('Custom gradient theme builder', included: true),
-                _Feature('Custom light/dark theme builder', included: true),
-                _Feature('500 coins on billing date', included: true),
-              ],
-              actionWidget: kIsWeb
-                  ? _WebSubscribeButton(colorScheme: colorScheme)
-                  : _PurchaseButton(
-                      label: 'Start Free Trial',
-                      // TODO(billing): wire up Google Play in_app_purchase
-                      // SKU: helper_plus_monthly_1_99 (14-day trial)
-                      onTap: () => _showComingSoon(context),
-                      colorScheme: colorScheme,
-                    ),
-              colorScheme: colorScheme,
-            ),
-            const SizedBox(height: 12),
-            _TierCard(
               emoji: '🏅',
               name: 'Helper Pass',
               price: r'$2.99/month',
@@ -113,7 +83,7 @@ class UpsellScreen extends StatelessWidget {
               highlightColor: const Color(0xFFB8860B),
               isCurrentTier: entitlements.tier == EntitlementTier.pass,
               features: const [
-                _Feature('Everything in Helper+', included: true),
+                _Feature('Seasonal battle pass access', included: true),
                 _Feature('Season Battle Pass auto-activated', included: true),
                 _Feature('750 coins on billing date', included: true),
                 _Feature('Pass badge', included: true),
@@ -177,7 +147,7 @@ class _CurrentTierBanner extends StatelessWidget {
     final Color bgColor;
     switch (tier) {
       case EntitlementTier.plus:
-        label = 'Homework Helper+';
+        label = 'Included Free';
         emoji = '✨';
         bgColor = const Color(0xFF6750A4);
         break;
@@ -280,8 +250,7 @@ class _WebMessageCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Purchases are made through the Android app via Google Play. '
-                  'Once you subscribe on Android, your Helper+ or Helper Pass '
-                  'benefits will appear here automatically.',
+                  'Once you subscribe on Android, your benefits will appear here automatically.',
                   style: GoogleFonts.outfit(
                     fontSize: 13,
                     color: colorScheme.onTertiaryContainer.withAlpha(200),

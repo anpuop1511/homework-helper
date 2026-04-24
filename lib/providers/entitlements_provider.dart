@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/season_live_ops.dart';
 import '../models/entitlement_model.dart';
 import '../services/database_service.dart';
 
@@ -49,26 +50,24 @@ class EntitlementsProvider extends ChangeNotifier {
   /// True when the user can create additional classes.
   ///
   /// [currentCount] is the number of classes the user currently has.
-  bool canAddClass(int currentCount) =>
-      isPlus || currentCount < kFreeClassLimit;
+  bool canAddClass(int currentCount) => true;
 
   /// True when the user can create additional subjects.
   ///
   /// [currentCount] is the number of user-defined subjects.
-  bool canAddSubject(int currentCount) =>
-      isPlus || currentCount < kFreeSubjectLimit;
+  bool canAddSubject(int currentCount) => true;
 
   /// True when the user may access the repeatable-task feature.
-  bool get canUseRepeatableTasks => isPlus;
+  bool get canUseRepeatableTasks => true;
 
   /// True when the user may access premium (non-default) color vibes.
-  bool get canUsePremiumThemes => isPlus;
+  bool get canUsePremiumThemes => true;
 
   /// True when the user may use the custom gradient-theme builder.
-  bool get canUseGradientThemeBuilder => isPlus;
+  bool get canUseGradientThemeBuilder => activeSeasonNowUtc().number >= 3;
 
   /// True when the user may use the custom light/dark theme builder.
-  bool get canUseCustomLightDarkTheme => isPlus;
+  bool get canUseCustomLightDarkTheme => activeSeasonNowUtc().number >= 3;
 
   /// True when Pass-exclusive features (battle pass, BYOK non-Gemini, badge)
   /// are accessible.

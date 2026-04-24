@@ -927,8 +927,7 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
           ],
         ),
         content: Text(
-          'Free accounts can create up to $kFreeClassLimit classes. '
-          'Upgrade to Helper+ or Helper Pass for unlimited classes!',
+          'Classes are unlimited for everyone.',
         ),
         actions: [
           TextButton(
@@ -1340,15 +1339,9 @@ class _AiClassImportSheetState extends State<_AiClassImportSheet> {
             content: Text(
               addedCount > 0
                   ? '$addedCount class${addedCount == 1 ? '' : 'es'} added. Free limit reached — upgrade for more!'
-                  : 'Free class limit reached! Upgrade to Helper+ for unlimited classes.',
+                  : 'You can keep adding classes.',
             ),
             behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
-              label: 'Upgrade',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const UpsellScreen()),
-              ),
-            ),
           ),
         );
       } else {

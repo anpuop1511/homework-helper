@@ -499,57 +499,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 20),
 
-            // ── Subscription banner (shows when on free tier) ─────────
-            if (auth.isSignedIn && !entitlements.isPlus) ...[
-              GestureDetector(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const UpsellScreen()),
-                ),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF6750A4), Color(0xFF9C27B0)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Row(
-                    children: [
-                      const Text('✨', style: TextStyle(fontSize: 24)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Unlock Homework Helper+',
-                              style: GoogleFonts.lexend(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              'Unlimited classes, premium themes, '
-                              'repeatable tasks & more.',
-                              style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                color: Colors.white.withAlpha(200),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right_rounded,
-                          color: Colors.white),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            // Helper+ banner removed; former tier features are now free.
 
             // ── Share Invite Link ─────────────────────────────────────
             if (auth.isSignedIn) ...[

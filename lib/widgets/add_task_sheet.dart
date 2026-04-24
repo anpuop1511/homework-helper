@@ -257,10 +257,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   }
 }
 
-/// Toggle for the repeatable-task feature.  Locked behind Helper+ / Helper Pass.
-///
-/// When the user is on the free tier, tapping the row opens the upsell screen
-/// instead of toggling the switch.
+/// Toggle for the repeatable-task feature.
 class _RepeatableToggle extends StatelessWidget {
   final bool isRepeatable;
   final ValueChanged<bool> onChanged;
@@ -274,35 +271,20 @@ class _RepeatableToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final entitlements = context.watch<EntitlementsProvider>();
-    final hasAccess = entitlements.canUseRepeatableTasks;
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: hasAccess
-          ? null
-          : () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const UpsellScreen()),
-              ),
+      onTap: null,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: hasAccess
-                ? colorScheme.outlineVariant.withAlpha(80)
-                : colorScheme.outlineVariant.withAlpha(40),
-          ),
+          border: Border.all(color: colorScheme.outlineVariant.withAlpha(80)),
         ),
         child: Row(
           children: [
-            Icon(
-              Icons.repeat_rounded,
-              color: hasAccess
-                  ? colorScheme.primary
-                  : colorScheme.onSurfaceVariant.withAlpha(120),
-            ),
+            Icon(Icons.repeat_rounded, color: colorScheme.primary),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -314,36 +296,30 @@ class _RepeatableToggle extends StatelessWidget {
                         'Repeatable Task',
                         style: textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: hasAccess
-                              ? colorScheme.onSurface
-                              : colorScheme.onSurface.withAlpha(160),
+                          color: colorScheme.onSurface,
                         ),
                       ),
-                      if (!hasAccess) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF6750A4).withAlpha(40),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'Helper+',
-                            style: GoogleFonts.outfit(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: colorScheme.onSurface,
-                            ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withAlpha(28),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Free',
+                          style: GoogleFonts.outfit(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.onSurface,
                           ),
                         ),
-                      ],
+                      ),
                     ],
                   ),
                   Text(
-                    hasAccess
-                        ? 'Mark this task as repeatable.'
-                        : 'Upgrade to Helper+ to use repeatable tasks.',
+                    'Mark this task as repeatable.',
                     style: textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -351,17 +327,10 @@ class _RepeatableToggle extends StatelessWidget {
                 ],
               ),
             ),
-            if (hasAccess)
-              Switch(
-                value: isRepeatable,
-                onChanged: onChanged,
-              )
-            else
-              Icon(
-                Icons.lock_rounded,
-                size: 18,
-                color: colorScheme.onSurfaceVariant,
-              ),
+            Switch(
+              value: isRepeatable,
+              onChanged: onChanged,
+            ),
           ],
         ),
       ),

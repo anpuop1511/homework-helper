@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../models/assignment.dart';
 import '../models/class_model.dart';
 import '../providers/classes_provider.dart';
-import '../providers/entitlements_provider.dart';
 import '../providers/subjects_provider.dart';
 import 'upsell_screen.dart';
 
@@ -343,9 +342,7 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
           ],
         ),
         content: Text(
-          'Free accounts can create up to $kFreeClassLimit classes. '
-          'Upgrade to Helper+ or Helper Pass for unlimited classes and '
-          'many more features!',
+          'Classes are now unlimited for everyone.',
         ),
         actions: [
           TextButton(
@@ -360,7 +357,7 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
                 MaterialPageRoute(builder: (_) => const UpsellScreen()),
               );
             },
-            child: const Text('Upgrade'),
+            child: const Text('OK'),
           ),
         ],
       ),
