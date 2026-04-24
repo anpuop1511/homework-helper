@@ -76,7 +76,9 @@ class AuthEmailWorkflow {
 }
 
 bool _isAuthHandlerUri(Uri uri) {
-  if (uri.host != 'hwhelper.tech') return false;
+  // Accept both hwhelper.tech and www.hwhelper.tech
+  final host = uri.host;
+  if (host != 'hwhelper.tech' && host != 'www.hwhelper.tech') return false;
 
   final isRootPath =
       uri.path.isEmpty || uri.path == '/' || uri.path == '/index.html';
