@@ -39,7 +39,7 @@ class AuthActionLink {
 
 class AuthEmailWorkflow {
   static const String authHandlerUrl =
-      'https://hwhelper.tech/app';
+      'https://homework-helper-web-dun.vercel.app/app';
 
   static final Uri authHandlerUri = Uri.parse(authHandlerUrl);
 
