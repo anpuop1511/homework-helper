@@ -160,6 +160,81 @@ class AppTheme {
               : const Color(0xFF001048),
         );
 
+      // ── Lava Pop: energetic red-orange with warm contrast ──────────────
+      case AppVibe.lavaPop:
+        final base = ColorScheme.fromSeed(
+          seedColor: const Color(0xFFE53935),
+          brightness: brightness,
+        );
+        return base.copyWith(
+          primary: brightness == Brightness.dark
+              ? const Color(0xFFFF9C8E)
+              : const Color(0xFFB42318),
+          onPrimary: Colors.white,
+          primaryContainer: brightness == Brightness.dark
+              ? const Color(0xFF6F120D)
+              : const Color(0xFFFFDAD4),
+          onPrimaryContainer: brightness == Brightness.dark
+              ? const Color(0xFFFFDAD4)
+              : const Color(0xFF3A0704),
+          secondary: brightness == Brightness.dark
+              ? const Color(0xFFFFB74D)
+              : const Color(0xFF8D4A00),
+          surface: brightness == Brightness.dark
+              ? const Color(0xFF1D0F0D)
+              : const Color(0xFFFFF8F7),
+        );
+
+      // ── Arctic Pulse: crisp cyan-blue for season transitions ───────────
+      case AppVibe.arcticPulse:
+        final base = ColorScheme.fromSeed(
+          seedColor: const Color(0xFF00ACC1),
+          brightness: brightness,
+        );
+        return base.copyWith(
+          primary: brightness == Brightness.dark
+              ? const Color(0xFF66E0F2)
+              : const Color(0xFF006D79),
+          onPrimary: brightness == Brightness.dark ? Colors.black : Colors.white,
+          primaryContainer: brightness == Brightness.dark
+              ? const Color(0xFF004D56)
+              : const Color(0xFFB8F1F9),
+          onPrimaryContainer: brightness == Brightness.dark
+              ? const Color(0xFFB8F1F9)
+              : const Color(0xFF002B30),
+          tertiary: brightness == Brightness.dark
+              ? const Color(0xFF9AC5FF)
+              : const Color(0xFF2A5D9F),
+          surface: brightness == Brightness.dark
+              ? const Color(0xFF07171A)
+              : const Color(0xFFF2FCFF),
+        );
+
+      // ── Neon Forest: deep green with lime accents ──────────────────────
+      case AppVibe.neonForest:
+        final base = ColorScheme.fromSeed(
+          seedColor: const Color(0xFF2E7D32),
+          brightness: brightness,
+        );
+        return base.copyWith(
+          primary: brightness == Brightness.dark
+              ? const Color(0xFF7BFF8A)
+              : const Color(0xFF1F6A27),
+          onPrimary: brightness == Brightness.dark ? Colors.black : Colors.white,
+          primaryContainer: brightness == Brightness.dark
+              ? const Color(0xFF0F4215)
+              : const Color(0xFFC8F8CC),
+          onPrimaryContainer: brightness == Brightness.dark
+              ? const Color(0xFFC8F8CC)
+              : const Color(0xFF06310D),
+          secondary: brightness == Brightness.dark
+              ? const Color(0xFFD1FF6A)
+              : const Color(0xFF5C7A00),
+          surface: brightness == Brightness.dark
+              ? const Color(0xFF071209)
+              : const Color(0xFFF6FFF6),
+        );
+
       // ── All other vibes: standard Material 3 seed scheme ─────────────
       default:
         return ColorScheme.fromSeed(

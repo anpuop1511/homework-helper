@@ -48,7 +48,7 @@ class _SocialScreenState extends State<SocialScreen>
   void _showMyQr(BuildContext context, String identifier, {bool isEmail = false}) {
     final colorScheme = Theme.of(context).colorScheme;
     // Use an encoded invite URL that works for both username and email.
-    final qrData = 'https://homework-helper-web-dun.vercel.app/invite/${Uri.encodeComponent(identifier)}';
+    final qrData = 'https://www.hwhelper.tech/invite/${Uri.encodeComponent(identifier)}';
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -571,8 +571,8 @@ class _SocialScreenState extends State<SocialScreen>
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Note: Web handle sync is currently bugged '
-                            '(email QR fallback works).',
+                            'Tip: If your handle is still syncing on web, use '
+                            'the email QR fallback for now.',
                             style: TextStyle(
                               fontSize: 12,
                               color: colorScheme.onTertiaryContainer,
@@ -679,7 +679,7 @@ class _SocialScreenState extends State<SocialScreen>
                         ? () {
                             final identifier =
                                 (myHandle != null && myHandle.isNotEmpty)
-                                    ? myHandle!
+                            ? myHandle
                                     : auth.email!;
                             _showMyQr(
                               context,
@@ -1297,57 +1297,6 @@ class _QsTile extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-// ── Sub-widgets ──────────────────────────────────────────────────────────────
-
-class _SectionHeader extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final int badge;
-  final ColorScheme colorScheme;
-
-  const _SectionHeader({
-    required this.icon,
-    required this.label,
-    required this.badge,
-    required this.colorScheme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: colorScheme.primary, size: 20),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: GoogleFonts.lexend(
-            fontWeight: FontWeight.w700,
-            fontSize: 16,
-            color: colorScheme.onSurface,
-          ),
-        ),
-        const SizedBox(width: 8),
-        if (badge > 0)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '$badge',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: colorScheme.onPrimaryContainer,
-              ),
-            ),
-          ),
-      ],
     );
   }
 }

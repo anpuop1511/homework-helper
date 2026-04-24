@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../config/season_live_ops.dart';
+import '../providers/dev_clock_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/coin_cup_reveal_widget.dart';
 import 'season_shop_screen.dart';
@@ -49,9 +50,10 @@ class _BattlePassBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final user = context.watch<UserProvider>();
-    final activeSeason = activeSeasonNowUtc();
+    final activeSeason = activeSeasonAt(
+      context.watch<DevClockProvider>().nowUtc(),
+    );
     final freeRewards =
         activeSeason.id == kSeason2.id ? _season2FreeRewards : _freeRewards;
     final premiumRewards = activeSeason.id == kSeason2.id
@@ -404,7 +406,9 @@ class _PassPurchaseSection extends StatelessWidget {
   /// Shows a "Learn More" dialog with perks before confirming the purchase.
   void _showPassDialog(BuildContext context, String type, int price) {
     final isPlus = type == 'plus';
-    final season = activeSeasonNowUtc();
+    final season = activeSeasonAt(
+      context.read<DevClockProvider>().nowUtc(),
+    );
     showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

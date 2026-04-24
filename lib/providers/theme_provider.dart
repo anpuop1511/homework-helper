@@ -16,6 +16,9 @@ enum AppVibe {
   cherryBlossom,
   skyBloom,
   daffodil,
+  lavaPop,
+  arcticPulse,
+  neonForest,
   // ── Premium vibes (requires Helper+ or Helper Pass) ──────────────────────
   neonSunrise,
   deepOcean,
@@ -54,6 +57,12 @@ extension AppVibeExtension on AppVibe {
         return 'Sky Bloom';
       case AppVibe.daffodil:
         return 'Daffodil';
+      case AppVibe.lavaPop:
+        return 'Lava Pop';
+      case AppVibe.arcticPulse:
+        return 'Arctic Pulse';
+      case AppVibe.neonForest:
+        return 'Neon Forest';
       case AppVibe.neonSunrise:
         return 'Neon Sunrise';
       case AppVibe.deepOcean:
@@ -87,6 +96,12 @@ extension AppVibeExtension on AppVibe {
         return '🩵';
       case AppVibe.daffodil:
         return '🌼';
+      case AppVibe.lavaPop:
+        return '🌋';
+      case AppVibe.arcticPulse:
+        return '🧊';
+      case AppVibe.neonForest:
+        return '🌲';
       case AppVibe.neonSunrise:
         return '🌄';
       case AppVibe.deepOcean:
@@ -120,6 +135,12 @@ extension AppVibeExtension on AppVibe {
         return const Color(0xFF0288D1);
       case AppVibe.daffodil:
         return const Color(0xFFF9A825);
+      case AppVibe.lavaPop:
+        return const Color(0xFFE53935);
+      case AppVibe.arcticPulse:
+        return const Color(0xFF00ACC1);
+      case AppVibe.neonForest:
+        return const Color(0xFF2E7D32);
       case AppVibe.neonSunrise:
         return const Color(0xFFFF6B00); // vivid orange-red
       case AppVibe.deepOcean:

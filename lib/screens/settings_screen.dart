@@ -935,6 +935,12 @@ class _AppearanceSettingsPage extends StatelessWidget {
     AppVibe.daffodil,
   };
 
+  static const _season2Vibes = {
+    AppVibe.lavaPop,
+    AppVibe.arcticPulse,
+    AppVibe.neonForest,
+  };
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -943,6 +949,8 @@ class _AppearanceSettingsPage extends StatelessWidget {
     final socialProvider = context.watch<SocialProvider>();
     final userProvider = context.watch<UserProvider>();
     final entitlements = context.watch<EntitlementsProvider>();
+    final effectiveNow = context.watch<DevClockProvider>().nowUtc();
+    final season2Unlocked = !effectiveNow.isBefore(kSeason2.startsAtUtc);
     return _CategoryPage(
       title: 'Appearance',
       children: [
@@ -958,13 +966,18 @@ class _AppearanceSettingsPage extends StatelessWidget {
             children: AppVibe.values.map((vibe) {
               final isSelected = themeProvider.vibe == vibe;
               final isSpring = _springVibes.contains(vibe);
+                final isSeason2 = _season2Vibes.contains(vibe);
               final isPremium = kPremiumVibes.contains(vibe);
               final cosmeticId = 'vibe_${vibe.name}';
               // A vibe is unlocked when:
-              //   • it is NOT a spring battle-pass vibe, OR the cosmetic is owned
+                //   • it is NOT a spring battle-pass vibe, OR the cosmetic is owned
+                //   • it is NOT a season-2 vibe, OR season 2 is live, OR cosmetic is owned
               //   • AND it is NOT a premium subscription vibe, OR the user has Plus/Pass
               final isUnlocked = (!isSpring ||
-                      userProvider.unlockedCosmetics.contains(cosmeticId)) &&
+                    userProvider.unlockedCosmetics.contains(cosmeticId)) &&
+                  (!isSeason2 ||
+                    season2Unlocked ||
+                    userProvider.unlockedCosmetics.contains(cosmeticId)) &&
                   (!isPremium || entitlements.canUsePremiumThemes);
               final vibeScheme = ColorScheme.fromSeed(
                 seedColor: vibe.seedColor,
@@ -1015,6 +1028,13 @@ class _AppearanceSettingsPage extends StatelessWidget {
                         ),
                       );
                     } else {
+                      final seasonLockedMessage = isSeason2
+                          ? 'This theme is part of Season ${kSeason2.number}: ${kSeason2.name}.\n\n'
+                              'It unlocks when the new season starts on '
+                              '${kSeason2.startsAtUtc.month}/${kSeason2.startsAtUtc.day}/${kSeason2.startsAtUtc.year} UTC, '
+                              'or when you unlock it in the Season Shop.'
+                          : 'This theme is part of the Spring Bloomin\' Battle Pass!\n\n'
+                              'Complete Battle Pass tiers or unlock it in the Season Shop.';
                       showDialog<void>(
                         context: context,
                         builder: (_) => AlertDialog(
@@ -1025,10 +1045,7 @@ class _AppearanceSettingsPage extends StatelessWidget {
                               Text(vibe.label),
                             ],
                           ),
-                          content: const Text(
-                            'This theme is part of the Spring Bloomin\' Battle Pass!\n\n'
-                            'Complete Battle Pass tiers or unlock it in the Season Shop.',
-                          ),
+                          content: Text(seasonLockedMessage),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context),
@@ -3281,6 +3298,31 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              _DevButton(
+                icon: Icons.skip_next_rounded,
+                label: 'Jump to Next Season Start',
+                color: Colors.deepPurple,
+                onTap: () {
+                  final nextSeasonStart = kSeason2.startsAtUtc.toLocal();
+                  context.read<DevClockProvider>().setOverride(
+                        DateTime(
+                          nextSeasonStart.year,
+                          nextSeasonStart.month,
+                          nextSeasonStart.day,
+                          9,
+                          0,
+                        ),
+                      );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Clock synced to Season ${kSeason2.number} start for testing.',
+                      ),
+                    ),
+                  );
+                },
               ),
               if (devClock.isOverrideActive) ...[
                 const SizedBox(height: 8),

@@ -230,9 +230,9 @@ class _MainScaffoldState extends State<MainScaffold> {
             index: safeIndex,
             children: screens,
           ),
-          // Floating User Hub button in top-right corner
+          // Floating User Hub button in bottom-right so screen headers remain clear.
           Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
+            bottom: 16,
             right: 16,
             child: _userHubButton(colorScheme, user, auth),
           ),
