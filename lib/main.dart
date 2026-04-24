@@ -23,7 +23,9 @@ import 'providers/user_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/database_service.dart';
 import 'services/notification_service.dart';
+import 'services/auth_email_workflow.dart';
 import 'theme/app_theme.dart';
+import 'screens/auth_action_code_screen.dart';
 import 'screens/feature_drop_screen.dart';
 import 'screens/group_projects_screen.dart';
 import 'screens/join_invite_screen.dart';
@@ -71,7 +73,8 @@ Future<void> main() async {
         ),
         // SocialProvider is wired to both AuthProvider and UserProvider so it
         // receives the UID on auth changes and real user stats for friend-accept.
-        ChangeNotifierProxyProvider2<AuthProvider, UserProvider, SocialProvider>(
+        ChangeNotifierProxyProvider2<AuthProvider, UserProvider,
+            SocialProvider>(
           create: (_) => SocialProvider(),
           update: (_, auth, userProvider, prev) {
             final provider = prev ?? SocialProvider();
@@ -195,9 +198,7 @@ class _AuthGateState extends State<_AuthGate> {
       _loadTimer = null;
       _showRetry = false;
       if (uid != null && auth.email != null) {
-        DatabaseService.instance
-            .saveUserEmail(uid, auth.email!)
-            .ignore();
+        DatabaseService.instance.saveUserEmail(uid, auth.email!).ignore();
       }
     }
   }
@@ -336,6 +337,7 @@ class _DeepLinkHandler extends StatefulWidget {
 
 class _DeepLinkHandlerState extends State<_DeepLinkHandler> {
   StreamSubscription<Uri>? _sub;
+  Uri? _activeAuthLink;
 
   /// Cold-start link that arrived before [AuthProvider] was fully initialised.
   /// Flushed in [build] once auth is ready so navigation is never orphaned (L-5).
@@ -344,7 +346,12 @@ class _DeepLinkHandlerState extends State<_DeepLinkHandler> {
   @override
   void initState() {
     super.initState();
-    if (!kIsWeb) {
+    if (kIsWeb) {
+      final initial = Uri.base;
+      if (AuthEmailWorkflow.isAuthActionUri(initial)) {
+        _activeAuthLink = initial;
+      }
+    } else {
       _initLinks();
     }
   }
@@ -356,7 +363,11 @@ class _DeepLinkHandlerState extends State<_DeepLinkHandler> {
       // Store it as pending and let build() flush it once auth is ready (L-5).
       final initial = await appLinks.getInitialLink();
       if (initial != null && mounted) {
-        setState(() => _pendingColdStartLink = initial);
+        if (AuthEmailWorkflow.isAuthActionUri(initial)) {
+          setState(() => _activeAuthLink = initial);
+        } else {
+          setState(() => _pendingColdStartLink = initial);
+        }
       }
       // Handle links while the app is already running (auth already ready).
       _sub = appLinks.uriLinkStream.listen(_handleLink, onError: (_) {});
@@ -366,6 +377,12 @@ class _DeepLinkHandlerState extends State<_DeepLinkHandler> {
   }
 
   void _handleLink(Uri uri) {
+    if (AuthEmailWorkflow.isAuthActionUri(uri)) {
+      if (!mounted) return;
+      setState(() => _activeAuthLink = uri);
+      return;
+    }
+
     if (uri.scheme != 'homeworkhelper') return;
     final ctx = context;
     if (!mounted) return;
@@ -409,13 +426,23 @@ class _DeepLinkHandlerState extends State<_DeepLinkHandler> {
 
   @override
   Widget build(BuildContext context) {
+    if (_activeAuthLink != null) {
+      return AuthActionCodeScreen(
+        initialUri: _activeAuthLink!,
+        onCompleted: () {
+          if (!mounted) return;
+          setState(() => _activeAuthLink = null);
+        },
+      );
+    }
+
     // L-5: Flush any queued cold-start deep link once the auth state is
     // fully initialised (username loaded or confirmed guest) so that
     // navigation is never pushed onto an uninitialised stack.
     if (_pendingColdStartLink != null) {
       final auth = context.watch<AuthProvider>();
-      final ready = auth.initialStateReady &&
-          (auth.isGuest || auth.usernameLoaded);
+      final ready =
+          auth.initialStateReady && (auth.isGuest || auth.usernameLoaded);
       if (ready) {
         // Schedule the actual navigation for after this build frame.
         // Use setState to clear _pendingColdStartLink so this doesn't
@@ -491,7 +518,11 @@ class _AppShieldGateState extends State<_AppShieldGate>
   /// Locks the app on cold start if App Lock is enabled. Calling this more
   /// than once is safe — the guards prevent double-locking.
   void _checkColdStartLock() {
-    if (!mounted || kIsWeb || _locked || _authenticating || _unlockedThisSession) {
+    if (!mounted ||
+        kIsWeb ||
+        _locked ||
+        _authenticating ||
+        _unlockedThisSession) {
       return;
     }
     final security = context.read<SecurityProvider>();

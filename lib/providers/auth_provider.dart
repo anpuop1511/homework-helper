@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_email_workflow.dart';
 import '../services/database_service.dart';
 
 /// Manages Firebase Email/Password authentication state.
@@ -18,8 +19,7 @@ class AuthProvider extends ChangeNotifier {
 
   final bool _firebaseReady;
   final String? _firebaseInitError;
-  FirebaseAuth? get _auth =>
-      _firebaseReady ? FirebaseAuth.instance : null;
+  FirebaseAuth? get _auth => _firebaseReady ? FirebaseAuth.instance : null;
 
   /// The raw exception string captured when [Firebase.initializeApp] threw
   /// during app startup.  Non-null only when Firebase failed to initialise.
@@ -138,8 +138,8 @@ class AuthProvider extends ChangeNotifier {
     bool isSignedIn = false,
     String? username,
     bool usernameLoaded = true,
-  }) : _firebaseReady = false,
-       _firebaseInitError = null {
+  })  : _firebaseReady = false,
+        _firebaseInitError = null {
     _testSignedIn = isSignedIn;
     _username = username;
     _usernameLoaded = usernameLoaded;
@@ -218,29 +218,27 @@ class AuthProvider extends ChangeNotifier {
     _loadCachedUsername(uid);
 
     _usernameStreamSub?.cancel();
-    _usernameStreamSub = DatabaseService.instance
-        .usernameStream(uid)
-        .take(1)
-        .listen(
-          (handle) {
-            _username = handle;
-            // Persist to local cache so the next app launch can show the
-            // username immediately without waiting for Firestore.
-            if (handle != null && handle.isNotEmpty) {
-              SharedPreferences.getInstance()
-                  .then((p) => p.setString(_prefUsername, handle))
-                  .ignore();
-            }
-            _usernameLoaded = true; // Set before clearing subscription ref.
-            _usernameStreamSub = null;
-            notifyListeners();
-          },
-          onError: (_) {
-            _usernameLoaded = true; // Set before clearing subscription ref.
-            _usernameStreamSub = null;
-            notifyListeners();
-          },
-        );
+    _usernameStreamSub =
+        DatabaseService.instance.usernameStream(uid).take(1).listen(
+      (handle) {
+        _username = handle;
+        // Persist to local cache so the next app launch can show the
+        // username immediately without waiting for Firestore.
+        if (handle != null && handle.isNotEmpty) {
+          SharedPreferences.getInstance()
+              .then((p) => p.setString(_prefUsername, handle))
+              .ignore();
+        }
+        _usernameLoaded = true; // Set before clearing subscription ref.
+        _usernameStreamSub = null;
+        notifyListeners();
+      },
+      onError: (_) {
+        _usernameLoaded = true; // Set before clearing subscription ref.
+        _usernameStreamSub = null;
+        notifyListeners();
+      },
+    );
   }
 
   /// Sets the username directly in memory without a Firestore round-trip.
@@ -345,16 +343,32 @@ class AuthProvider extends ChangeNotifier {
       throw StateError('Firebase auth is not available.');
     }
     try {
-      await auth.sendPasswordResetEmail(email: email.trim());
+      await auth.sendPasswordResetEmail(
+        email: email.trim(),
+        actionCodeSettings: AuthEmailWorkflow.passwordResetActionCodeSettings,
+      );
     } on FirebaseAuthException catch (e) {
-      debugPrint('[AuthProvider] password reset failed: ${e.code} - ${e.message}');
+      debugPrint(
+          '[AuthProvider] password reset failed: ${e.code} - ${e.message}');
       rethrow;
     }
   }
 
   /// Sends a verification email to the current user.
   Future<void> sendEmailVerification() async {
-    await _auth?.currentUser?.sendEmailVerification();
+    await _auth?.currentUser?.sendEmailVerification(
+      AuthEmailWorkflow.emailVerificationActionCodeSettings,
+    );
+  }
+
+  /// Reloads the current Firebase user and syncs the local cache.
+  Future<void> refreshCurrentUser() async {
+    final auth = _auth;
+    final user = auth?.currentUser;
+    if (auth == null || user == null) return;
+    await user.reload();
+    _user = auth.currentUser;
+    notifyListeners();
   }
 
   /// Re-authenticates the current user with their password to verify it.
@@ -415,12 +429,14 @@ class AuthProvider extends ChangeNotifier {
       case 'operation-not-allowed':
         return 'Email/password sign-in is not enabled for this Firebase project.';
       case 'internal-error':
-        if (message.contains('identitytoolkit') || message.contains('blocked')) {
+        if (message.contains('identitytoolkit') ||
+            message.contains('blocked')) {
           return 'Firebase is blocking password sign-in requests. Enable Email/Password sign-in and check your Google Cloud API key restrictions.';
         }
         return e.message ?? 'An unexpected error occurred.';
       default:
-        if (message.contains('identitytoolkit') || message.contains('blocked')) {
+        if (message.contains('identitytoolkit') ||
+            message.contains('blocked')) {
           return 'Firebase is blocking password sign-in requests. Enable Email/Password sign-in and check your Google Cloud API key restrictions.';
         }
         return e.message ?? 'An unexpected error occurred.';
@@ -431,7 +447,8 @@ class AuthProvider extends ChangeNotifier {
     if (error is FirebaseAuthException) {
       return friendlyError(error);
     }
-    if (error is StateError && error.message.contains('Firebase auth is not available')) {
+    if (error is StateError &&
+        error.message.contains('Firebase auth is not available')) {
       return 'Firebase is not ready on this device. Check Firebase initialization and your Firebase config files.';
     }
     return 'Something went wrong. Please try again.';

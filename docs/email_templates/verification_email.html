@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Verify your email</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f7fb;
+        --panel: #ffffff;
+        --text: #0f172a;
+        --muted: #5b6478;
+        --accent: #007fff;
+        --accent-dark: #005fcc;
+        --border: #d9e2f2;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #eef4ff 0%, #f8fbff 45%, #edf7ff 100%);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--text);
+      }
+
+      .wrap {
+        width: 100%;
+        padding: 40px 16px;
+      }
+
+      .card {
+        max-width: 640px;
+        margin: 0 auto;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+      }
+
+      .hero {
+        padding: 40px 40px 24px;
+        background:
+          radial-gradient(circle at top right, rgba(0, 127, 255, 0.18), transparent 36%),
+          linear-gradient(180deg, rgba(0, 127, 255, 0.08), transparent 60%);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(0, 127, 255, 0.1);
+        color: var(--accent-dark);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 18px 0 12px;
+        font-size: 34px;
+        line-height: 1.08;
+        letter-spacing: -0.04em;
+      }
+
+      p {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.7;
+        color: var(--muted);
+      }
+
+      .body {
+        padding: 0 40px 40px;
+      }
+
+      .button {
+        display: inline-block;
+        margin: 28px 0 20px;
+        padding: 16px 24px;
+        border-radius: 14px;
+        background: linear-gradient(180deg, var(--accent), var(--accent-dark));
+        color: #fff !important;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 15px;
+        box-shadow: 0 14px 30px rgba(0, 127, 255, 0.25);
+      }
+
+      .meta {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--muted);
+        word-break: break-word;
+      }
+
+      .footer {
+        padding: 18px 40px 36px;
+        font-size: 12px;
+        color: #7b8496;
+      }
+
+      @media (max-width: 640px) {
+        .hero,
+        .body,
+        .footer {
+          padding-left: 24px;
+          padding-right: 24px;
+        }
+
+        h1 {
+          font-size: 28px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <div class="hero">
+          <span class="badge">HwHelper.tech</span>
+          <h1>Verify your email to finish setting up your account.</h1>
+          <p>
+            Click the button below to confirm this email address and keep your
+            account secure.
+          </p>
+        </div>
+        <div class="body">
+          <a class="button" href="{{ACTION_URL}}">Verify Email</a>
+          <p>
+            If the button does not work, paste this link into your browser:
+          </p>
+          <div class="meta">{{ACTION_URL}}</div>
+        </div>
+        <div class="footer">
+          If you did not create a Homework Helper account, you can ignore this email.
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
