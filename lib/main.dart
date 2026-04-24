@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:animate_do/animate_do.dart';
 import 'package:app_links/app_links.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -44,6 +45,9 @@ Future<void> main() async {
   // (google-services.json) initializes Firebase before Flutter's Dart layer,
   // and is also safe across Flutter hot restarts in development.
   await FirebaseBootstrap.ensureInitialized();
+  if (kIsWeb) {
+    await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+  }
   final bool firebaseReady = FirebaseBootstrap.isReady;
   final String? firebaseInitError = FirebaseBootstrap.error;
 

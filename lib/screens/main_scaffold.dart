@@ -65,18 +65,31 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   static const double _mobileNavBarHeight = 78;
-  static const double _mobileNavBarRadius = 36;
-  static const double _mobileNavBarElevation = 6;
-  static const int _mobileNavBarShadowAlpha = 70;
-  static const int _mobileNavBarBorderAlpha = 110;
 
   int _currentIndex = 0;
+  final Set<NavTab> _loadedTabs = {NavTab.home};
 
   /// Use a NavigationRail instead of a BottomNavigationBar on wide screens
   /// (desktop / tablet, width ≥ 600 logical pixels).
   /// On mobile web (narrow viewport) we still want the BottomNavigationBar,
   /// so we check only the screen width rather than `kIsWeb`.
   bool get _useRail => MediaQuery.of(context).size.width >= 600;
+
+  void _selectTab(int index, List<NavTab> visibleTabs) {
+    _loadedTabs.add(visibleTabs[index]);
+    setState(() => _currentIndex = index);
+  }
+
+  List<Widget> _buildLazyScreens(List<NavTab> visibleTabs, int activeIndex) {
+    final activeTab = visibleTabs[activeIndex];
+    return [
+      for (final tab in visibleTabs)
+        if (tab == activeTab || _loadedTabs.contains(tab))
+          _screenForTab(tab)
+        else
+          const SizedBox.expand(),
+    ];
+  }
 
   void _openUserHub() {
     showModalBottomSheet<void>(
@@ -134,9 +147,8 @@ class _MainScaffoldState extends State<MainScaffold> {
     // index is safely bounded and _currentIndex self-corrects on next tap.
     final safeIndex = _currentIndex.clamp(0, visibleTabs.length - 1);
 
-    // Build the list of screens matching visible tabs.
-    final screens = visibleTabs.map(_screenForTab).toList();
-    final mobileNavBorderRadius = BorderRadius.circular(_mobileNavBarRadius);
+    // Only build the active tab plus any tabs the user has already visited.
+    final screens = _buildLazyScreens(visibleTabs, safeIndex);
 
     if (_useRail) {
       // ── Wide screen: NavigationRail layout ─────────────────────────
@@ -146,8 +158,7 @@ class _MainScaffoldState extends State<MainScaffold> {
             NavigationRail(
               backgroundColor: colorScheme.surfaceContainerLow,
               selectedIndex: safeIndex,
-              onDestinationSelected: (index) =>
-                  setState(() => _currentIndex = index),
+              onDestinationSelected: (index) => _selectTab(index, visibleTabs),
               labelType: NavigationRailLabelType.selected,
               minWidth: 72,
               destinations: visibleTabs.map((tab) {
@@ -228,32 +239,26 @@ class _MainScaffoldState extends State<MainScaffold> {
         ],
       ),
       bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Material(
-          color: colorScheme.surfaceContainer,
-          elevation: _mobileNavBarElevation,
-          shadowColor: colorScheme.shadow.withAlpha(_mobileNavBarShadowAlpha),
-          shape: RoundedRectangleBorder(
-            borderRadius: mobileNavBorderRadius,
-            side: BorderSide(
-              color:
-                  colorScheme.outlineVariant.withAlpha(_mobileNavBarBorderAlpha),
-              width: 1,
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            border: Border(
+              top: BorderSide(color: colorScheme.outlineVariant.withAlpha(140)),
             ),
           ),
-          clipBehavior: Clip.antiAlias,
-          borderRadius: mobileNavBorderRadius,
           child: NavigationBarTheme(
             data: NavigationBarThemeData(
               indicatorColor: colorScheme.secondaryContainer,
               indicatorShape: const StadiumBorder(),
               iconTheme:
                   WidgetStateProperty.resolveWith<IconThemeData>((states) {
+                final selected = states.contains(WidgetState.selected);
                 return IconThemeData(
-                  size: states.contains(WidgetState.selected) ? 26 : 24,
-                  color: states.contains(WidgetState.selected)
+                  size: selected ? 26 : 24,
+                  color: selected
                       ? colorScheme.onSecondaryContainer
-                      : colorScheme.onSurfaceVariant.withAlpha(190),
+                      : colorScheme.onSurfaceVariant.withAlpha(200),
                 );
               }),
               labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((
@@ -264,20 +269,20 @@ class _MainScaffoldState extends State<MainScaffold> {
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   color: selected
                       ? colorScheme.onSurface
-                      : colorScheme.onSurfaceVariant.withAlpha(190),
+                      : colorScheme.onSurfaceVariant.withAlpha(200),
                 );
               }),
             ),
             child: NavigationBar(
-              backgroundColor: Colors.transparent,
+              backgroundColor: colorScheme.surface,
+              surfaceTintColor: Colors.transparent,
               elevation: 0,
               height: _mobileNavBarHeight,
               selectedIndex: safeIndex,
               labelBehavior: navBar.showLabels
                   ? NavigationDestinationLabelBehavior.alwaysShow
                   : NavigationDestinationLabelBehavior.alwaysHide,
-              onDestinationSelected: (index) =>
-                  setState(() => _currentIndex = index),
+              onDestinationSelected: (index) => _selectTab(index, visibleTabs),
               destinations: visibleTabs.map((tab) {
                 final isSocial = tab == NavTab.social;
                 return NavigationDestination(
