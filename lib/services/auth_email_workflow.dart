@@ -38,7 +38,7 @@ class AuthActionLink {
 }
 
 class AuthEmailWorkflow {
-  static const String authHandlerUrl = 'https://hwhelper.tech/auth-handler';
+  static const String authHandlerUrl = 'https://hwhelper.tech/';
 
   static final Uri authHandlerUri = Uri.parse(authHandlerUrl);
 
@@ -77,6 +77,15 @@ class AuthEmailWorkflow {
 
 bool _isAuthHandlerUri(Uri uri) {
   if (uri.host != 'hwhelper.tech') return false;
-  return uri.path == '/auth-handler' ||
-      uri.pathSegments.isNotEmpty && uri.pathSegments.first == 'auth-handler';
+
+  final isRootPath =
+      uri.path.isEmpty || uri.path == '/' || uri.path == '/index.html';
+  final hasActionQuery = uri.queryParameters.containsKey('mode') &&
+      uri.queryParameters.containsKey('oobCode');
+
+  return hasActionQuery &&
+      (isRootPath ||
+          uri.path == '/auth-handler' ||
+          (uri.pathSegments.isNotEmpty &&
+              uri.pathSegments.first == 'auth-handler'));
 }

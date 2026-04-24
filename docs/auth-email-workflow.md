@@ -36,7 +36,7 @@ The client posts to `/api/send-auth-email` with:
 - `email`: recipient email
 - `displayName`: optional personalization for verification
 
-The endpoint generates the Firebase link with `url: https://hwhelper.tech/auth-handler` and `handleCodeInApp: true`, then sends the HTML through Resend.
+The endpoint generates the Firebase link with `url: https://hwhelper.tech/` and `handleCodeInApp: true`, then sends the HTML through Resend.
 
 ## What you still need to do
 

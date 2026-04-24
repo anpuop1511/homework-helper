@@ -4,7 +4,7 @@ const admin = require('firebase-admin');
 const resend = new Resend(process.env.RESEND_API_KEY);
 const fromAddress =
   process.env.RESEND_FROM || 'Homework Helper <no-reply@hwhelper.tech>';
-const authHandlerUrl = 'https://hwhelper.tech/auth-handler';
+const authHandlerUrl = 'https://hwhelper.tech/';
 
 function initializeFirebaseAdmin() {
   if (admin.apps.length > 0) return;
@@ -62,33 +62,42 @@ function buildEmailLayout({
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${safeTitle}</title>
     <style>
+      * {
+        box-sizing: border-box;
+      }
+
       body {
         margin: 0;
         padding: 0;
-        background:
-          radial-gradient(circle at top left, rgba(53, 89, 224, 0.12), transparent 30%),
+        background-color: #edf1fb;
+        background-image:
+          radial-gradient(circle at top left, rgba(53, 89, 224, 0.14), transparent 30%),
           radial-gradient(circle at top right, rgba(33, 150, 243, 0.1), transparent 28%),
-          linear-gradient(180deg, #f8f9ff 0%, #f3f5fb 100%);
+          linear-gradient(180deg, #f8faff 0%, #edf1fb 100%);
         font-family: Roboto, Arial, Helvetica, sans-serif;
         color: #10172a;
       }
 
-      .container { width: 100%; padding: 44px 16px; }
+      .container {
+        width: 100%;
+        padding: 32px 16px;
+      }
+
       .card {
         max-width: 640px;
         margin: 0 auto;
         background: #ffffff;
         border: 1px solid #d7deef;
-        border-radius: 28px;
+        border-radius: 30px;
         overflow: hidden;
-        box-shadow: 0 20px 64px rgba(16, 23, 42, 0.12);
+        box-shadow: 0 18px 60px rgba(16, 23, 42, 0.12);
       }
 
       .hero {
         position: relative;
-        padding: 42px 40px 28px;
+        padding: 36px 40px 30px;
         background:
-          linear-gradient(180deg, rgba(53, 89, 224, 0.12), rgba(53, 89, 224, 0.02) 58%, transparent),
+          linear-gradient(180deg, rgba(53, 89, 224, 0.12), rgba(53, 89, 224, 0.03) 58%, transparent),
           #eef2ff;
       }
 
@@ -114,9 +123,24 @@ function buildEmailLayout({
         text-transform: uppercase;
       }
 
-      h1 { margin: 18px 0 12px; font-size: 32px; line-height: 1.12; letter-spacing: -0.03em; }
-      p { margin: 0; font-size: 15px; line-height: 1.75; color: #55607a; }
-      .content { padding: 0 40px 40px; }
+      h1 {
+        margin: 16px 0 12px;
+        font-size: 32px;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+      }
+
+      p {
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.7;
+        color: #55607a;
+      }
+
+      .content {
+        padding: 0 40px 40px;
+      }
+
       .supporting-card {
         margin-top: 18px;
         padding: 16px 18px;
@@ -125,17 +149,25 @@ function buildEmailLayout({
         border: 1px solid #d7deef;
       }
 
+      .supporting-card p {
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
       .button {
-        display: inline-block;
-        margin: 28px 0 20px;
-        padding: 16px 26px;
+        display: block;
+        width: 100%;
+        margin: 28px 0 18px;
+        padding: 16px 24px;
         border-radius: 999px;
         background: linear-gradient(180deg, #3559e0, #2442b5);
         color: #fff !important;
         text-decoration: none;
         font-weight: 700;
         font-size: 15px;
+        line-height: 1;
         letter-spacing: 0.01em;
+        text-align: center;
         box-shadow: 0 12px 24px rgba(53, 89, 224, 0.28);
       }
 
@@ -143,13 +175,57 @@ function buildEmailLayout({
         padding: 18px 40px 36px;
         border-top: 1px solid #d7deef;
         font-size: 12px;
+        line-height: 1.6;
         color: #6b7489;
       }
 
-      @media (max-width: 640px) {
-        .hero, .content, .footnote { padding-left: 24px; padding-right: 24px; }
-        h1 { font-size: 28px; }
-        .hero::after { width: 92px; height: 92px; }
+      .link-text {
+        word-break: break-word;
+        margin-top: 12px;
+        color: #2442b5;
+        font-size: 13px;
+      }
+
+      @media only screen and (max-width: 640px) {
+        .container {
+          padding: 12px;
+        }
+
+        .hero,
+        .content,
+        .footnote {
+          padding-left: 20px;
+          padding-right: 20px;
+        }
+
+        .hero {
+          padding-top: 28px;
+          padding-bottom: 24px;
+        }
+
+        h1 {
+          font-size: 26px;
+        }
+
+        p {
+          font-size: 14px;
+          line-height: 1.65;
+        }
+
+        .button {
+          margin-top: 22px;
+          padding: 15px 20px;
+          font-size: 14px;
+        }
+
+        .supporting-card {
+          padding: 14px 16px;
+        }
+
+        .hero::after {
+          width: 88px;
+          height: 88px;
+        }
       }
     </style>
   </head>
@@ -166,7 +242,7 @@ function buildEmailLayout({
           <a class="button" href="${safeCtaUrl}">${safeCtaText}</a>
           <div class="supporting-card">
             <p>If the button does not work, copy this link into your browser:</p>
-            <p style="word-break: break-word; margin-top: 12px; color: #2442b5;">${safeCtaUrl}</p>
+            <p class="link-text">${safeCtaUrl}</p>
           </div>
         </div>
         <div class="footnote">${safeFooter}</div>
