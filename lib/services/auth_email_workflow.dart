@@ -80,14 +80,19 @@ bool _isAuthHandlerUri(Uri uri) {
   final host = uri.host;
   if (host != 'hwhelper.tech' && host != 'www.hwhelper.tech') return false;
 
-  final isRootPath =
-      uri.path.isEmpty || uri.path == '/' || uri.path == '/index.html';
   final hasActionQuery = uri.queryParameters.containsKey('mode') &&
       uri.queryParameters.containsKey('oobCode');
 
-  return hasActionQuery &&
-      (isRootPath ||
-          uri.path == '/auth-handler' ||
-          (uri.pathSegments.isNotEmpty &&
-              uri.pathSegments.first == 'auth-handler'));
+  if (!hasActionQuery) return false;
+
+  // Accept any of these paths:
+  // - /auth-handler?...
+  // - /auth-handler?...
+  // - / or empty path with query params
+  // - /index.html with query params
+  return uri.path.isEmpty ||
+      uri.path == '/' ||
+      uri.path == '/index.html' ||
+      uri.path == '/auth-handler' ||
+      (uri.pathSegments.isNotEmpty && uri.pathSegments.first == 'auth-handler');
 }
