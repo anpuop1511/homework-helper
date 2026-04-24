@@ -22,7 +22,6 @@ import '../providers/subjects_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/database_service.dart';
-import 'upsell_screen.dart';
 import 'username_screen.dart';
 
 /// Email of the developer account that can see the hidden debug menu.
@@ -56,12 +55,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       color: Color(0xFF6750A4),
       title: 'Account',
       subtitle: 'Username, password, sign out',
-    ),
-    _CategoryData(
-      icon: Icons.star_rounded,
-      color: Color(0xFFB8860B),
-      title: 'Subscription',
-      subtitle: 'Season Pass benefits',
     ),
     _CategoryData(
       icon: Icons.auto_awesome_rounded,
@@ -118,9 +111,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     switch (cat.title) {
       case 'Account':
         page = const _AccountSettingsPage();
-        break;
-      case 'Subscription':
-        page = const UpsellScreen();
         break;
       case 'AI & Models':
         page = const _AiModelsSettingsPage();
@@ -766,13 +756,6 @@ class _AiModelsSettingsPage extends StatelessWidget {
                         }).toList(),
                         onChanged: (m) {
                           if (m == null) return;
-                          if (m.requiresPass && !entitlements.isPass) {
-                            // Show upsell for Pass-only model.
-                            Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => const UpsellScreen(),
-                            ));
-                            return;
-                          }
                           context.read<ChatProvider>().setModel(m);
                         },
                       ),
@@ -997,7 +980,7 @@ class _AppearanceSettingsPage extends StatelessWidget {
                   vibeScheme: vibeScheme,
                   isSelected: isSelected,
                   isLocked: !isUnlocked,
-                  isPremiumLocked: isPremium && !entitlements.canUsePremiumThemes,
+                  isPremiumLocked: false,
                   onTap: () {
                     if (!isUnlocked) {
                       if (isPremium && !entitlements.canUsePremiumThemes) {
@@ -1025,11 +1008,8 @@ class _AppearanceSettingsPage extends StatelessWidget {
                               FilledButton(
                                 onPressed: () {
                                   Navigator.pop(context);
-                                  Navigator.of(context).push(MaterialPageRoute(
-                                    builder: (_) => const UpsellScreen(),
-                                  ));
                                 },
-                                child: const Text('Upgrade'),
+                                child: const Text('Got it'),
                               ),
                             ],
                           ),

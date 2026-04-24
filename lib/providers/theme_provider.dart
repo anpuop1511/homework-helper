@@ -25,10 +25,7 @@ enum AppVibe {
 }
 
 /// The set of vibes that require an active Helper+ or Helper Pass subscription.
-const Set<AppVibe> kPremiumVibes = {
-  AppVibe.neonSunrise,
-  AppVibe.deepOcean,
-};
+const Set<AppVibe> kPremiumVibes = {};
 
 extension AppVibeExtension on AppVibe {
   String get label {
@@ -220,3 +217,4 @@ class ThemeProvider extends ChangeNotifier {
     // Helper+ has been retired; existing vibes stay available.
   }
 }
+

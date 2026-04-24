@@ -71,7 +71,7 @@ class EntitlementsProvider extends ChangeNotifier {
 
   /// True when Pass-exclusive features (battle pass, BYOK non-Gemini, badge)
   /// are accessible.
-  bool get canUsePassFeatures => isPass;
+  bool get canUsePassFeatures => true;
 
   // ── UID management ────────────────────────────────────────────────────────
 

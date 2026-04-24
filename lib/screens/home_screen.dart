@@ -22,7 +22,6 @@ import '../widgets/assignment_card.dart';
 import '../widgets/add_task_sheet.dart';
 import '../widgets/gradient_text.dart';
 import 'ladder_event_screen.dart';
-import 'upsell_screen.dart';
 import 'subjects_screen.dart' show SubjectFolderSection;
 import 'settings_screen.dart';
 import 'chat_screen.dart';
@@ -220,10 +219,6 @@ class _HomeScreenState extends State<HomeScreen> {
           SliverAppBar(
             expandedHeight: _expandedHeaderHeight,
             pinned: true,
-            title: Text(
-              'Home',
-              style: GoogleFonts.lexend(fontWeight: FontWeight.w700),
-            ),
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.pin,
               background: _MotivationHeader(
@@ -938,11 +933,8 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
             onPressed: () {
               Navigator.pop(ctx);
               Navigator.pop(context);
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const UpsellScreen()),
-              );
             },
-            child: const Text('Upgrade'),
+            child: const Text('OK'),
           ),
         ],
       ),

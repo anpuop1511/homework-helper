@@ -5,7 +5,6 @@ import '../models/assignment.dart';
 import '../models/class_model.dart';
 import '../providers/classes_provider.dart';
 import '../providers/subjects_provider.dart';
-import 'upsell_screen.dart';
 
 /// Full-page screen that lists all user-created [SchoolClass] objects.
 ///
@@ -353,9 +352,6 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
             onPressed: () {
               Navigator.pop(ctx);
               Navigator.pop(context); // close the edit dialog too
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const UpsellScreen()),
-              );
             },
             child: const Text('OK'),
           ),
