@@ -973,111 +973,106 @@ class _AppearanceSettingsPage extends StatelessWidget {
               ?.copyWith(color: colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 10),
-        _SquircleCard(
-          colorScheme: colorScheme,
-          child: Column(
-            children: AppVibe.values.map((vibe) {
-              final isSelected = themeProvider.vibe == vibe;
-              final isSpring = _springVibes.contains(vibe);
+          _SquircleCard(
+            colorScheme: colorScheme,
+            child: Column(
+              children: AppVibe.values.map((vibe) {
+                final isSelected = themeProvider.vibe == vibe;
+                final isSpring = _springVibes.contains(vibe);
                 final isSeason2 = _season2Vibes.contains(vibe);
-              final isPremium = kPremiumVibes.contains(vibe);
-              final cosmeticId = 'vibe_${vibe.name}';
-              // A vibe is unlocked when:
-                //   • it is NOT a spring battle-pass vibe, OR the cosmetic is owned
-                //   • it is NOT a season-2 vibe, OR season 2 is live, OR cosmetic is owned
-              //   • AND it is NOT a premium subscription vibe, OR the user has Plus/Pass
-              final isUnlocked = (!isSpring ||
-                    userProvider.unlockedCosmetics.contains(cosmeticId)) &&
-                  (!isSeason2 ||
-                    season2Unlocked ||
-                    userProvider.unlockedCosmetics.contains(cosmeticId)) &&
-                  (!isPremium || entitlements.canUsePremiumThemes);
-              final vibeScheme = ColorScheme.fromSeed(
-                seedColor: vibe.seedColor,
-                brightness: Theme.of(context).brightness,
-              );
-              return _VibeRow(
-                vibe: vibe,
-                vibeScheme: vibeScheme,
-                isSelected: isSelected,
-                isLocked: !isUnlocked,
-                isPremiumLocked: isPremium && !entitlements.canUsePremiumThemes,
-                onTap: () {
-                  if (!isUnlocked) {
-                    if (isPremium && !entitlements.canUsePremiumThemes) {
-                      // Subscription upsell
-                      showDialog<void>(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24)),
-                          title: Row(
-                            children: [
-                              Text(vibe.emoji),
-                              const SizedBox(width: 8),
-                              Flexible(child: Text(vibe.label)),
+                final isPremium = kPremiumVibes.contains(vibe);
+                final cosmeticId = 'vibe_${vibe.name}';
+                final isUnlocked = (!isSpring ||
+                      userProvider.unlockedCosmetics.contains(cosmeticId)) &&
+                    (!isSeason2 ||
+                      season2Unlocked ||
+                      userProvider.unlockedCosmetics.contains(cosmeticId)) &&
+                    (!isPremium || entitlements.canUsePremiumThemes);
+                final vibeScheme = ColorScheme.fromSeed(
+                  seedColor: vibe.seedColor,
+                  brightness: Theme.of(context).brightness,
+                );
+                return _VibeRow(
+                  vibe: vibe,
+                  vibeScheme: vibeScheme,
+                  isSelected: isSelected,
+                  isLocked: !isUnlocked,
+                  isPremiumLocked: isPremium && !entitlements.canUsePremiumThemes,
+                  onTap: () {
+                    if (!isUnlocked) {
+                      if (isPremium && !entitlements.canUsePremiumThemes) {
+                        showDialog<void>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24)),
+                            title: Row(
+                              children: [
+                                Text(vibe.emoji),
+                                const SizedBox(width: 8),
+                                Flexible(child: Text(vibe.label)),
+                              ],
+                            ),
+                            content: const Text(
+                              'This theme is free to use for everyone.\n\n'
+                              'Season 2 and season 3 cosmetic availability is shown in the app.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Maybe Later'),
+                              ),
+                              FilledButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (_) => const UpsellScreen(),
+                                  ));
+                                },
+                                child: const Text('Upgrade'),
+                              ),
                             ],
                           ),
-                          content: const Text(
-                            'This is a premium theme available with Helper Pass.\n\n'
-                            'Premium themes are now free to use for everyone.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Maybe Later'),
+                        );
+                      } else {
+                          final seasonLockedMessage = isSeason2
+                            ? 'This theme is part of Season ${kSeason2.number}: ${kSeason2.name}.\n\n'
+                              'It unlocks when the new season starts on '
+                              '${kSeason2.startsAtUtc.month}/${kSeason2.startsAtUtc.day}/${kSeason2.startsAtUtc.year} UTC, '
+                              'or when you unlock it in the Season Shop.'
+                            : 'This theme was part of the Spring Bloomin\' Battle Pass.\n\n'
+                              'If you missed it, it unlocks in the Season Shop in '
+                              '${formatCountdown(shopEligibleAtForPastPassReward(seasonId: kSeason1.id).difference(effectiveNow))}.';
+                        showDialog<void>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: Row(
+                              children: [
+                                Text(vibe.emoji),
+                                const SizedBox(width: 8),
+                                Text(vibe.label),
+                              ],
                             ),
-                            FilledButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (_) => const UpsellScreen(),
-                                ));
-                              },
-                              child: const Text('Upgrade'),
-                            ),
-                          ],
-                        ),
-                      );
-                    } else {
-                        final seasonLockedMessage = isSeason2
-                          ? 'This theme is part of Season ${kSeason2.number}: ${kSeason2.name}.\n\n'
-                            'It unlocks when the new season starts on '
-                            '${kSeason2.startsAtUtc.month}/${kSeason2.startsAtUtc.day}/${kSeason2.startsAtUtc.year} UTC, '
-                            'or when you unlock it in the Season Shop.'
-                          : 'This theme was part of the Spring Bloomin\' Battle Pass.\n\n'
-                            'If you missed it, it unlocks in the Season Shop in '
-                            '${formatCountdown(shopEligibleAtForPastPassReward(seasonId: kSeason1.id).difference(effectiveNow))}.';
-                      showDialog<void>(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: Row(
-                            children: [
-                              Text(vibe.emoji),
-                              const SizedBox(width: 8),
-                              Text(vibe.label),
+                            content: Text(seasonLockedMessage),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Got it'),
+                              ),
                             ],
                           ),
-                          content: Text(seasonLockedMessage),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Got it'),
-                            ),
-                          ],
-                        ),
-                      );
+                        );
+                      }
+                      return;
                     }
-                    return;
-                  }
-                  context.read<ThemeProvider>().setVibe(vibe);
-                },
-                showDivider: vibe != AppVibe.values.last,
-                colorScheme: colorScheme,
-              );
-            }).toList(),
+                    context.read<ThemeProvider>().setVibe(vibe);
+                  },
+                  showDivider: vibe != AppVibe.values.last,
+                  colorScheme: colorScheme,
+                );
+              }).toList(),
+            ),
           ),
-        ),
         const SizedBox(height: 12),
         // ── Premium theme builder stubs ──────────────────────────────────
         _SquircleCard(
@@ -2460,7 +2455,7 @@ class _VibeRow extends StatelessWidget {
                         ),
                       if (isPremiumLocked)
                         Text(
-                          '🔒 Available with Helper Pass',
+                          '🔒 Available now',
                           style: TextStyle(
                             fontSize: 10,
                             color: colorScheme.onSurfaceVariant,

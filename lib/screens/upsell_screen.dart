@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/entitlement_model.dart';
 import '../providers/entitlements_provider.dart';
 
-/// Upsell screen for Helper Pass and seasonal purchases.
+/// Pass and seasonal purchases screen.
 ///
 /// On **Android** it shows the tier benefits and placeholder purchase buttons
 /// (the actual Google Play billing integration should be wired here once
@@ -28,7 +28,7 @@ class UpsellScreen extends StatelessWidget {
         elevation: 0,
         leading: const BackButton(),
         title: Text(
-          'Subscription',
+          'Pass',
           style: GoogleFonts.lexend(
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -75,7 +75,7 @@ class UpsellScreen extends StatelessWidget {
             const SizedBox(height: 12),
             _TierCard(
               emoji: '🏅',
-              name: 'Helper Pass',
+              name: 'Season Pass',
               price: r'$2.99/month',
               trialText: r'7-day free trial · then $1.99/mo for 2 months',
               ladderPromoText:
@@ -152,7 +152,7 @@ class _CurrentTierBanner extends StatelessWidget {
         bgColor = const Color(0xFF6750A4);
         break;
       case EntitlementTier.pass:
-        label = 'Helper Pass';
+        label = 'Season Pass';
         emoji = '🏅';
         bgColor = const Color(0xFFB8860B);
         break;

@@ -38,7 +38,8 @@ class AuthActionLink {
 }
 
 class AuthEmailWorkflow {
-  static const String authHandlerUrl = 'https://hwhelper.tech/';
+  static const String authHandlerUrl =
+      'https://homework-helper-web-dun.vercel.app/app';
 
   static final Uri authHandlerUri = Uri.parse(authHandlerUrl);
 
@@ -76,9 +77,13 @@ class AuthEmailWorkflow {
 }
 
 bool _isAuthHandlerUri(Uri uri) {
-  // Accept both hwhelper.tech and www.hwhelper.tech
+  // Accept both the Vercel app host and the legacy hwhelper.tech domains.
   final host = uri.host;
-  if (host != 'hwhelper.tech' && host != 'www.hwhelper.tech') return false;
+  if (host != 'homework-helper-web-dun.vercel.app' &&
+      host != 'hwhelper.tech' &&
+      host != 'www.hwhelper.tech') {
+    return false;
+  }
 
   final hasActionQuery = uri.queryParameters.containsKey('mode') &&
       uri.queryParameters.containsKey('oobCode');

@@ -176,7 +176,7 @@ class _BattlePassBody extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 48), // tier circle space
-                // Plus/Premium track label
+                // Pass track label
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 6),
@@ -186,7 +186,7 @@ class _BattlePassBody extends StatelessWidget {
                     ),
                     child: const Center(
                       child: Text(
-                        '⭐  Plus / 🏆 Premium',
+                        '⭐  Pass / 🏆 Premium',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -417,7 +417,7 @@ class _PassPurchaseSection extends StatelessWidget {
             Text(isPlus ? '⭐' : '🏆', style: const TextStyle(fontSize: 22)),
             const SizedBox(width: 8),
             Text(
-              isPlus ? 'Plus Pass' : 'Premium Pass',
+              isPlus ? 'Pass' : 'Premium Pass',
               style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
             ),
           ],
@@ -432,8 +432,8 @@ class _PassPurchaseSection extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             if (isPlus) ...[
-              const _PerkRow(emoji: '✅', text: 'Access to the Plus reward track'),
-              const _PerkRow(emoji: '🎁', text: 'Exclusive Plus badges & nameplates'),
+              const _PerkRow(emoji: '✅', text: 'Access to the Pass reward track'),
+              const _PerkRow(emoji: '🎁', text: 'Exclusive pass badges & nameplates'),
               const _PerkRow(emoji: '[+]', text: '[+] icon shown next to your name'),
               _PerkRow(
                 emoji: season.id == kSeason2.id ? '🎓' : '🌿',
@@ -569,13 +569,13 @@ class _PassPurchaseSection extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           if (user.passType == 'free') ...[
-            // Plus Pass button
+            // Pass button
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () => _showPassDialog(context, 'plus', 499),
                 icon: const Text('⭐', style: TextStyle(fontSize: 16)),
-                label: const Text('Unlock Plus Pass — 499 🪙'),
+                label: const Text('Unlock Pass — 499 🪙'),
                 style: OutlinedButton.styleFrom(
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),

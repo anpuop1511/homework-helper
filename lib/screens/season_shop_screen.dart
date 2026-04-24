@@ -343,15 +343,15 @@ class _ShopBody extends StatelessWidget {
     final activeSeason = activeSeasonAt(nowUtc);
 
     final currentPermanent = activeSeason.id == kSeason2.id
-        ? _season2PermanentItems
-        : _season1PermanentItems;
-    final currentTimed = _buildTimedDrops(
-      activeSeason.id,
-      activeSeason.startsAtUtc,
-      activeSeason.id == kSeason2.id
-          ? _season2TimedTemplates
-          : _season1TimedTemplates,
-    );
+      ? _season2PermanentItems
+      : <_ShopItem>[];
+    final currentTimed = activeSeason.id == kSeason2.id
+      ? _buildTimedDrops(
+        activeSeason.id,
+        activeSeason.startsAtUtc,
+        _season2TimedTemplates,
+        )
+      : <_TimedShopItem>[];
     final legacyTimed = _buildTimedDrops(
       kSeason1.id,
       kSeason1.startsAtUtc,
@@ -378,6 +378,32 @@ class _ShopBody extends StatelessWidget {
         .where((item) => item.isUnlockedAt(nowUtc) || timeTravelEnabled)
         .toList();
     final lockedRolloverItems = rolloverItems
+        .where((item) => !item.isUnlockedAt(nowUtc) && !timeTravelEnabled)
+        .toList();
+    final season1UnlockAt = shopEligibleAtForPastPassReward(
+      seasonId: kSeason1.id,
+    );
+    final delayedSeason1Items = [
+      ..._season1PermanentItems,
+      ..._season1TimedTemplates,
+    ]
+        .map(
+          (item) => _TimedShopItem(
+            seasonId: item.seasonId,
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            emoji: item.emoji,
+            price: item.price,
+            cosmeticType: item.cosmeticType,
+            unlocksAt: season1UnlockAt,
+          ),
+        )
+        .toList();
+    final unlockedSeason1Items = delayedSeason1Items
+        .where((item) => item.isUnlockedAt(nowUtc) || timeTravelEnabled)
+        .toList();
+    final lockedSeason1Items = delayedSeason1Items
         .where((item) => !item.isUnlockedAt(nowUtc) && !timeTravelEnabled)
         .toList();
 
@@ -433,29 +459,41 @@ class _ShopBody extends StatelessWidget {
           ),
         ),
 
-        // ── Available Now ──────────────────────────────────────────────
-        _SectionHeader(
-          title: 'Available Now',
-          subtitle: 'Season ${activeSeason.number} featured collection',
-          colorScheme: colorScheme,
-        ),
-        const SizedBox(height: 12),
-        ...currentPermanent.map((item) {
-          final owned = user.unlockedCosmetics.contains(item.id);
-          final equipped = _isEquipped(user, item);
-          return _ShopItemCard(
-            item: item,
-            owned: owned,
-            equipped: equipped,
+        if (activeSeason.id == kSeason1.id) ...[
+          _SectionHeader(
+            title: 'Season 1 Collection',
+            subtitle:
+                'All Season 1 themes and coin items unlock in 60 days with a live timer.',
             colorScheme: colorScheme,
-            onTap: () => _purchase(context, item),
-          );
-        }),
-
-        // Unlocked timed drops (available to buy)
-        if (unlockedDrops.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          ...unlockedDrops.map((item) {
+          ),
+          const SizedBox(height: 12),
+          ...lockedSeason1Items.map((item) => _LockedItemCard(
+                item: item,
+                colorScheme: colorScheme,
+              )),
+          if (unlockedSeason1Items.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...unlockedSeason1Items.map((item) {
+              final owned = user.unlockedCosmetics.contains(item.id);
+              final equipped = _isEquipped(user, item);
+              return _ShopItemCard(
+                item: item,
+                owned: owned,
+                equipped: equipped,
+                colorScheme: colorScheme,
+                onTap: () => _purchase(context, item),
+              );
+            }),
+          ],
+        ] else ...[
+          // ── Available Now ────────────────────────────────────────────
+          _SectionHeader(
+            title: 'Available Now',
+            subtitle: 'Season ${activeSeason.number} featured collection',
+            colorScheme: colorScheme,
+          ),
+          const SizedBox(height: 12),
+          ...currentPermanent.map((item) {
             final owned = user.unlockedCosmetics.contains(item.id);
             final equipped = _isEquipped(user, item);
             return _ShopItemCard(
@@ -466,6 +504,21 @@ class _ShopBody extends StatelessWidget {
               onTap: () => _purchase(context, item),
             );
           }),
+
+          if (unlockedDrops.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            ...unlockedDrops.map((item) {
+              final owned = user.unlockedCosmetics.contains(item.id);
+              final equipped = _isEquipped(user, item);
+              return _ShopItemCard(
+                item: item,
+                owned: owned,
+                equipped: equipped,
+                colorScheme: colorScheme,
+                onTap: () => _purchase(context, item),
+              );
+            }),
+          ],
         ],
 
         if (activeSeason.id == kSeason2.id) ...[
