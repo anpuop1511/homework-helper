@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuthException;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -278,8 +279,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 4),
             // ── Search bar ────────────────────────────────────────────
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: TextField(
                 controller: _searchController,
                 onChanged: (v) => setState(() => _query = v),
@@ -526,8 +526,7 @@ class _AccountSettingsPage extends StatelessWidget {
                     : null,
               ),
               Divider(
-                  height: 1,
-                  color: colorScheme.outlineVariant.withAlpha(100)),
+                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
               _SecurityTile(
                 icon: Icons.verified_user_rounded,
                 title: 'Email Verification',
@@ -580,11 +579,23 @@ class _AccountSettingsPage extends StatelessWidget {
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } catch (_) {
+    } on FirebaseAuthException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not send reset email. Please try again.'),
+        SnackBar(
+          content: Text(AuthProvider.friendlyError(e)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e is StateError
+                ? e.message
+                : 'Could not send reset email. Please try again.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -601,11 +612,21 @@ class _AccountSettingsPage extends StatelessWidget {
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } catch (_) {
+    } on FirebaseAuthException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not send verification email.'),
+        SnackBar(
+          content: Text(AuthProvider.friendlyError(e)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e is StateError ? e.message : 'Could not send verification email.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -774,8 +795,7 @@ class _AiModelsSettingsPage extends StatelessWidget {
                 _PassByokFields(colorScheme: colorScheme),
               ],
               Divider(
-                  height: 1,
-                  color: colorScheme.outlineVariant.withAlpha(100)),
+                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
               // AI Features toggle
               SwitchListTile(
                 value: security.isAiEnabled,
@@ -813,8 +833,7 @@ class _AiModelsSettingsPage extends StatelessWidget {
                 ),
               ),
               Divider(
-                  height: 1,
-                  color: colorScheme.outlineVariant.withAlpha(100)),
+                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
               // Ghost Mode
               SwitchListTile(
                 value: !chat.isHistoryEnabled,
@@ -848,8 +867,7 @@ class _AiModelsSettingsPage extends StatelessWidget {
                 ),
               ),
               Divider(
-                  height: 1,
-                  color: colorScheme.outlineVariant.withAlpha(100)),
+                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
               // Clear Chat History
               _SecurityTile(
                 icon: Icons.delete_sweep_rounded,
@@ -869,8 +887,7 @@ class _AiModelsSettingsPage extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Clear Chat History?'),
         content: const Text(
             'This will erase all AI Study Buddy messages and start a fresh session.'),
@@ -1048,8 +1065,8 @@ class _AppearanceSettingsPage extends StatelessWidget {
                     ? () => ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             // TODO: implement gradient theme builder UI
-                            content:
-                                Text('Custom gradient theme builder coming soon!'),
+                            content: Text(
+                                'Custom gradient theme builder coming soon!'),
                             behavior: SnackBarBehavior.floating,
                           ),
                         )
@@ -1061,8 +1078,7 @@ class _AppearanceSettingsPage extends StatelessWidget {
                     : const Icon(Icons.lock_rounded, size: 18),
               ),
               Divider(
-                  height: 1,
-                  color: colorScheme.outlineVariant.withAlpha(100)),
+                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
               _SecurityTile(
                 icon: Icons.light_mode_rounded,
                 title: 'Custom Light/Dark Theme',
@@ -1074,8 +1090,8 @@ class _AppearanceSettingsPage extends StatelessWidget {
                     ? () => ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             // TODO: implement custom light/dark theme builder UI
-                            content:
-                                Text('Custom light/dark theme builder coming soon!'),
+                            content: Text(
+                                'Custom light/dark theme builder coming soon!'),
                             behavior: SnackBarBehavior.floating,
                           ),
                         )
@@ -1134,8 +1150,7 @@ class _AppearanceSettingsPage extends StatelessWidget {
                 ),
               ),
               Divider(
-                  height: 1,
-                  color: colorScheme.outlineVariant.withAlpha(100)),
+                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Container(
@@ -1310,9 +1325,8 @@ class _NavTabRow extends StatelessWidget {
     final isHome = tab == NavTab.home;
     // Home can never be hidden; other tabs can be hidden only if at least
     // one non-home tab remains visible.
-    final nonHomeVisible = navBar.visibleTabs
-        .where((t) => t != NavTab.home)
-        .length;
+    final nonHomeVisible =
+        navBar.visibleTabs.where((t) => t != NavTab.home).length;
     final canHide = !isHome && (nonHomeVisible > 1 || isHidden);
 
     return ListTile(
@@ -1398,7 +1412,8 @@ class _SubjectsSettingsPage extends StatelessWidget {
               final hasCustom = subjectsProvider.hasCustomName(canonical);
               return Column(
                 children: [
-                  if (i != 0) Divider(color: colorScheme.outlineVariant, height: 1),
+                  if (i != 0)
+                    Divider(color: colorScheme.outlineVariant, height: 1),
                   ListTile(
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1434,7 +1449,8 @@ class _SubjectsSettingsPage extends StatelessWidget {
                             icon: Icon(Icons.undo_rounded,
                                 size: 18, color: colorScheme.onSurfaceVariant),
                             tooltip: 'Reset to default',
-                            onPressed: () => subjectsProvider.setCustomName(canonical, ''),
+                            onPressed: () =>
+                                subjectsProvider.setCustomName(canonical, ''),
                           ),
                         IconButton(
                           icon: Icon(Icons.edit_outlined,
@@ -1494,7 +1510,9 @@ class _SubjectsSettingsPage extends StatelessWidget {
           ),
           textCapitalization: TextCapitalization.words,
           onSubmitted: (_) {
-            context.read<SubjectsProvider>().setCustomName(canonical, ctrl.text);
+            context
+                .read<SubjectsProvider>()
+                .setCustomName(canonical, ctrl.text);
             Navigator.pop(ctx);
           },
         ),
@@ -1505,7 +1523,9 @@ class _SubjectsSettingsPage extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () {
-              context.read<SubjectsProvider>().setCustomName(canonical, ctrl.text);
+              context
+                  .read<SubjectsProvider>()
+                  .setCustomName(canonical, ctrl.text);
               Navigator.pop(ctx);
             },
             child: const Text('Save'),
@@ -1556,19 +1576,16 @@ class _NotificationsSettingsPage extends StatelessWidget {
                 ),
                 trailing: Switch(
                   value: true,
-                  onChanged: (_) =>
-                      ScaffoldMessenger.of(context).showSnackBar(
+                  onChanged: (_) => ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content:
-                          Text('Notification settings coming soon.'),
+                      content: Text('Notification settings coming soon.'),
                       behavior: SnackBarBehavior.floating,
                     ),
                   ),
                 ),
               ),
               Divider(
-                  height: 1,
-                  color: colorScheme.outlineVariant.withAlpha(100)),
+                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Container(
@@ -1593,11 +1610,9 @@ class _NotificationsSettingsPage extends StatelessWidget {
                 ),
                 trailing: Switch(
                   value: true,
-                  onChanged: (_) =>
-                      ScaffoldMessenger.of(context).showSnackBar(
+                  onChanged: (_) => ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content:
-                          Text('Notification settings coming soon.'),
+                      content: Text('Notification settings coming soon.'),
                       behavior: SnackBarBehavior.floating,
                     ),
                   ),
@@ -1655,8 +1670,7 @@ class _PrivacySecuritySettingsPage extends StatelessWidget {
                 ),
               ),
               Divider(
-                  height: 1,
-                  color: colorScheme.outlineVariant.withAlpha(100)),
+                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
               _SecurityTile(
                 icon: Icons.file_download_rounded,
                 title: 'Export My Data',
@@ -1697,7 +1711,8 @@ class _AboutSettingsPage extends StatefulWidget {
 
 class _AboutSettingsPageState extends State<_AboutSettingsPage> {
   bool _checkingUpdate = false;
-  String? _updateResult; // null = not checked, '' = up to date, else = new version tag
+  String?
+      _updateResult; // null = not checked, '' = up to date, else = new version tag
 
   Future<void> _checkForUpdates() async {
     setState(() {
@@ -1755,9 +1770,7 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
                     if (body.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Text(
-                        body.length > 400
-                            ? '${body.substring(0, 400)}…'
-                            : body,
+                        body.length > 400 ? '${body.substring(0, 400)}…' : body,
                         style: const TextStyle(fontSize: 12),
                       ),
                     ],
@@ -1844,8 +1857,7 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
 
   void _showSnack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -1881,8 +1893,7 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
                 subtitle: const Text('Version $_kCurrentVersion'),
               ),
               Divider(
-                  height: 1,
-                  color: colorScheme.outlineVariant.withAlpha(100)),
+                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Container(
@@ -1941,8 +1952,8 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
             ),
             title: Text(
               'Check for Updates',
-              style: textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style:
+                  textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             subtitle: Text(
               _checkingUpdate
@@ -1952,7 +1963,8 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
                       : _updateResult!.isEmpty
                           ? 'You\'re up to date ✓'
                           : 'v${_updateResult!} available — tap to view',
-              style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+              style:
+                  TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
             ),
             trailing: _checkingUpdate
                 ? null
@@ -2046,8 +2058,7 @@ class _ByokKeyFieldState extends State<_ByokKeyField> {
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
-                            ?.copyWith(
-                                color: colorScheme.onSurfaceVariant)),
+                            ?.copyWith(color: colorScheme.onSurfaceVariant)),
                   ],
                 ),
               ),
@@ -2063,8 +2074,7 @@ class _ByokKeyFieldState extends State<_ByokKeyField> {
               fillColor: colorScheme.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide:
-                    BorderSide(color: colorScheme.outlineVariant),
+                borderSide: BorderSide(color: colorScheme.outlineVariant),
               ),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -2075,12 +2085,10 @@ class _ByokKeyFieldState extends State<_ByokKeyField> {
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
                         size: 20),
-                    onPressed: () =>
-                        setState(() => _obscure = !_obscure),
+                    onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                   IconButton(
-                    icon: const Icon(
-                        Icons.check_circle_rounded, size: 20),
+                    icon: const Icon(Icons.check_circle_rounded, size: 20),
                     color: colorScheme.primary,
                     tooltip: 'Save key',
                     onPressed: () {
@@ -2092,8 +2100,7 @@ class _ByokKeyFieldState extends State<_ByokKeyField> {
                         SnackBar(
                           content: const Text('API key saved.'),
                           behavior: SnackBarBehavior.floating,
-                          backgroundColor:
-                              colorScheme.surfaceContainerHighest,
+                          backgroundColor: colorScheme.surfaceContainerHighest,
                         ),
                       );
                     },
@@ -2132,8 +2139,7 @@ class _PassByokFieldsState extends State<_PassByokFields> {
     super.initState();
     final chat = context.read<ChatProvider>();
     _keyController = TextEditingController(text: chat.passCustomApiKey);
-    _endpointController =
-        TextEditingController(text: chat.passCustomEndpoint);
+    _endpointController = TextEditingController(text: chat.passCustomEndpoint);
   }
 
   @override
@@ -2194,8 +2200,8 @@ class _PassByokFieldsState extends State<_PassByokFields> {
                     ),
                     Text(
                       'OpenAI-compatible endpoint + key.',
-                      style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant),
+                      style: textTheme.bodySmall
+                          ?.copyWith(color: colorScheme.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -2369,8 +2375,8 @@ class _VibeRow extends StatelessWidget {
                                 color: const Color(0xFFB8860B).withAlpha(40),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                    color: const Color(0xFFB8860B)
-                                        .withAlpha(100)),
+                                    color:
+                                        const Color(0xFFB8860B).withAlpha(100)),
                               ),
                               child: Text(
                                 'Helper+',
@@ -2414,9 +2420,7 @@ class _VibeRow extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          Divider(
-              height: 1,
-              color: colorScheme.outlineVariant.withAlpha(100)),
+          Divider(height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
       ],
     );
   }
@@ -2467,17 +2471,14 @@ class _SecurityTile extends StatelessWidget {
         child: Icon(icon, color: colorScheme.onPrimaryContainer, size: 20),
       ),
       title: Text(title,
-          style:
-              const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
       subtitle: Text(
         subtitle,
-        style: TextStyle(
-            fontSize: 12, color: colorScheme.onSurfaceVariant),
+        style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
       ),
       trailing: trailing ??
           (onTap != null
-              ? Icon(Icons.chevron_right,
-                  color: colorScheme.onSurfaceVariant)
+              ? Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant)
               : null),
       onTap: onTap,
     );
@@ -2504,8 +2505,7 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Confirm Your Password'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -2572,8 +2572,7 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
       setState(() => _setupLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text(
-              'Incorrect password. Passkey setup cancelled.'),
+          content: const Text('Incorrect password. Passkey setup cancelled.'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: cs.errorContainer,
         ),
@@ -2673,13 +2672,12 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
             ),
             title: Text(
               'App Lock',
-              style: GoogleFonts.lexend(
-                  fontWeight: FontWeight.w600, fontSize: 14),
+              style:
+                  GoogleFonts.lexend(fontWeight: FontWeight.w600, fontSize: 14),
             ),
             subtitle: Text(
               'Require biometrics once when the app is launched.',
-              style:
-                  TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
             ),
             value: security.isAppLockEnabled,
             onChanged: (v) => security.setAppLock(v),
@@ -2700,13 +2698,12 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
             ),
             title: Text(
               'Biometric for NFC Bump',
-              style: GoogleFonts.lexend(
-                  fontWeight: FontWeight.w600, fontSize: 14),
+              style:
+                  GoogleFonts.lexend(fontWeight: FontWeight.w600, fontSize: 14),
             ),
             subtitle: Text(
               'Verify your identity before starting a Bump.',
-              style:
-                  TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
             ),
             value: security.isBioNfcEnabled,
             onChanged: (v) => security.setBioNfc(v),
@@ -2733,19 +2730,15 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
               ),
               subtitle: Text(
                 'Register your biometric as a secure Passkey.',
-                style: TextStyle(
-                    fontSize: 12, color: cs.onSurfaceVariant),
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
               ),
               trailing: _setupLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child:
-                          CircularProgressIndicator(strokeWidth: 2))
-                  : Icon(Icons.chevron_right,
-                      color: cs.onSurfaceVariant),
-              onTap:
-                  _setupLoading ? null : () => _setupPasskey(security),
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+              onTap: _setupLoading ? null : () => _setupPasskey(security),
             )
           else ...[
             ListTile(
@@ -2767,13 +2760,10 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
               ),
               subtitle: Text(
                 'Your biometric Passkey is registered.',
-                style: TextStyle(
-                    fontSize: 12, color: cs.onSurfaceVariant),
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
               ),
             ),
-            Divider(
-                height: 1,
-                color: cs.outlineVariant.withAlpha(100)),
+            Divider(height: 1, color: cs.outlineVariant.withAlpha(100)),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Container(
@@ -2789,26 +2779,19 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
               title: Text(
                 'Delete Passkey',
                 style: GoogleFonts.lexend(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: cs.error),
+                    fontWeight: FontWeight.w600, fontSize: 14, color: cs.error),
               ),
               subtitle: Text(
                 'Remove your saved biometric Passkey.',
-                style: TextStyle(
-                    fontSize: 12, color: cs.onSurfaceVariant),
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
               ),
               trailing: _deleteLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child:
-                          CircularProgressIndicator(strokeWidth: 2))
-                  : Icon(Icons.chevron_right,
-                      color: cs.onSurfaceVariant),
-              onTap: _deleteLoading
-                  ? null
-                  : () => _deletePasskey(security),
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+              onTap: _deleteLoading ? null : () => _deletePasskey(security),
             ),
           ],
         ],
@@ -3116,12 +3099,11 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                 child: SwitchListTile(
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                  secondary: const Icon(Icons.access_time_rounded,
-                      color: Colors.cyan),
+                  secondary:
+                      const Icon(Icons.access_time_rounded, color: Colors.cyan),
                   title: const Text(
                     'Time-Travel Shop',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 14),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   ),
                   subtitle: const Text(
                     'Bypasses 4/7/10/12-day timers — all drops available now',
@@ -3141,8 +3123,7 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                   await context.read<EventProvider>().resetForTesting();
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('🏆 Event progress reset!')),
+                      const SnackBar(content: Text('🏆 Event progress reset!')),
                     );
                   }
                 },
@@ -3316,8 +3297,8 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
           // ── QA Release Readiness Checklist ─────────────────────────────
           Card(
             color: colorScheme.surfaceContainerLow,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -3509,8 +3490,7 @@ class _DevButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(color: color.withAlpha(80)),
           ),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           alignment: Alignment.centerLeft,
         ),
         child: Row(

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/auth_email_workflow.dart';
+import '../services/auth_email_service.dart';
 import '../services/database_service.dart';
 
 /// Manages Firebase Email/Password authentication state.
@@ -324,7 +324,7 @@ class AuthProvider extends ChangeNotifier {
         password: password,
       );
       if (displayName != null && displayName.isNotEmpty) {
-        await credential?.user?.updateDisplayName(displayName);
+        await credential.user?.updateDisplayName(displayName);
         // Reload so currentUser.displayName is up-to-date immediately.
         await auth.currentUser?.reload();
         _user = auth.currentUser;
@@ -338,26 +338,32 @@ class AuthProvider extends ChangeNotifier {
 
   /// Sends a password-reset email to [email].
   Future<void> sendPasswordResetEmail(String email) async {
-    final auth = _auth;
-    if (auth == null) {
-      throw StateError('Firebase auth is not available.');
-    }
     try {
-      await auth.sendPasswordResetEmail(
+      await AuthEmailService.sendPasswordResetEmail(
         email: email.trim(),
-        actionCodeSettings: AuthEmailWorkflow.passwordResetActionCodeSettings,
       );
-    } on FirebaseAuthException catch (e) {
-      debugPrint(
-          '[AuthProvider] password reset failed: ${e.code} - ${e.message}');
+    } catch (e) {
+      debugPrint('[AuthProvider] password reset failed: $e');
       rethrow;
     }
   }
 
   /// Sends a verification email to the current user.
   Future<void> sendEmailVerification() async {
-    await _auth?.currentUser?.sendEmailVerification(
-      AuthEmailWorkflow.emailVerificationActionCodeSettings,
+    final auth = _auth;
+    if (auth == null) {
+      throw StateError('Firebase auth is not available.');
+    }
+    final user = auth.currentUser;
+    if (user == null) {
+      throw StateError('No signed-in user.');
+    }
+    if (user.email == null || user.email!.trim().isEmpty) {
+      throw StateError('Current user has no email address.');
+    }
+    await AuthEmailService.sendVerificationEmail(
+      email: user.email!,
+      displayName: user.displayName,
     );
   }
 

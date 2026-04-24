@@ -1,66 +1,40 @@
 # Auth Email Workflow
 
-## Firebase Console checklist
+## Architecture
 
-1. Open Firebase Console for the project.
-2. Go to Authentication -> Sign-in method.
-3. Enable Email/Password.
-4. In Authentication -> Templates, open each template you plan to use:
-   - Email verification
-   - Password reset
-5. Set the action URL to:
-   - https://hwhelper.tech/auth-handler
-6. Keep the Flutter app set to handle the code in-app.
-7. Add `hwhelper.tech` to Authentication -> Settings -> Authorized domains.
-8. If you are using a custom SMTP server, enter the Resend SMTP settings below.
+The Flutter app now calls a small Firebase Functions endpoint, and that backend generates the Firebase action links and sends the branded email through Resend. This bypasses Firebase's locked email-template body while keeping Firebase Auth as the source of truth for verification and password-reset actions.
 
-## Firebase SMTP settings for Resend
+## Repo pieces
 
-Use these values in Firebase Console -> Authentication -> Templates -> SMTP:
+- Flutter client service: [lib/services/auth_email_service.dart](lib/services/auth_email_service.dart)
+- Firebase Functions backend: [functions/index.js](functions/index.js)
+- Shared branded layout: [docs/email_templates/resend_email_layout.js](docs/email_templates/resend_email_layout.js)
 
-- SMTP host: smtp.resend.com
-- Port: 465
-- Username: resend
-- Password: your Resend SMTP API key
-- Security: SSL
+## Firebase setup
 
-If Firebase asks for a sender address, use a verified sender on your Resend domain, such as `no-reply@hwhelper.tech`.
+1. Enable Email/Password in Firebase Authentication.
+2. Keep `hwhelper.tech` in Authorized Domains.
+3. Do not rely on the Firebase template body for these auth emails anymore.
+4. Deploy the Functions folder with your Firebase project.
 
-## DNS records to add in Vercel for Resend
+## Resend setup
 
-Resend generates the exact DNS values for your domain inside the Resend dashboard. Add the records it gives you in Vercel DNS. The usual record set is:
+1. Keep the `hwhelper.tech` domain verified in Resend.
+2. Set `RESEND_API_KEY` in the Functions environment.
+3. Optionally set `RESEND_FROM`, for example `Homework Helper <no-reply@hwhelper.tech>`.
 
-- 1 SPF TXT record for the root domain, usually `v=spf1 include:resend.com ~all`
-- 2 DKIM CNAME records supplied by Resend
-- Optional DMARC TXT record for `._dmarc.hwhelper.tech`
+## Functions endpoint
 
-Important:
+The client posts to `sendAuthEmail` with:
 
-- Keep only one SPF TXT record per domain.
-- If you already have an SPF record, merge Resend into the existing TXT value.
-- Copy the exact hostnames and targets from the Resend domain screen; they are domain-specific.
+- `action`: `verifyEmail` or `resetPassword`
+- `email`: recipient email
+- `displayName`: optional personalization for verification
 
-## Web app routing
+The function generates the Firebase link with `url: https://hwhelper.tech/auth-handler` and `handleCodeInApp: true`, then sends the HTML through Resend.
 
-- Verification links can be opened directly in the Flutter app.
-- Password reset links open the in-app reset screen, where the user enters a new password and the app calls `confirmPasswordReset`.
-- Verification links automatically call `applyActionCode` and then refresh the signed-in user.
+## What you still need to do
 
-## Resend email layout in JavaScript
-
-If you want to build the email entirely in JavaScript, use [docs/email_templates/resend_email_layout.js](docs/email_templates/resend_email_layout.js) as the pattern:
-
-- Create one function that returns a full HTML string.
-- Pass the HTML into `resend.emails.send({ html: ... })`.
-- Keep the email responsive with a single-column card, Material 3-like tonal surfaces, and one elevated CTA button.
-- Add a greeting line or recipient name when you have it so the message feels personal.
-- Reuse the same layout function for both verification and password reset messages.
-
-## What you need to do on your side
-
-1. Create or verify the `hwhelper.tech` sender domain in Resend.
-2. Copy the exact SPF/DKIM DNS records from Resend into Vercel DNS.
-3. Paste the SMTP credentials into Firebase Auth email templates.
-4. Make sure `hwhelper.tech` is in Firebase Authorized Domains.
-5. Deploy the Flutter web app so `https://hwhelper.tech/auth-handler` serves this app.
-6. Send one verification email and one password reset email to confirm the full flow.
+1. Deploy Firebase Functions.
+2. Set the Resend env vars for the function.
+3. Run the Flutter web app and test verification and password reset end to end.
