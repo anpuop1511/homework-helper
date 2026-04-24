@@ -7,13 +7,16 @@
     <style>
       :root {
         color-scheme: light;
-        --bg: #f5f7fb;
-        --panel: #ffffff;
-        --text: #0f172a;
-        --muted: #5b6478;
-        --accent: #007fff;
-        --accent-dark: #005fcc;
-        --border: #d9e2f2;
+        --bg: #f6f7fb;
+        --surface: #ffffff;
+        --surface-variant: #eef2ff;
+        --text: #10172a;
+        --muted: #55607a;
+        --primary: #3559e0;
+        --primary-strong: #2442b5;
+        --outline: #d7deef;
+        --outline-strong: #bcc8e4;
+        --shadow: rgba(16, 23, 42, 0.12);
       }
 
       * {
@@ -23,31 +26,45 @@
       body {
         margin: 0;
         padding: 0;
-        background: linear-gradient(135deg, #eef4ff 0%, #f8fbff 45%, #edf7ff 100%);
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(53, 89, 224, 0.12), transparent 30%),
+          radial-gradient(circle at top right, rgba(33, 150, 243, 0.1), transparent 28%),
+          linear-gradient(180deg, #f8f9ff 0%, #f3f5fb 100%);
+        font-family: Roboto, Arial, Helvetica, sans-serif;
         color: var(--text);
       }
 
       .wrap {
         width: 100%;
-        padding: 40px 16px;
+        padding: 44px 16px;
       }
 
       .card {
         max-width: 640px;
         margin: 0 auto;
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 24px;
-        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+        background: var(--surface);
+        border: 1px solid var(--outline);
+        border-radius: 28px;
+        box-shadow: 0 20px 64px var(--shadow);
         overflow: hidden;
       }
 
       .hero {
-        padding: 40px 40px 24px;
+        position: relative;
+        padding: 42px 40px 28px;
         background:
-          radial-gradient(circle at top right, rgba(0, 127, 255, 0.18), transparent 36%),
-          linear-gradient(180deg, rgba(0, 127, 255, 0.08), transparent 60%);
+          linear-gradient(180deg, rgba(53, 89, 224, 0.12), rgba(53, 89, 224, 0.02) 58%, transparent),
+          var(--surface-variant);
+      }
+
+      .hero::after {
+        content: "";
+        position: absolute;
+        inset: 18px 18px auto auto;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(53, 89, 224, 0.14), transparent 68%);
       }
 
       .badge {
@@ -56,25 +73,25 @@
         gap: 8px;
         padding: 8px 14px;
         border-radius: 999px;
-        background: rgba(0, 127, 255, 0.1);
-        color: var(--accent-dark);
+        background: rgba(53, 89, 224, 0.12);
+        color: var(--primary-strong);
         font-size: 12px;
         font-weight: 700;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
       }
 
       h1 {
         margin: 18px 0 12px;
-        font-size: 34px;
-        line-height: 1.08;
-        letter-spacing: -0.04em;
+        font-size: 32px;
+        line-height: 1.12;
+        letter-spacing: -0.03em;
       }
 
       p {
         margin: 0;
-        font-size: 16px;
-        line-height: 1.7;
+        font-size: 15px;
+        line-height: 1.75;
         color: var(--muted);
       }
 
@@ -82,23 +99,32 @@
         padding: 0 40px 40px;
       }
 
+      .supporting-card {
+        margin-top: 18px;
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: #f8faff;
+        border: 1px solid var(--outline);
+      }
+
       .button {
         display: inline-block;
         margin: 28px 0 20px;
-        padding: 16px 24px;
-        border-radius: 14px;
-        background: linear-gradient(180deg, var(--accent), var(--accent-dark));
+        padding: 16px 26px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, var(--primary), var(--primary-strong));
         color: #fff !important;
         text-decoration: none;
         font-weight: 700;
         font-size: 15px;
-        box-shadow: 0 14px 30px rgba(0, 127, 255, 0.25);
+        letter-spacing: 0.01em;
+        box-shadow: 0 12px 24px rgba(53, 89, 224, 0.28);
       }
 
       .meta {
         margin-top: 20px;
         padding-top: 20px;
-        border-top: 1px solid var(--border);
+        border-top: 1px solid var(--outline);
         font-size: 13px;
         color: var(--muted);
         word-break: break-word;
@@ -107,7 +133,7 @@
       .footer {
         padding: 18px 40px 36px;
         font-size: 12px;
-        color: #7b8496;
+        color: #6b7489;
       }
 
       @media (max-width: 640px) {
@@ -120,6 +146,11 @@
 
         h1 {
           font-size: 28px;
+        }
+
+        .hero::after {
+          width: 92px;
+          height: 92px;
         }
       }
     </style>
@@ -137,10 +168,12 @@
         </div>
         <div class="body">
           <a class="button" href="{{ACTION_URL}}">Verify Email</a>
-          <p>
-            If the button does not work, paste this link into your browser:
-          </p>
-          <div class="meta">{{ACTION_URL}}</div>
+          <div class="supporting-card">
+            <p>
+              If the button does not work, paste this link into your browser:
+            </p>
+            <div class="meta">{{ACTION_URL}}</div>
+          </div>
         </div>
         <div class="footer">
           If you did not create a Homework Helper account, you can ignore this email.

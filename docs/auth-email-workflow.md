@@ -52,7 +52,7 @@ If you want to build the email entirely in JavaScript, use [docs/email_templates
 
 - Create one function that returns a full HTML string.
 - Pass the HTML into `resend.emails.send({ html: ... })`.
-- Keep the email responsive with a single-column card, strong headline, and one CTA button.
+- Keep the email responsive with a single-column card, Material 3-like tonal surfaces, and one elevated CTA button.
 - Reuse the same layout function for both verification and password reset messages.
 
 ## What you need to do on your side

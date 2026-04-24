@@ -27,81 +27,111 @@ function buildEmailLayout({ title, headline, body, ctaText, ctaUrl, footer }) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${safeTitle}</title>
     <style>
+      :root {
+        color-scheme: light;
+      }
+
       body {
         margin: 0;
         padding: 0;
-        background: #f6f8fc;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        color: #0f172a;
+        background:
+          radial-gradient(circle at top left, rgba(53, 89, 224, 0.12), transparent 30%),
+          radial-gradient(circle at top right, rgba(33, 150, 243, 0.1), transparent 28%),
+          linear-gradient(180deg, #f8f9ff 0%, #f3f5fb 100%);
+        font-family: Roboto, Arial, Helvetica, sans-serif;
+        color: #10172a;
       }
 
       .container {
         width: 100%;
-        padding: 40px 16px;
+        padding: 44px 16px;
       }
 
       .card {
         max-width: 640px;
         margin: 0 auto;
         background: #ffffff;
-        border: 1px solid #dbe3f0;
-        border-radius: 24px;
+        border: 1px solid #d7deef;
+        border-radius: 28px;
         overflow: hidden;
-        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+        box-shadow: 0 20px 64px rgba(16, 23, 42, 0.12);
       }
 
       .hero {
-        padding: 40px;
-        background: linear-gradient(180deg, rgba(0, 127, 255, 0.12), transparent);
+        position: relative;
+        padding: 42px 40px 28px;
+        background:
+          linear-gradient(180deg, rgba(53, 89, 224, 0.12), rgba(53, 89, 224, 0.02) 58%, transparent),
+          #eef2ff;
+      }
+
+      .hero::after {
+        content: "";
+        position: absolute;
+        inset: 18px 18px auto auto;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(53, 89, 224, 0.14), transparent 68%);
       }
 
       .brand {
         display: inline-block;
-        padding: 8px 12px;
+        padding: 8px 14px;
         border-radius: 999px;
-        background: rgba(0, 127, 255, 0.1);
-        color: #005fcc;
+        background: rgba(53, 89, 224, 0.12);
+        color: #2442b5;
         font-size: 12px;
         font-weight: 700;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
       }
 
       h1 {
         margin: 18px 0 12px;
         font-size: 32px;
-        line-height: 1.1;
-        letter-spacing: -0.04em;
+        line-height: 1.12;
+        letter-spacing: -0.03em;
       }
 
       p {
         margin: 0;
-        font-size: 16px;
-        line-height: 1.7;
-        color: #5b6478;
+        font-size: 15px;
+        line-height: 1.75;
+        color: #55607a;
       }
 
       .content {
         padding: 0 40px 40px;
       }
 
+      .supporting-card {
+        margin-top: 18px;
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: #f8faff;
+        border: 1px solid #d7deef;
+      }
+
       .button {
         display: inline-block;
         margin: 28px 0 20px;
-        padding: 16px 24px;
-        border-radius: 14px;
-        background: linear-gradient(180deg, #007fff, #005fcc);
+        padding: 16px 26px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #3559e0, #2442b5);
         color: #fff !important;
         text-decoration: none;
         font-weight: 700;
         font-size: 15px;
+        letter-spacing: 0.01em;
+        box-shadow: 0 12px 24px rgba(53, 89, 224, 0.28);
       }
 
       .footnote {
         padding: 18px 40px 36px;
-        border-top: 1px solid #dbe3f0;
+        border-top: 1px solid #d7deef;
         font-size: 12px;
-        color: #7b8496;
+        color: #6b7489;
       }
 
       @media (max-width: 640px) {
@@ -114,6 +144,11 @@ function buildEmailLayout({ title, headline, body, ctaText, ctaUrl, footer }) {
 
         h1 {
           font-size: 28px;
+        }
+
+        .hero::after {
+          width: 92px;
+          height: 92px;
         }
       }
     </style>
@@ -128,8 +163,10 @@ function buildEmailLayout({ title, headline, body, ctaText, ctaUrl, footer }) {
         </div>
         <div class="content">
           <a class="button" href="${safeCtaUrl}">${safeCtaText}</a>
-          <p>If the button does not work, copy this link into your browser:</p>
-          <p style="word-break: break-word; margin-top: 12px; color: #005fcc;">${safeCtaUrl}</p>
+          <div class="supporting-card">
+            <p>If the button does not work, copy this link into your browser:</p>
+            <p style="word-break: break-word; margin-top: 12px; color: #2442b5;">${safeCtaUrl}</p>
+          </div>
         </div>
         <div class="footnote">${safeFooter}</div>
       </div>
