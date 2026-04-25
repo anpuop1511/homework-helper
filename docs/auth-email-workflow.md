@@ -32,9 +32,10 @@ Keep the `hwhelper.tech` domain verified in Resend.
 
 The client posts to `https://homework-helper-web-dun.vercel.app/api/send-auth-email` by default, or to the `AUTH_EMAIL_API_BASE_URL` override if you set one. The payload is:
 
-- `action`: `verifyEmail` or `resetPassword`
+- `action`: `verifyEmail`, `resetPassword`, or `deleteAccount`
 - `email`: recipient email
 - `displayName`: optional personalization for verification
+- `confirmationCode`: required for `deleteAccount`
 
 The endpoint generates the Firebase link with `url: https://www.hwhelper.tech/app` and `handleCodeInApp: true`, then sends the HTML through Resend.
 

@@ -252,7 +252,7 @@ function buildEmailLayout({
 </html>`;
 }
 
-async function sendAuthEmail({ to, action, displayName }) {
+async function sendAuthEmail({ to, action, displayName, confirmationCode }) {
   const email = String(to || '').trim();
   if (!email) throw new Error('Email is required.');
 
@@ -287,6 +287,23 @@ async function sendAuthEmail({ to, action, displayName }) {
     body = 'Use the button below to choose a new password for your account.';
     ctaText = 'Reset Password';
     footer = 'If you did not request a password reset, you can ignore this email.';
+  } else if (action === 'deleteAccount') {
+    const safeConfirmationCode = String(confirmationCode || '').trim();
+    if (!safeConfirmationCode) {
+      throw new Error('Confirmation code is required for deleteAccount.');
+    }
+
+    link = `${authHandlerUrl}?mode=deleteAccount&email=${encodeURIComponent(
+      email,
+    )}&confirmationCode=${encodeURIComponent(safeConfirmationCode)}`;
+    subject = 'Confirm your Homework Helper account deletion';
+    title = 'Confirm account deletion';
+    headline = 'Review your deletion request.';
+    body =
+      'Use the confirmation code below to approve the request in Homework Helper.';
+    ctaText = 'Approve Deletion Request';
+    footer =
+      'If you did not request to delete your Homework Helper account, you can ignore this email.';
   } else {
     throw new Error('Unsupported action.');
   }
@@ -325,13 +342,13 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { action, email, displayName } = req.body || {};
+    const { action, email, displayName, confirmationCode } = req.body || {};
     if (!action || !email) {
       res.status(400).json({ error: 'action-and-email-required' });
       return;
     }
 
-    await sendAuthEmail({ action, to: email, displayName });
+    await sendAuthEmail({ action, to: email, displayName, confirmationCode });
     res.json({ ok: true });
   } catch (error) {
     console.error('[send-auth-email] failed:', error);
