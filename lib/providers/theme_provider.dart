@@ -151,11 +151,14 @@ extension AppVibeExtension on AppVibe {
 /// Firebase UID is available, syncs it to Cloud Firestore.
 class ThemeProvider extends ChangeNotifier {
   static const _prefKey = 'app_vibe';
+  static const _prefBetaDesign = 'beta_design_enabled';
 
   AppVibe _vibe = AppVibe.systemDynamic;
   String? _uid;
+  bool _betaDesignEnabled = false;
 
   AppVibe get vibe => _vibe;
+  bool get betaDesignEnabled => _betaDesignEnabled;
 
   ThemeProvider() {
     _loadVibe();
@@ -164,6 +167,7 @@ class ThemeProvider extends ChangeNotifier {
   Future<void> _loadVibe() async {
     final prefs = await SharedPreferences.getInstance();
     final storedIndex = prefs.getInt(_prefKey);
+    _betaDesignEnabled = prefs.getBool(_prefBetaDesign) ?? false;
     if (storedIndex != null &&
         storedIndex >= 0 &&
         storedIndex < AppVibe.values.length) {
@@ -207,6 +211,14 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> setBetaDesignEnabled(bool enabled) async {
+    if (_betaDesignEnabled == enabled) return;
+    _betaDesignEnabled = enabled;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefBetaDesign, enabled);
+  }
+
   /// Reverts to the default vibe if the currently-set vibe requires a
   /// subscription that is no longer active.
   ///
@@ -217,4 +229,3 @@ class ThemeProvider extends ChangeNotifier {
     // Helper+ has been retired; existing vibes stay available.
   }
 }
-

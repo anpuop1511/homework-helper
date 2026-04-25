@@ -956,103 +956,139 @@ class _AppearanceSettingsPage extends StatelessWidget {
               ?.copyWith(color: colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 10),
-          _SquircleCard(
-            colorScheme: colorScheme,
-            child: Column(
-              children: AppVibe.values.map((vibe) {
-                final isSelected = themeProvider.vibe == vibe;
-                final isSpring = _springVibes.contains(vibe);
-                final isSeason2 = _season2Vibes.contains(vibe);
-                final isPremium = kPremiumVibes.contains(vibe);
-                final cosmeticId = 'vibe_${vibe.name}';
-                final isUnlocked = (!isSpring ||
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: SwitchListTile(
+            value: themeProvider.betaDesignEnabled,
+            onChanged: (value) =>
+                context.read<ThemeProvider>().setBetaDesignEnabled(value),
+            contentPadding: EdgeInsets.zero,
+            secondary: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: themeProvider.betaDesignEnabled
+                    ? colorScheme.primaryContainer
+                    : colorScheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.science_rounded,
+                color: themeProvider.betaDesignEnabled
+                    ? colorScheme.onPrimaryContainer
+                    : colorScheme.onSurfaceVariant,
+                size: 20,
+              ),
+            ),
+            title: Text(
+              'Beta design',
+              style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              'Try the new toolbar nav, refreshed home layout, and updated loading states.',
+              style: textTheme.bodySmall
+                  ?.copyWith(color: colorScheme.onSurfaceVariant),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: Column(
+            children: AppVibe.values.map((vibe) {
+              final isSelected = themeProvider.vibe == vibe;
+              final isSpring = _springVibes.contains(vibe);
+              final isSeason2 = _season2Vibes.contains(vibe);
+              final isPremium = kPremiumVibes.contains(vibe);
+              final cosmeticId = 'vibe_${vibe.name}';
+              final isUnlocked = (!isSpring ||
                       userProvider.unlockedCosmetics.contains(cosmeticId)) &&
-                    (!isSeason2 ||
+                  (!isSeason2 ||
                       season2Unlocked ||
                       userProvider.unlockedCosmetics.contains(cosmeticId)) &&
-                    (!isPremium || entitlements.canUsePremiumThemes);
-                final vibeScheme = ColorScheme.fromSeed(
-                  seedColor: vibe.seedColor,
-                  brightness: Theme.of(context).brightness,
-                );
-                return _VibeRow(
-                  vibe: vibe,
-                  vibeScheme: vibeScheme,
-                  isSelected: isSelected,
-                  isLocked: !isUnlocked,
-                  isPremiumLocked: false,
-                  onTap: () {
-                    if (!isUnlocked) {
-                      if (isPremium && !entitlements.canUsePremiumThemes) {
-                        showDialog<void>(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24)),
-                            title: Row(
-                              children: [
-                                Text(vibe.emoji),
-                                const SizedBox(width: 8),
-                                Flexible(child: Text(vibe.label)),
-                              ],
-                            ),
-                            content: const Text(
-                              'This theme is free to use for everyone.\n\n'
-                              'Season 2 and season 3 cosmetic availability is shown in the app.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Maybe Later'),
-                              ),
-                              FilledButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                                child: const Text('Got it'),
-                              ),
+                  (!isPremium || entitlements.canUsePremiumThemes);
+              final vibeScheme = ColorScheme.fromSeed(
+                seedColor: vibe.seedColor,
+                brightness: Theme.of(context).brightness,
+              );
+              return _VibeRow(
+                vibe: vibe,
+                vibeScheme: vibeScheme,
+                isSelected: isSelected,
+                isLocked: !isUnlocked,
+                isPremiumLocked: false,
+                onTap: () {
+                  if (!isUnlocked) {
+                    if (isPremium && !entitlements.canUsePremiumThemes) {
+                      showDialog<void>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24)),
+                          title: Row(
+                            children: [
+                              Text(vibe.emoji),
+                              const SizedBox(width: 8),
+                              Flexible(child: Text(vibe.label)),
                             ],
                           ),
-                        );
-                      } else {
-                          final seasonLockedMessage = isSeason2
-                            ? 'This theme is part of Season ${kSeason2.number}: ${kSeason2.name}.\n\n'
+                          content: const Text(
+                            'This theme is free to use for everyone.\n\n'
+                            'Season 2 and season 3 cosmetic availability is shown in the app.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Maybe Later'),
+                            ),
+                            FilledButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                              child: const Text('Got it'),
+                            ),
+                          ],
+                        ),
+                      );
+                    } else {
+                      final seasonLockedMessage = isSeason2
+                          ? 'This theme is part of Season ${kSeason2.number}: ${kSeason2.name}.\n\n'
                               'It unlocks when the new season starts on '
                               '${kSeason2.startsAtUtc.month}/${kSeason2.startsAtUtc.day}/${kSeason2.startsAtUtc.year} UTC, '
                               'or when you unlock it in the Season Shop.'
-                            : 'This theme was part of the Spring Bloomin\' Battle Pass.\n\n'
+                          : 'This theme was part of the Spring Bloomin\' Battle Pass.\n\n'
                               'If you missed it, it unlocks in the Season Shop in '
                               '${formatCountdown(shopEligibleAtForPastPassReward(seasonId: kSeason1.id).difference(effectiveNow))}.';
-                        showDialog<void>(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: Row(
-                              children: [
-                                Text(vibe.emoji),
-                                const SizedBox(width: 8),
-                                Text(vibe.label),
-                              ],
-                            ),
-                            content: Text(seasonLockedMessage),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Got it'),
-                              ),
+                      showDialog<void>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: Row(
+                            children: [
+                              Text(vibe.emoji),
+                              const SizedBox(width: 8),
+                              Text(vibe.label),
                             ],
                           ),
-                        );
-                      }
-                      return;
+                          content: Text(seasonLockedMessage),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Got it'),
+                            ),
+                          ],
+                        ),
+                      );
                     }
-                    context.read<ThemeProvider>().setVibe(vibe);
-                  },
-                  showDivider: vibe != AppVibe.values.last,
-                  colorScheme: colorScheme,
-                );
-              }).toList(),
-            ),
+                    return;
+                  }
+                  context.read<ThemeProvider>().setVibe(vibe);
+                },
+                showDivider: vibe != AppVibe.values.last,
+                colorScheme: colorScheme,
+              );
+            }).toList(),
           ),
+        ),
         const SizedBox(height: 12),
         // ── Premium theme builder stubs ──────────────────────────────────
         _SquircleCard(
@@ -1063,8 +1099,8 @@ class _AppearanceSettingsPage extends StatelessWidget {
                 icon: Icons.gradient_rounded,
                 title: 'Custom Gradient Theme',
                 subtitle: entitlements.canUseGradientThemeBuilder
-                  ? 'Create your own gradient color theme.'
-                  : 'Available in Season 3',
+                    ? 'Create your own gradient color theme.'
+                    : 'Available in Season 3',
                 colorScheme: colorScheme,
                 onTap: entitlements.canUseGradientThemeBuilder
                     ? () => ScaffoldMessenger.of(context).showSnackBar(
@@ -1103,8 +1139,8 @@ class _AppearanceSettingsPage extends StatelessWidget {
                 icon: Icons.light_mode_rounded,
                 title: 'Custom Light/Dark Theme',
                 subtitle: entitlements.canUseCustomLightDarkTheme
-                  ? 'Design your own light and dark color themes.'
-                  : 'Available in Season 3',
+                    ? 'Design your own light and dark color themes.'
+                    : 'Available in Season 3',
                 colorScheme: colorScheme,
                 onTap: entitlements.canUseCustomLightDarkTheme
                     ? () => ScaffoldMessenger.of(context).showSnackBar(
@@ -2338,7 +2374,7 @@ class _PassByokFieldsState extends State<_PassByokFields> {
                   FocusScope.of(context).unfocus();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                        // TODO(billing): remove this note once advanced BYOK
+                      // TODO(billing): remove this note once advanced BYOK
                       //   chat backend is implemented.
                       content: const Text(
                           'Credentials saved. Advanced endpoint chat responses '

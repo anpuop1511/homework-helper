@@ -65,6 +65,8 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   static const double _mobileNavBarHeight = 78;
+  static const double _betaToolbarHeight = 92;
+  static const double _betaToolbarRailWidth = 112;
 
   int _currentIndex = 0;
   final Set<NavTab> _loadedTabs = {NavTab.home};
@@ -123,6 +125,182 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
+  Widget _betaNavButton({
+    required NavTab tab,
+    required bool selected,
+    required bool hasPendingRequests,
+    required ColorScheme colorScheme,
+    required VoidCallback onTap,
+    required bool vertical,
+  }) {
+    final icon = selected ? tab.selectedIcon : tab.icon;
+    final background = selected
+        ? colorScheme.primaryContainer
+        : colorScheme.surfaceContainerHigh.withAlpha(200);
+    final foreground = selected
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSurfaceVariant;
+
+    final iconWidget = hasPendingRequests && tab == NavTab.social
+        ? Badge(
+            isLabelVisible: true,
+            child: Icon(icon, size: selected ? 26 : 24, color: foreground),
+          )
+        : Icon(icon, size: selected ? 26 : 24, color: foreground);
+
+    final content = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          padding: EdgeInsets.symmetric(
+            horizontal: vertical ? 8 : 10,
+            vertical: vertical ? 10 : 12,
+          ),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: selected
+                  ? colorScheme.primary.withAlpha(80)
+                  : colorScheme.outlineVariant.withAlpha(120),
+            ),
+          ),
+          child: vertical
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    iconWidget,
+                    const SizedBox(height: 6),
+                    Text(
+                      tab.label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500,
+                        color: foreground,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    iconWidget,
+                    const SizedBox(width: 8),
+                    Text(
+                      tab.label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500,
+                        color: foreground,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+          ),
+    );
+
+    return vertical ? SizedBox(width: double.infinity, child: content) : Expanded(child: content);
+      ),
+    );
+  }
+
+  Widget _betaNavToolbar({
+    required List<NavTab> visibleTabs,
+    required int selectedIndex,
+    required ColorScheme colorScheme,
+    required bool hasPendingRequests,
+    required bool vertical,
+  }) {
+    return Material(
+      color: colorScheme.surfaceContainerLow.withAlpha(245),
+      elevation: 8,
+      shadowColor: Colors.black.withAlpha(28),
+      borderRadius: BorderRadius.circular(28),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: colorScheme.outlineVariant.withAlpha(140)),
+        ),
+        padding: const EdgeInsets.all(6),
+        child: vertical
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < visibleTabs.length; i++) ...[
+                    _betaNavButton(
+                      tab: visibleTabs[i],
+                      selected: selectedIndex == i,
+                      hasPendingRequests: hasPendingRequests,
+                      colorScheme: colorScheme,
+                      onTap: () => _selectTab(i, visibleTabs),
+                      vertical: true,
+                    ),
+                  ],
+                ],
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  for (var i = 0; i < visibleTabs.length; i++) ...[
+                    _betaNavButton(
+                      tab: visibleTabs[i],
+                      selected: selectedIndex == i,
+                      hasPendingRequests: hasPendingRequests,
+                      colorScheme: colorScheme,
+                      onTap: () => _selectTab(i, visibleTabs),
+                      vertical: false,
+                    ),
+                  ],
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _betaBottomToolbar(
+    BuildContext context,
+    ColorScheme colorScheme,
+    List<NavTab> visibleTabs,
+    int safeIndex,
+    bool hasPendingRequests,
+    UserProvider user,
+    AuthProvider auth,
+  ) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: _betaNavToolbar(
+                visibleTabs: visibleTabs,
+                selectedIndex: safeIndex,
+                colorScheme: colorScheme,
+                hasPendingRequests: hasPendingRequests,
+                vertical: false,
+              ),
+            ),
+            const SizedBox(width: 12),
+            _userHubButton(colorScheme, user, auth),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Resolves the best display name from auth state, falling back to UserProvider.
   static String _resolveDisplayName(AuthProvider auth, UserProvider user) {
     final username = auth.username;
@@ -140,7 +318,9 @@ class _MainScaffoldState extends State<MainScaffold> {
     final auth = context.watch<AuthProvider>();
     final social = context.watch<SocialProvider>();
     final navBar = context.watch<NavBarProvider>();
+    final theme = context.watch<ThemeProvider>();
     final hasPendingRequests = social.hasPendingRequests;
+    final betaDesignEnabled = theme.betaDesignEnabled;
 
     final visibleTabs = navBar.visibleTabs;
     // Clamp the index without calling setState during build; the displayed
@@ -150,7 +330,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     // Only build the active tab plus any tabs the user has already visited.
     final screens = _buildLazyScreens(visibleTabs, safeIndex);
 
-    if (_useRail) {
+    if (_useRail && !betaDesignEnabled) {
       // ── Wide screen: NavigationRail layout ─────────────────────────
       return Scaffold(
         body: Row(
@@ -222,7 +402,73 @@ class _MainScaffoldState extends State<MainScaffold> {
       );
     }
 
+    if (_useRail && betaDesignEnabled) {
+      return Scaffold(
+        body: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              child: SizedBox(
+                width: _betaToolbarRailWidth,
+                child: Column(
+                  children: [
+                    _betaNavToolbar(
+                      visibleTabs: visibleTabs,
+                      selectedIndex: safeIndex,
+                      colorScheme: colorScheme,
+                      hasPendingRequests: hasPendingRequests,
+                      vertical: true,
+                    ),
+                    const Spacer(),
+                    _userHubButton(colorScheme, user, auth),
+                  ],
+                ),
+              ),
+            ),
+            VerticalDivider(
+              thickness: 1,
+              width: 1,
+              color: colorScheme.outlineVariant,
+            ),
+            Expanded(
+              child: IndexedStack(
+                index: safeIndex,
+                children: screens,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     // ── Mobile: Floating Material 3 bottom bar layout ────────────────
+    if (betaDesignEnabled) {
+      return Scaffold(
+        body: Stack(
+          children: [
+            IndexedStack(
+              index: safeIndex,
+              children: screens,
+            ),
+            Positioned(
+              bottom: 104,
+              right: 16,
+              child: _userHubButton(colorScheme, user, auth),
+            ),
+          ],
+        ),
+        bottomNavigationBar: _betaBottomToolbar(
+          context,
+          colorScheme,
+          visibleTabs,
+          safeIndex,
+          hasPendingRequests,
+          user,
+          auth,
+        ),
+      );
+    }
+
     return Scaffold(
       body: Stack(
         children: [

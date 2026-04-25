@@ -18,6 +18,7 @@ import '../providers/dev_clock_provider.dart';
 import '../providers/entitlements_provider.dart';
 import '../providers/event_provider.dart';
 import '../providers/subjects_provider.dart';
+import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/assignment_card.dart';
 import '../widgets/add_task_sheet.dart';
@@ -205,6 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final provider = context.watch<AssignmentsProvider>();
     final auth = context.watch<AuthProvider>();
     final user = context.watch<UserProvider>();
+    final theme = context.watch<ThemeProvider>();
     final effectiveNow = context.watch<DevClockProvider>().nowUtc();
     final filtered = _filteredAssignments(provider.assignments.toList());
     final pendingCount = provider.pendingCount;
@@ -217,209 +219,223 @@ class _HomeScreenState extends State<HomeScreen> {
         onNotification: _onHomeScroll,
         child: CustomScrollView(
           slivers: [
-          // Expressive App Bar with gradient header
-          SliverAppBar(
-            expandedHeight: _expandedHeaderHeight,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              collapseMode: CollapseMode.pin,
-              background: _MotivationHeader(
-                quote: _dailyQuoteFor(effectiveNow),
-                pendingCount: pendingCount,
-                colorScheme: colorScheme,
-                greeting: greeting,
+            // Expressive App Bar with gradient header
+            SliverAppBar(
+              expandedHeight: _expandedHeaderHeight,
+              pinned: true,
+              flexibleSpace: FlexibleSpaceBar(
+                collapseMode: CollapseMode.pin,
+                background: _MotivationHeader(
+                  quote: _dailyQuoteFor(effectiveNow),
+                  pendingCount: pendingCount,
+                  colorScheme: colorScheme,
+                  greeting: greeting,
+                ),
               ),
-            ),
-            actions: [
-              Consumer<UserProvider>(
-                builder: (context, user, _) => Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        colorScheme.primaryContainer,
-                        colorScheme.secondaryContainer,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+              actions: [
+                Consumer<UserProvider>(
+                  builder: (context, user, _) => Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          colorScheme.primaryContainer,
+                          colorScheme.secondaryContainer,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant.withAlpha(140),
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: colorScheme.outlineVariant.withAlpha(140),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('🪙', style: TextStyle(fontSize: 14)),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${user.coins}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                ),
+                IconButton(
+                  icon: Icon(
+                    _showCompleted
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  tooltip: _showCompleted ? 'Hide completed' : 'Show completed',
+                  onPressed: () =>
+                      setState(() => _showCompleted = !_showCompleted),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+
+            // ── Classes Section ────────────────────────────────────────
+            if (theme.betaDesignEnabled)
+              SliverToBoxAdapter(
+                child: _BetaHomeShowcase(
+                  colorScheme: colorScheme,
+                  onAddTask: _showAddAssignmentSheet,
+                  onOpenStudyBuddy: _openStudyBuddyTopSheet,
+                  onToggleCompleted: () {
+                    setState(() => _showCompleted = !_showCompleted);
+                  },
+                  showCompleted: _showCompleted,
+                ),
+              ),
+
+            // ── Classes Section ────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: _ClassesSection(colorScheme: colorScheme),
+            ),
+
+            // ── Event Banner ───────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: _EventBannerCard(colorScheme: colorScheme),
+            ),
+
+            // Command center: filters + quick status
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: colorScheme.outlineVariant),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('🪙',
-                          style: TextStyle(fontSize: 14)),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${user.coins}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: colorScheme.onPrimaryContainer,
+                      Row(
+                        children: [
+                          Icon(Icons.space_dashboard_rounded,
+                              color: colorScheme.primary, size: 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Command Center',
+                            style: textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const Spacer(),
+                          FilterChip(
+                            label: Text(_showCompleted
+                                ? 'Completed: ON'
+                                : 'Completed: OFF'),
+                            selected: _showCompleted,
+                            showCheckmark: false,
+                            onSelected: (_) => setState(
+                                () => _showCompleted = !_showCompleted),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: Subject.allSubjects.map((subject) {
+                            final isSelected = _selectedSubject == subject;
+                            final subjects = context.watch<SubjectsProvider>();
+                            final displayLabel = subject == Subject.all
+                                ? subject
+                                : subjects.displayName(subject);
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                label: Text(displayLabel),
+                                selected: isSelected,
+                                onSelected: (_) =>
+                                    setState(() => _selectedSubject = subject),
+                                showCheckmark: false,
+                                avatar: isSelected
+                                    ? Icon(
+                                        Icons.check_rounded,
+                                        size: 16,
+                                        color: colorScheme.onPrimaryContainer,
+                                      )
+                                    : null,
+                              ),
+                            );
+                          }).toList(),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              IconButton(
-                icon: Icon(
-                  _showCompleted
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                ),
-                tooltip: _showCompleted
-                    ? 'Hide completed'
-                    : 'Show completed',
-                onPressed: () =>
-                    setState(() => _showCompleted = !_showCompleted),
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
+            ),
 
-          // ── Classes Section ────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: _ClassesSection(colorScheme: colorScheme),
-          ),
-
-          // ── Event Banner ───────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: _EventBannerCard(colorScheme: colorScheme),
-          ),
-
-          // Command center: filters + quick status
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: colorScheme.outlineVariant),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            // Assignments header
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.space_dashboard_rounded,
-                            color: colorScheme.primary, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Command Center',
-                          style: textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const Spacer(),
-                        FilterChip(
-                          label: Text(_showCompleted
-                              ? 'Completed: ON'
-                              : 'Completed: OFF'),
-                          selected: _showCompleted,
-                          showCheckmark: false,
-                          onSelected: (_) =>
-                              setState(() => _showCompleted = !_showCompleted),
-                        ),
-                      ],
+                    Text(
+                      'Assignments',
+                      style: textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: Subject.allSubjects.map((subject) {
-                          final isSelected = _selectedSubject == subject;
-                          final subjects = context.watch<SubjectsProvider>();
-                          final displayLabel = subject == Subject.all
-                              ? subject
-                              : subjects.displayName(subject);
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: FilterChip(
-                              label: Text(displayLabel),
-                              selected: isSelected,
-                              onSelected: (_) =>
-                                  setState(() => _selectedSubject = subject),
-                              showCheckmark: false,
-                              avatar: isSelected
-                                  ? Icon(
-                                      Icons.check_rounded,
-                                      size: 16,
-                                      color: colorScheme.onPrimaryContainer,
-                                    )
-                                  : null,
-                            ),
-                          );
-                        }).toList(),
+                    Text(
+                      '${filtered.length} task${filtered.length != 1 ? 's' : ''}',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
 
-          // Assignments header
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Assignments',
-                    style: textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    '${filtered.length} task${filtered.length != 1 ? 's' : ''}',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Assignment list or empty state
-          filtered.isEmpty
-              ? SliverToBoxAdapter(
-                  child: _EmptyState(
+            // Assignment list or empty state
+            filtered.isEmpty
+                ? SliverToBoxAdapter(
+                    child: _EmptyState(
                     colorScheme: colorScheme,
                     onAdd: _showAddAssignmentSheet,
                   ))
-              : SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final assignment = filtered[index];
-                        return AssignmentCard(
-                          assignment: assignment,
-                          onToggleComplete: () =>
-                              context.read<AssignmentsProvider>().toggleComplete(assignment.id),
-                          onDelete: () => context.read<AssignmentsProvider>().delete(assignment.id),
-                        );
-                      },
-                      childCount: filtered.length,
+                : SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final assignment = filtered[index];
+                          return AssignmentCard(
+                            assignment: assignment,
+                            onToggleComplete: () => context
+                                .read<AssignmentsProvider>()
+                                .toggleComplete(assignment.id),
+                            onDelete: () => context
+                                .read<AssignmentsProvider>()
+                                .delete(assignment.id),
+                          );
+                        },
+                        childCount: filtered.length,
+                      ),
                     ),
                   ),
-                ),
 
-          // Subject Folders section embedded in Home
-          SliverToBoxAdapter(
-            child: SubjectFolderSection(colorScheme: colorScheme),
-          ),
+            // Subject Folders section embedded in Home
+            SliverToBoxAdapter(
+              child: SubjectFolderSection(colorScheme: colorScheme),
+            ),
           ],
         ),
       ),
@@ -427,6 +443,286 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: _showAddAssignmentSheet,
         icon: const Icon(Icons.add),
         label: const Text('Add Task'),
+      ),
+    );
+  }
+}
+
+class _BetaHomeShowcase extends StatefulWidget {
+  final ColorScheme colorScheme;
+  final VoidCallback onAddTask;
+  final VoidCallback onOpenStudyBuddy;
+  final VoidCallback onToggleCompleted;
+  final bool showCompleted;
+
+  const _BetaHomeShowcase({
+    required this.colorScheme,
+    required this.onAddTask,
+    required this.onOpenStudyBuddy,
+    required this.onToggleCompleted,
+    required this.showCompleted,
+  });
+
+  @override
+  State<_BetaHomeShowcase> createState() => _BetaHomeShowcaseState();
+}
+
+class _BetaHomeShowcaseState extends State<_BetaHomeShowcase> {
+  late final PageController _controller;
+  int _pageIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController(viewportFraction: 0.88);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = widget.colorScheme;
+    final cards = [
+      _BetaShowcaseCard(
+        colorScheme: colorScheme,
+        accent: colorScheme.primary,
+        background: LinearGradient(
+          colors: [
+            colorScheme.primaryContainer,
+            colorScheme.secondaryContainer,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        icon: Icons.task_alt_rounded,
+        title: 'Plan your day',
+        body: 'Add a task, pick a due date, and keep the board moving.',
+        actionLabel: 'Add task',
+        onPressed: widget.onAddTask,
+      ),
+      _BetaShowcaseCard(
+        colorScheme: colorScheme,
+        accent: colorScheme.tertiary,
+        background: LinearGradient(
+          colors: [
+            colorScheme.surfaceContainerHigh,
+            colorScheme.primaryContainer.withAlpha(210),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        icon: Icons.auto_awesome_rounded,
+        title: 'Ask Study Buddy',
+        body: 'Use the AI helper when you need a quick explanation or hint.',
+        actionLabel: 'Open chat',
+        onPressed: widget.onOpenStudyBuddy,
+      ),
+      _BetaShowcaseCard(
+        colorScheme: colorScheme,
+        accent: colorScheme.secondary,
+        background: LinearGradient(
+          colors: [
+            colorScheme.secondaryContainer,
+            colorScheme.surfaceContainerHighest,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        icon: widget.showCompleted
+            ? Icons.visibility_off_rounded
+            : Icons.visibility_rounded,
+        title: widget.showCompleted ? 'Hide completed' : 'Show completed',
+        body: widget.showCompleted
+            ? 'Keep the dashboard focused on what still needs attention.'
+            : 'Bring finished work back into view when you want a review pass.',
+        actionLabel: widget.showCompleted ? 'Hide' : 'Show',
+        onPressed: widget.onToggleCompleted,
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Beta preview',
+                style: GoogleFonts.lexend(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'New',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 188,
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: cards.length,
+              onPageChanged: (index) => setState(() => _pageIndex = index),
+              itemBuilder: (context, index) => cards[index],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(cards.length, (index) {
+              final selected = _pageIndex == index;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: selected ? 18 : 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? colorScheme.primary
+                      : colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ActionChip(
+                avatar: const Icon(Icons.add_rounded, size: 16),
+                label: const Text('Add task'),
+                onPressed: widget.onAddTask,
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.auto_awesome_rounded, size: 16),
+                label: const Text('Study Buddy'),
+                onPressed: widget.onOpenStudyBuddy,
+              ),
+              FilterChip(
+                avatar: const Icon(Icons.visibility_rounded, size: 16),
+                label: Text(widget.showCompleted
+                    ? 'Completed shown'
+                    : 'Completed hidden'),
+                selected: widget.showCompleted,
+                onSelected: (_) => widget.onToggleCompleted(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BetaShowcaseCard extends StatelessWidget {
+  final ColorScheme colorScheme;
+  final LinearGradient background;
+  final Color accent;
+  final IconData icon;
+  final String title;
+  final String body;
+  final String actionLabel;
+  final VoidCallback onPressed;
+
+  const _BetaShowcaseCard({
+    required this.colorScheme,
+    required this.background,
+    required this.accent,
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.actionLabel,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(right: 10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(28),
+          onTap: onPressed,
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: background,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: accent.withAlpha(80),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withAlpha(28),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface.withAlpha(170),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(icon, color: accent),
+                ),
+                const Spacer(),
+                Text(
+                  title,
+                  style: GoogleFonts.lexend(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  body,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 12),
+                FilledButton.tonal(
+                  onPressed: onPressed,
+                  child: Text(actionLabel),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -813,16 +1109,16 @@ class _ClassOptionsSheet extends StatelessWidget {
           children: [
             if ((schoolClass.googleClassroomUrl ?? '').trim().isNotEmpty)
               ListTile(
-                leading: Icon(Icons.open_in_new_rounded,
-                    color: colorScheme.primary),
+                leading:
+                    Icon(Icons.open_in_new_rounded, color: colorScheme.primary),
                 title: const Text('Open Google Classroom link'),
                 onTap: () async {
                   Navigator.pop(context);
                   final raw = schoolClass.googleClassroomUrl?.trim();
                   final uri = raw == null ? null : Uri.tryParse(raw);
                   if (uri == null) return;
-                  final ok =
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  final ok = await launchUrl(uri,
+                      mode: LaunchMode.externalApplication);
                   if (!ok && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -844,8 +1140,8 @@ class _ClassOptionsSheet extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete_outline_rounded,
-                  color: colorScheme.error),
+              leading:
+                  Icon(Icons.delete_outline_rounded, color: colorScheme.error),
               title: Text('Delete class',
                   style: TextStyle(color: colorScheme.error)),
               onTap: () {
@@ -884,7 +1180,7 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
     _nameCtrl = TextEditingController(text: c?.name ?? '');
     _descCtrl = TextEditingController(text: c?.description ?? '');
     _classroomUrlCtrl =
-      TextEditingController(text: c?.googleClassroomUrl ?? '');
+        TextEditingController(text: c?.googleClassroomUrl ?? '');
     _subjects = List<String>.from(c?.subjects ?? []);
   }
 
@@ -973,9 +1269,8 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isEditing = widget.existing != null;
-    final allSubjectNames = Subject.allSubjects
-        .where((s) => s != Subject.all)
-        .toList();
+    final allSubjectNames =
+        Subject.allSubjects.where((s) => s != Subject.all).toList();
 
     return AlertDialog(
       title: Text(isEditing ? 'Edit Class' : 'New Class'),
@@ -1013,8 +1308,10 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
             const SizedBox(height: 16),
             Text(
               'Link to Subjects',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant),
+              style: Theme.of(context)
+                  .textTheme
+                  .labelMedium
+                  ?.copyWith(color: colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -1086,8 +1383,8 @@ class _MotivationHeader extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: colorScheme.primary.withAlpha(26),
                       borderRadius: BorderRadius.circular(20),
@@ -1102,7 +1399,10 @@ class _MotivationHeader extends StatelessWidget {
                         const SizedBox(width: 6),
                         Text(
                           DateFormat('EEEE, MMMM d').format(
-                            context.watch<DevClockProvider>().nowUtc().toLocal(),
+                            context
+                                .watch<DevClockProvider>()
+                                .nowUtc()
+                                .toLocal(),
                           ),
                           style: GoogleFonts.outfit(
                             fontSize: 12,
@@ -1321,25 +1621,28 @@ class _AiClassImportSheetState extends State<_AiClassImportSheet> {
       final jsonStr =
           raw.replaceAll('```json', '').replaceAll('```', '').trim();
       final List<dynamic> items = json.decode(jsonStr) as List<dynamic>;
-      final classes = items.map((item) {
-        final m = item as Map<String, dynamic>;
-        return SchoolClass(
-          id: '',
-          name: (m['name'] as String? ?? '').trim(),
-          subjects: [
-            if ((m['subject'] as String?)?.isNotEmpty == true)
-              m['subject'] as String,
-          ],
-        );
-      }).where((c) => c.name.isNotEmpty).toList();
+      final classes = items
+          .map((item) {
+            final m = item as Map<String, dynamic>;
+            return SchoolClass(
+              id: '',
+              name: (m['name'] as String? ?? '').trim(),
+              subjects: [
+                if ((m['subject'] as String?)?.isNotEmpty == true)
+                  m['subject'] as String,
+              ],
+            );
+          })
+          .where((c) => c.name.isNotEmpty)
+          .toList();
 
       setState(() {
         _parsed = classes;
         _selected.addAll(List.generate(classes.length, (i) => i));
       });
     } catch (e) {
-      setState(() =>
-          _error = 'Failed to parse classes.\nCheck your API key and try again.\n\nDetails: $e');
+      setState(() => _error =
+          'Failed to parse classes.\nCheck your API key and try again.\n\nDetails: $e');
     } finally {
       setState(() => _loading = false);
     }
@@ -1500,6 +1803,13 @@ class _AiClassImportSheetState extends State<_AiClassImportSheet> {
                 label: Text(_loading ? 'Analyzing…' : 'Extract Classes'),
               ),
             ),
+            if (_loading) ...[
+              const SizedBox(height: 12),
+              LinearProgressIndicator(
+                minHeight: 4,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: 12),
               Container(
