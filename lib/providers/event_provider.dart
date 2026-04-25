@@ -1,66 +1,54 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../services/database_service.dart';
 
-/// The state the ladder event is currently in.
+/// The state the limited-time event is currently in.
 enum EventState { upcoming, active, ended }
 
-/// Manages the "Complete Assignments Ladder" limited-time event running
-/// 2026-04-24 through 2026-04-30 (inclusive, local time).
+/// Manages the May 2026 "Pencil Sharpener" XP event.
 ///
-/// Progress is driven by a single [totalCompletedDuringEvent] counter that
-/// increments once per unique assignment ID completed within the event window.
-/// Tier advancement is automatic; claiming is optional and can be done any time
-/// (even after the event ends) for any tier the user has reached.
+/// Event window: May 3 - May 15, 2026 (local time, inclusive).
+/// Progress is based on XP earned from assignment completions recorded via
+/// [recordAssignmentCompletion].
 class EventProvider extends ChangeNotifier {
-  // ── Event constants ──────────────────────────────────────────────────────
+  static const String eventId = 'pencil_sharpener_2026_05';
 
-  static const String eventId = 'ladder_2026_04_24';
+  static final DateTime _eventStart = DateTime(2026, 5, 3);
+  static final DateTime _eventEnd = DateTime(2026, 5, 16); // exclusive
 
-  static final DateTime _eventStart = DateTime(2026, 4, 24);
-  static final DateTime _eventEnd = DateTime(2026, 5, 1); // exclusive boundary (Apr 30 inclusive)
+  /// Milestones (1-indexed): 1000 XP, 2000 XP, 3000 XP.
+  static const List<int> milestoneXp = [0, 1000, 2000, 3000];
 
-  /// Goals per tier (1-indexed; index 0 unused).
-  static const List<int> tierGoals = [
-    0, // index 0 – placeholder
-    1, 1, 1, 1, 1, // T1–T5
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, // T6–T18
-    3, // T19
-    4, // T20
-  ];
+  /// Weekend double-XP bonus cap per day.
+  static const int weekendBonusDailyCap = 500;
 
-  /// Cumulative completions needed to *reach* tier N (i.e. have claimed/passed T1..T(N-1)).
-  /// cumulativeGoals[N] = sum of tierGoals[1..N].
-  static final List<int> cumulativeGoals = _buildCumulative();
+  // ── Persistence keys ───────────────────────────────────────────────────
 
-  static List<int> _buildCumulative() {
-    final out = List<int>.filled(21, 0);
-    for (int i = 1; i <= 20; i++) {
-      out[i] = out[i - 1] + tierGoals[i];
-    }
-    return out;
-  }
+  static const _prefTotalXp = 'event_may_total_xp';
+  static const _prefClaimed = 'event_may_claimed_milestones';
+  static const _prefCountedIds = 'event_may_counted_assignment_ids';
+  static const _prefWeekendBonusByDay = 'event_may_weekend_bonus_by_day';
 
-  /// Total direct coin rewards available across all tiers (T2,T3,T4,T6-T10,T12,T14,T15,T17).
-  static const int totalDirectCoins = 155;
+  // ── State ───────────────────────────────────────────────────────────────
 
-  // ── Persistence keys ─────────────────────────────────────────────────────
-
-  static const _prefTotal = 'event_ladder_total';
-  static const _prefClaimed = 'event_ladder_claimed';
-  static const _prefCountedIds = 'event_ladder_counted_ids';
-
-  // ── State ────────────────────────────────────────────────────────────────
-
-  int _total = 0;
-  final Set<int> _claimedTiers = {};
-  final Set<String> _countedIds = {};
+  int _totalXp = 0;
+  final Set<int> _claimedMilestones = {};
+  final Set<String> _countedAssignmentIds = {};
+  final Map<String, int> _weekendBonusByDay = {};
   String? _uid;
 
-  // ── Getters ──────────────────────────────────────────────────────────────
+  // ── Getters ─────────────────────────────────────────────────────────────
 
-  int get totalCompletedDuringEvent => _total;
-  Set<int> get claimedTiers => Set.unmodifiable(_claimedTiers);
+  int get totalXpDuringEvent => _totalXp;
+
+  /// Backward-compatible alias used by existing UI copy.
+  int get totalCompletedDuringEvent => _totalXp;
+
+  Set<int> get claimedMilestones => Set.unmodifiable(_claimedMilestones);
+
+  /// Backward-compatible alias for existing screens.
+  Set<int> get claimedTiers => Set.unmodifiable(_claimedMilestones);
 
   EventState get state {
     final now = DateTime.now();
@@ -69,50 +57,60 @@ class EventProvider extends ChangeNotifier {
     return EventState.ended;
   }
 
-  /// Countdown duration until event starts (zero if already started).
   Duration get timeUntilStart {
     final now = DateTime.now();
     if (now.isAfter(_eventStart)) return Duration.zero;
     return _eventStart.difference(now);
   }
 
-  /// The highest tier the user has fully reached (cumulativeGoals[tier] <= total).
-  int get highestReachedTier {
-    for (int t = 20; t >= 1; t--) {
-      if (_total >= cumulativeGoals[t]) return t;
+  int get highestReachedMilestone {
+    for (int m = 3; m >= 1; m--) {
+      if (_totalXp >= milestoneXp[m]) return m;
     }
     return 0;
   }
 
-  /// The tier currently being worked on (1-20).
-  int get currentWorkingTier {
-    final reached = highestReachedTier;
-    return (reached < 20) ? reached + 1 : 20;
+  /// Backward-compatible alias for older screen code.
+  int get highestReachedTier => highestReachedMilestone;
+
+  int get currentWorkingMilestone {
+    final reached = highestReachedMilestone;
+    return reached < 3 ? reached + 1 : 3;
   }
 
-  /// Progress within [currentWorkingTier] (0..goal).
-  int get progressInCurrentTier {
-    if (highestReachedTier >= 20) return tierGoals[20];
-    final t = currentWorkingTier;
-    final cumPrev = cumulativeGoals[t - 1];
-    return (_total - cumPrev).clamp(0, tierGoals[t]);
+  int get progressToCurrentMilestone {
+    if (highestReachedMilestone >= 3) return milestoneXp[3];
+    return _totalXp;
   }
 
-  int get goalOfCurrentTier => tierGoals[currentWorkingTier];
+  int get currentMilestoneGoal => milestoneXp[currentWorkingMilestone];
 
-  /// Returns true if the user has accumulated enough completions to pass tier [t].
-  bool isTierReached(int t) => _total >= cumulativeGoals[t];
+  bool isMilestoneReached(int milestone) {
+    if (milestone < 1 || milestone > 3) return false;
+    return _totalXp >= milestoneXp[milestone];
+  }
 
-  /// Returns true if the user has claimed the reward for tier [t].
-  bool isTierClaimed(int t) => _claimedTiers.contains(t);
+  /// Backward-compatible alias used by older event UI.
+  bool isTierReached(int tier) => isMilestoneReached(tier);
 
-  // ── Constructor / init ───────────────────────────────────────────────────
+  bool isMilestoneClaimed(int milestone) => _claimedMilestones.contains(milestone);
+
+  /// Backward-compatible alias used by older event UI.
+  bool isTierClaimed(int tier) => _claimedMilestones.contains(tier);
+
+  int weekendBonusUsedOn(DateTime day) {
+    return _weekendBonusByDay[_dayKey(day)] ?? 0;
+  }
+
+  int get weekendBonusUsedToday => weekendBonusUsedOn(DateTime.now());
+
+  // ── Constructor / init ──────────────────────────────────────────────────
 
   EventProvider() {
     _loadLocal();
   }
 
-  // ── UID / cloud sync ─────────────────────────────────────────────────────
+  // ── UID / cloud sync ────────────────────────────────────────────────────
 
   Future<void> setUid(String? uid) async {
     _uid = uid;
@@ -123,24 +121,41 @@ class EventProvider extends ChangeNotifier {
     try {
       await _loadFromCloud(uid);
     } catch (_) {
-      // Cloud unavailable – local data already loaded.
+      // Cloud unavailable; local state remains usable.
     }
   }
 
   Future<void> _loadFromCloud(String uid) async {
     final data = await DatabaseService.instance.getEventData(uid, eventId);
     if (data == null) return;
-    final cloudTotal = (data['total'] as int?) ?? 0;
-    final cloudClaimed = (data['claimed'] as List?)?.cast<int>() ?? [];
-    final cloudCounted = (data['countedIds'] as List?)?.cast<String>() ?? [];
-    // Use the higher value to avoid rolling back progress.
-    if (cloudTotal > _total) {
-      _total = cloudTotal;
+
+    final cloudTotalXp = (data['totalXp'] as int?) ?? (data['total'] as int?) ?? 0;
+    final cloudClaimed =
+      (data['claimedMilestones'] as List?)?.cast<int>() ??
+        (data['claimed'] as List?)?.cast<int>() ??
+        [];
+    final cloudCounted =
+      (data['countedAssignmentIds'] as List?)?.cast<String>() ??
+        (data['countedIds'] as List?)?.cast<String>() ??
+        [];
+    final cloudWeekendRaw = data['weekendBonusByDay'] as Map<String, dynamic>?;
+
+    if (cloudTotalXp > _totalXp) {
+      _totalXp = cloudTotalXp;
     }
-    _claimedTiers.addAll(cloudClaimed);
-    _countedIds.addAll(cloudCounted);
+    _claimedMilestones.addAll(cloudClaimed);
+    _countedAssignmentIds.addAll(cloudCounted);
+    if (cloudWeekendRaw != null) {
+      cloudWeekendRaw.forEach((k, v) {
+        final parsed = v is int ? v : int.tryParse(v.toString()) ?? 0;
+        final current = _weekendBonusByDay[k] ?? 0;
+        if (parsed > current) {
+          _weekendBonusByDay[k] = parsed;
+        }
+      });
+    }
+
     notifyListeners();
-    // Persist merged cloud data locally.
     await _saveLocal();
   }
 
@@ -150,81 +165,125 @@ class EventProvider extends ChangeNotifier {
       await DatabaseService.instance.saveEventData(
         uid: _uid!,
         eventId: eventId,
-        total: _total,
-        claimedTiers: _claimedTiers.toList(),
-        countedIds: _countedIds.toList(),
+        total: _totalXp,
+        claimedTiers: _claimedMilestones.toList(),
+        countedIds: _countedAssignmentIds.toList(),
       );
     } catch (_) {
-      // Cloud write failed – local data is already saved.
+      // Cloud write failed; local progress is still saved.
     }
   }
 
-  // ── Local persistence ─────────────────────────────────────────────────────
+  // ── Local persistence ────────────────────────────────────────────────────
 
   Future<void> _loadLocal() async {
     final prefs = await SharedPreferences.getInstance();
-    _total = prefs.getInt(_prefTotal) ?? 0;
+    _totalXp = prefs.getInt(_prefTotalXp) ?? 0;
+
     final claimedRaw = prefs.getStringList(_prefClaimed) ?? [];
-    _claimedTiers
+    _claimedMilestones
       ..clear()
-      ..addAll(claimedRaw.map(int.parse));
+      ..addAll(claimedRaw.map((e) => int.tryParse(e) ?? 0).where((e) => e > 0));
+
     final countedRaw = prefs.getStringList(_prefCountedIds) ?? [];
-    _countedIds
+    _countedAssignmentIds
       ..clear()
       ..addAll(countedRaw);
+
+    final weekendRaw = prefs.getStringList(_prefWeekendBonusByDay) ?? [];
+    _weekendBonusByDay
+      ..clear()
+      ..addAll(_decodeMap(weekendRaw));
+
     notifyListeners();
   }
 
   Future<void> _saveLocal() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_prefTotal, _total);
+    await prefs.setInt(_prefTotalXp, _totalXp);
     await prefs.setStringList(
-        _prefClaimed, _claimedTiers.map((t) => t.toString()).toList());
-    await prefs.setStringList(_prefCountedIds, _countedIds.toList());
+      _prefClaimed,
+      _claimedMilestones.map((m) => m.toString()).toList(),
+    );
+    await prefs.setStringList(_prefCountedIds, _countedAssignmentIds.toList());
+    await prefs.setStringList(_prefWeekendBonusByDay, _encodeMap(_weekendBonusByDay));
   }
 
-  // ── Public API ─────────────────────────────────────────────────────────────
+  // ── Public API ──────────────────────────────────────────────────────────
 
-  /// Called by [AssignmentsProvider] when an assignment transitions to
-  /// completed.  Increments the counter if:
-  ///   1. The event is currently active (now within the event window).
-  ///   2. The [assignmentId] has not already been counted.
+  /// Records XP from an assignment completion.
   ///
-  /// The "completed during event" rule counts any assignment that transitions
-  /// to the completed state while the event window is open, regardless of when
-  /// it was created.
-  void recordCompletion(String assignmentId) {
+  /// - Counts only while event is active.
+  /// - Counts each assignment ID once.
+  /// - Applies weekend double-XP bonus with a 500 bonus XP/day cap.
+  void recordAssignmentCompletion(String assignmentId, {int baseXp = 25}) {
     if (state != EventState.active) return;
-    if (_countedIds.contains(assignmentId)) return;
-    _countedIds.add(assignmentId);
-    _total += 1;
+    if (_countedAssignmentIds.contains(assignmentId)) return;
+    if (baseXp <= 0) return;
+
+    _countedAssignmentIds.add(assignmentId);
+
+    int bonus = 0;
+    final now = DateTime.now();
+    if (_isWeekend(now)) {
+      final key = _dayKey(now);
+      final used = _weekendBonusByDay[key] ?? 0;
+      final remaining = (weekendBonusDailyCap - used).clamp(0, weekendBonusDailyCap);
+      bonus = remaining > 0 ? baseXp.clamp(0, remaining) : 0;
+      _weekendBonusByDay[key] = used + bonus;
+    }
+
+    _totalXp += (baseXp + bonus);
+
     notifyListeners();
     _saveLocal();
     _syncToCloud();
   }
 
-  /// Claims the reward for tier [t].  Returns false if the tier has not been
-  /// reached or has already been claimed.  The caller is responsible for
-  /// actually granting the reward via [UserProvider].
-  bool claimTier(int t) {
-    if (!isTierReached(t)) return false;
-    if (isTierClaimed(t)) return false;
-    _claimedTiers.add(t);
+  bool claimMilestone(int milestone) {
+    if (!isMilestoneReached(milestone)) return false;
+    if (isMilestoneClaimed(milestone)) return false;
+    _claimedMilestones.add(milestone);
     notifyListeners();
     _saveLocal();
     _syncToCloud();
     return true;
   }
 
-  // ── Dev helpers ───────────────────────────────────────────────────────────
+  /// Backward-compatible alias used by older event UI.
+  bool claimTier(int tier) => claimMilestone(tier);
 
-  /// Resets all event progress (dev/QA only).
   Future<void> resetForTesting() async {
-    _total = 0;
-    _claimedTiers.clear();
-    _countedIds.clear();
+    _totalXp = 0;
+    _claimedMilestones.clear();
+    _countedAssignmentIds.clear();
+    _weekendBonusByDay.clear();
     notifyListeners();
     await _saveLocal();
     await _syncToCloud();
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+
+  static bool _isWeekend(DateTime dt) =>
+      dt.weekday == DateTime.saturday || dt.weekday == DateTime.sunday;
+
+  static String _dayKey(DateTime dt) {
+    final d = DateTime(dt.year, dt.month, dt.day);
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  static List<String> _encodeMap(Map<String, int> map) {
+    return map.entries.map((e) => '${e.key}=${e.value}').toList();
+  }
+
+  static Map<String, int> _decodeMap(List<String> rows) {
+    final out = <String, int>{};
+    for (final row in rows) {
+      final split = row.split('=');
+      if (split.length != 2) continue;
+      out[split[0]] = int.tryParse(split[1]) ?? 0;
+    }
+    return out;
   }
 }

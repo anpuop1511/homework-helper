@@ -13,7 +13,7 @@ import 'settings_screen.dart';
 // Electric Blue — same as the NFC bump screen glow.
 const Color _kElectricBlue = Color(0xFF007FFF);
 
-/// AI Study Buddy chat screen backed by the real Gemini API.
+/// AI Study Buddy chat screen backed by a BYOK AI API.
 /// V2.4: Voice-to-Voice mode with animated waveform UI.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -370,7 +370,7 @@ class _ChatScreenState extends State<ChatScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Gemini Live Voice Active — tap 🎙️ to stop',
+                        'AI Live Voice Active — tap 🎙️ to stop',
                         style: TextStyle(
                           color: _kElectricBlue,
                           fontSize: 13,
@@ -789,7 +789,7 @@ class _GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
                       colors: [Color(0xFF007FFF), Color(0xFF4FC3F7)],
                     ).createShader(bounds),
                     child: Text(
-                      'Gemini Study Buddy',
+                      'AI Study Buddy',
                       style: textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
@@ -799,7 +799,7 @@ class _GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
                   Text(
                     isLiveActive
                         ? 'Live Voice Active 🎙️'
-                        : 'Powered by Gemini AI',
+                      : 'Powered by your API key',
                     style: textTheme.bodySmall?.copyWith(
                       color: isLiveActive
                           ? _kElectricBlue
@@ -1147,7 +1147,7 @@ class _ChatInputBar extends StatelessWidget {
                 enabled: !isLoading && voiceState == _VoiceState.idle,
                 decoration: InputDecoration(
                   hintText: isLoading
-                      ? 'Gemini is thinking…'
+                      ? 'AI is thinking…'
                       : isListening
                           ? 'Listening…'
                           : 'Ask anything…',
@@ -1277,7 +1277,7 @@ class _ChatInputBar extends StatelessWidget {
 // ── Setup AI / Under Maintenance screen ─────────────────────────────────────
 
 /// Shown in the AI Chat tab when the user has not yet provided a personal
-/// Gemini API key.  Explains why the built-in key is unavailable and guides
+/// API key. Explains why the built-in key is unavailable and guides
 /// the user through the BYOK (Bring-Your-Own-Key) setup flow.
 class _SetupAiScreen extends StatelessWidget {
   const _SetupAiScreen();
@@ -1340,7 +1340,7 @@ class _SetupAiScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'The built-in Gemini API key has been removed for security.\n'
+              'The built-in API key has been removed for security.\n'
               'To use AI features, please provide your own free API key.',
               style: textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
@@ -1371,7 +1371,7 @@ class _SetupAiScreen extends StatelessWidget {
             _SetupStep(
               number: '3',
               title: 'Paste it in Settings',
-              body: 'Open Settings → AI & Chat → "Your Gemini API Key" and paste the key there.',
+              body: 'Open Settings → AI & Models → "Your API Key" and paste the key there.',
               icon: Icons.settings_rounded,
               colorScheme: colorScheme,
               textTheme: textTheme,

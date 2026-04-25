@@ -573,11 +573,6 @@ class _ClassesSection extends StatelessWidget {
                   onPressed: () => _openStudyTools(context, initialTab: 1),
                 ),
                 ActionChip(
-                  avatar: const Icon(Icons.auto_awesome_rounded, size: 16),
-                  label: const Text('Gemini organize'),
-                  onPressed: () => _openGeminiOrganizer(context),
-                ),
-                ActionChip(
                   avatar: const Icon(Icons.upload_file_rounded, size: 16),
                   label: const Text('AI Import'),
                   onPressed: () => _showAiImportSheet(context),
@@ -621,23 +616,6 @@ class _ClassesSection extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => const _AiClassImportSheet(),
     );
-  }
-
-  void _openGeminiOrganizer(BuildContext context) {
-    final chat = context.read<ChatProvider>();
-    final hasApiKey =
-        chat.customApiKey.isNotEmpty || AppSecrets.geminiApiKey.isNotEmpty;
-    if (!hasApiKey) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Gemini organizer needs an API key. Add one in Settings → AI & Models.',
-          ),
-        ),
-      );
-      return;
-    }
-    _showAiImportSheet(context);
   }
 
   void _openStudyTools(BuildContext context, {int initialTab = 0}) {
@@ -1277,7 +1255,7 @@ class _EmptyState extends StatelessWidget {
 // ── AI Classroom Import Sheet ─────────────────────────────────────────────────
 
 /// Bottom-sheet that lets the user paste their Google Classroom homepage text.
-/// Gemini extracts class names and subjects, which the user can then confirm.
+/// AI extracts class names and subjects, which the user can then confirm.
 class _AiClassImportSheet extends StatefulWidget {
   const _AiClassImportSheet();
 
@@ -1310,7 +1288,7 @@ class _AiClassImportSheetState extends State<_AiClassImportSheet> {
 
     if (apiKey.isEmpty) {
       setState(() => _error =
-          'No Gemini API key found.\nGo to Settings → AI & Models to add your key.');
+          'No API key found.\nGo to Settings → AI & Models to add your key.');
       return;
     }
 
@@ -1451,7 +1429,7 @@ class _AiClassImportSheetState extends State<_AiClassImportSheet> {
             const SizedBox(height: 6),
             Text(
               'Paste the text from your Google Classroom homepage. '
-              'Gemini will extract your class names and suggest subjects.',
+              'AI will extract your class names and suggest subjects.',
               style: TextStyle(
                 fontSize: 13,
                 color: colorScheme.onSurfaceVariant,
@@ -1472,7 +1450,7 @@ class _AiClassImportSheetState extends State<_AiClassImportSheet> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'No Gemini API key set. Add one in Settings → AI & Models.',
+                        'No API key set. Add one in Settings → AI & Models.',
                         style: TextStyle(
                           fontSize: 12,
                           color: colorScheme.onErrorContainer,
@@ -1617,21 +1595,22 @@ class _EventBannerCard extends StatelessWidget {
 
     switch (event.state) {
       case EventState.upcoming:
-        title = 'Assignments Ladder – Starting Soon!';
-        subtitle = 'Complete assignments Apr 24–30 for big rewards.';
-        accentColor = const Color(0xFFFF6B35);
+        title = 'May Event – Starting Soon!';
+        subtitle = 'Pencil Sharpener event runs May 3–15. Earn XP for rewards.';
+        accentColor = const Color(0xFFFFA000);
         emoji = '⏳';
       case EventState.active:
-        final reached = event.highestReachedTier;
-        title = 'Assignments Ladder – Live Now!';
+        final reached = event.highestReachedMilestone;
+        title = 'Pencil Sharpener – Live Now!';
         subtitle = reached > 0
-            ? 'Tier $reached reached · ${event.totalCompletedDuringEvent} completed'
-            : 'Start completing assignments to earn rewards!';
-        accentColor = Colors.green.shade600;
+            ? 'Milestone $reached reached · ${event.totalXpDuringEvent} XP earned'
+            : 'Complete assignments to fill the sharpener and unlock rewards!';
+        accentColor = const Color(0xFFFFC107);
         emoji = '🔥';
       case EventState.ended:
-        final unclaimed = event.highestReachedTier - event.claimedTiers.length;
-        title = 'Assignments Ladder – Ended';
+        final unclaimed =
+            event.highestReachedMilestone - event.claimedMilestones.length;
+        title = 'Pencil Sharpener – Ended';
         subtitle = unclaimed > 0
             ? '$unclaimed unclaimed reward${unclaimed != 1 ? "s" : ""} waiting!'
             : 'Thanks for participating!';

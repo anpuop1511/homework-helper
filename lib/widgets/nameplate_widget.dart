@@ -30,6 +30,8 @@ List<Color> nameplateGradientColors(String id) {
       return [const Color(0xFFA5D6A7), const Color(0xFF2E7D32)];
     case 'animated_aplus_nameplate':
       return [const Color(0xFFFFD600), const Color(0xFFFF6D00)];
+    case 'animated_sharpener_nameplate':
+      return [const Color(0xFFFFEB3B), const Color(0xFF212121)];
     case 'aurora_purple':
       return [const Color(0xFFCE93D8), const Color(0xFF7B1FA2)];
     case 'ocean_deep':
@@ -97,6 +99,8 @@ String badgeEmoji(String id) {
       return '🌃';
     case 'finals_fire_badge':
       return '🔥';
+    case 'pencil_badge':
+      return '✏️';
     default:
       return '';
   }
@@ -131,7 +135,8 @@ Color? nameColorValue(String id) {
 /// Returns `true` when the nameplate ID uses a looping animation.
 bool isAnimatedNameplate(String id) {
   return id == 'animated_golden_cherry_blossom' ||
-      id == 'animated_aplus_nameplate';
+  id == 'animated_aplus_nameplate' ||
+  id == 'animated_sharpener_nameplate';
 }
 
 /// Renders a username (or any text) inside a coloured nameplate background.
@@ -211,13 +216,20 @@ class _NameplateWidgetState extends State<NameplateWidget>
         builder: (context, child) {
           // Sweep the shimmer highlight from left-to-right and back.
           final t = _anim.value;
-          // Base colors for animated_golden_cherry_blossom
-          const List<Color> baseColors = [
-            Color(0xFFFFD700),
-            Color(0xFFFFB347),
-            Color(0xFFFF69B4),
-            Color(0xFFFFD700),
-          ];
+          final List<Color> baseColors =
+              widget.nameplateId == 'animated_sharpener_nameplate'
+                  ? const [
+                      Color(0xFFFFEB3B),
+                      Color(0xFFFFC107),
+                      Color(0xFF212121),
+                      Color(0xFFFFEB3B),
+                    ]
+                  : const [
+                      Color(0xFFFFD700),
+                      Color(0xFFFFB347),
+                      Color(0xFFFF69B4),
+                      Color(0xFFFFD700),
+                    ];
           // Shimmer highlight positioned along the gradient.
           final shimmerPos = t;
           final shimmerColors = [
@@ -237,7 +249,7 @@ class _NameplateWidgetState extends State<NameplateWidget>
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFFD700).withAlpha(
+                    color: baseColors.first.withAlpha(
                     (80 + 80 * math.sin(math.pi * t)).round(),
                   ),
                   blurRadius: 8 + 4 * t,

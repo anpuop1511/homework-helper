@@ -331,7 +331,7 @@ class _NotepadTabState extends State<_NotepadTab> {
     if (apiKey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Gemini API key required. Add one in Settings -> AI & Models.'),
+          content: Text('API key required. Add one in Settings -> AI & Models.'),
         ),
       );
       return;
@@ -361,11 +361,11 @@ class _NotepadTabState extends State<_NotepadTab> {
       showDialog<void>(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('Gemini Note Review'),
+          title: const Text('AI Note Review'),
           content: SingleChildScrollView(
             child: Text(response.text?.trim().isNotEmpty == true
                 ? response.text!.trim()
-                : 'No response from Gemini.'),
+                : 'No response from AI provider.'),
           ),
           actions: [
             TextButton(
@@ -454,7 +454,7 @@ class _NotepadTabState extends State<_NotepadTab> {
                             OutlinedButton.icon(
                               onPressed: _summarizing ? null : () => _summarizeNote(note),
                               icon: const Icon(Icons.auto_awesome_rounded, size: 16),
-                              label: const Text('Gemini Review'),
+                              label: const Text('AI Review'),
                             ),
                             OutlinedButton.icon(
                               onPressed: () => _addOrEditNote(existing: note),
@@ -537,7 +537,7 @@ class _QuizFromPicsTabState extends State<_QuizFromPicsTab> {
     if (apiKey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Gemini API key required. Add one in Settings -> AI & Models.'),
+          content: Text('API key required. Add one in Settings -> AI & Models.'),
         ),
       );
       return;
@@ -639,7 +639,7 @@ class _QuizFromPicsTabState extends State<_QuizFromPicsTab> {
         const SizedBox(height: 16),
         if (_questions.isEmpty && !_loading)
           Text(
-            'Attach a study guide image and generate a Gemini practice quiz.',
+            'Attach a study guide image and generate an AI practice quiz.',
             style: TextStyle(color: colorScheme.onSurfaceVariant),
           ),
         if (_questions.isNotEmpty)

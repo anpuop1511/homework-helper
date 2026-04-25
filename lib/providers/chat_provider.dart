@@ -26,11 +26,10 @@ class ChatMessage {
 
 /// Available AI model identifiers.
 ///
-/// - [gemini25Flash] – default, Gemini 2.5 Flash (fast & capable).
-/// - [gemini31FlashLitePreview] – AI Studio preview model (limited quota).
-/// - [custom] – Bring Your Own Key (BYOK) for Gemini; uses [ChatProvider.customApiKey].
-/// - [passCustom] – Pass-exclusive BYOK for non-Gemini providers (OpenAI-compatible
-///   endpoint).  Requires an active Helper Pass subscription.
+/// - [gemini25Flash] – default fast model.
+/// - [gemini31FlashLitePreview] – lightweight preview model.
+/// - [custom] – Bring Your Own Key (BYOK); uses [ChatProvider.customApiKey].
+/// - [passCustom] – advanced custom endpoint mode.
 enum AiModel {
   gemini25Flash,
   gemini31FlashLitePreview,
@@ -38,7 +37,7 @@ enum AiModel {
   // ── Pass-exclusive BYOK for non-Gemini providers ───────────────────────
   passCustom;
 
-  /// The model string sent to the Generative AI SDK (Gemini).
+  /// The model string sent to the Generative AI SDK.
   /// For [passCustom] this is unused — the provider handles it separately.
   String get modelId {
     switch (this) {
@@ -58,13 +57,13 @@ enum AiModel {
   String get label {
     switch (this) {
       case AiModel.gemini25Flash:
-        return 'Gemini 2.5 Flash';
+        return 'Default AI (Fast)';
       case AiModel.gemini31FlashLitePreview:
-        return 'AI Studio: 3.1 Flash Lite (Preview)';
+        return 'Lite Preview Model';
       case AiModel.custom:
-        return 'Custom Gemini / BYOK';
+        return 'Bring Your Own API Key';
       case AiModel.passCustom:
-        return 'Non-Gemini BYOK (Pass)';
+        return 'Custom Endpoint (Advanced)';
     }
   }
 
@@ -72,7 +71,7 @@ enum AiModel {
   bool get requiresPass => this == passCustom;
 }
 
-/// Manages the AI Study Buddy chat state and Gemini API integration.
+/// Manages the AI Study Buddy chat state and API integration.
 ///
 /// Exposes a [messages] list and a [isStreaming] flag that the UI can
 /// watch via `context.watch<ChatProvider>()`.
@@ -99,17 +98,17 @@ class ChatProvider extends ChangeNotifier {
   /// The currently selected AI model.
   AiModel _selectedModel = AiModel.gemini25Flash;
 
-  /// Custom API key provided by the user for Gemini BYOK mode.
+  /// Custom API key provided by the user for BYOK mode.
   String _customApiKey = '';
 
-  /// Custom API key for the Pass-exclusive non-Gemini BYOK provider.
+  /// Custom API key for the advanced custom endpoint mode.
   String _passCustomApiKey = '';
 
-  /// OpenAI-compatible endpoint for the Pass-exclusive non-Gemini BYOK.
+  /// OpenAI-compatible endpoint for advanced BYOK.
   String _passCustomEndpoint = '';
 
   static ChatMessage _welcomeMessage() => ChatMessage(
-        text: 'Hi! I\'m your AI Study Buddy 🤖📚 powered by Gemini. '
+        text: 'Hi! I\'m your AI Study Buddy 🤖📚. '
             'Ask me anything about your homework and I\'ll help you understand it!',
         isUser: false,
         time: DateTime.now(),
@@ -147,7 +146,7 @@ class ChatProvider extends ChangeNotifier {
   /// The currently selected AI model.
   AiModel get selectedModel => _selectedModel;
 
-  /// The user-provided API key for Gemini BYOK mode (may be empty).
+  /// The user-provided API key for BYOK mode (may be empty).
   String get customApiKey => _customApiKey;
 
   /// The user-provided API key for the Pass-exclusive non-Gemini BYOK.
@@ -156,7 +155,7 @@ class ChatProvider extends ChangeNotifier {
   /// The OpenAI-compatible API endpoint for the Pass-exclusive non-Gemini BYOK.
   String get passCustomEndpoint => _passCustomEndpoint;
 
-  /// Returns the effective Gemini API key: custom key if BYOK selected and non-empty,
+  /// Returns the effective API key: custom key if BYOK selected and non-empty,
   /// otherwise the default app key.
   String get _effectiveApiKey {
     if (_selectedModel == AiModel.custom && _customApiKey.isNotEmpty) {
@@ -214,7 +213,7 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setInt(_kSelectedModel, model.index);
   }
 
-  /// Updates the custom Gemini BYOK API key and persists it.
+  /// Updates the BYOK API key and persists it.
   Future<void> setCustomApiKey(String key) async {
     final trimmed = key.trim();
     if (_customApiKey == trimmed) return;
@@ -227,7 +226,7 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setString(_kCustomApiKey, trimmed);
   }
 
-  /// Updates the Pass-exclusive non-Gemini BYOK API key and persists it.
+  /// Updates the advanced BYOK API key and persists it.
   Future<void> setPassCustomApiKey(String key) async {
     final trimmed = key.trim();
     if (_passCustomApiKey == trimmed) return;
@@ -237,7 +236,7 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setString(_kPassCustomApiKey, trimmed);
   }
 
-  /// Updates the Pass-exclusive non-Gemini BYOK endpoint and persists it.
+  /// Updates the advanced BYOK endpoint and persists it.
   Future<void> setPassCustomEndpoint(String endpoint) async {
     final trimmed = endpoint.trim();
     if (_passCustomEndpoint == trimmed) return;
@@ -317,11 +316,11 @@ class ChatProvider extends ChangeNotifier {
       }
     } on GenerativeAIException catch (e) {
       list[aiIndex] = list[aiIndex].copyWith(
-        text: '⚠️ Sorry, I couldn\'t connect to Gemini. '
+        text: '⚠️ Sorry, I couldn\'t connect to the AI provider. '
             'Please check your internet connection.\n\n(${e.message})',
       );
       _error = e.message;
-      debugPrint('[ChatProvider] Gemini error: ${e.message}');
+      debugPrint('[ChatProvider] AI provider error: ${e.message}');
     } catch (e) {
       list[aiIndex] = list[aiIndex].copyWith(
         text: '⚠️ An unexpected error occurred. Please try again.',

@@ -280,6 +280,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         initial: displayName,
                         photoUrl: photoUrl,
                         localPhotoBytes: _localPhotoBytes,
+                        frameCosmeticId:
+                            user.unlockedCosmetics.contains('sharpener_profile_frame')
+                                ? 'sharpener_profile_frame'
+                                : null,
                       ),
                       if (_uploadingPhoto)
                         Positioned.fill(

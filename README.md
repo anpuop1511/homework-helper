@@ -11,8 +11,8 @@ A homework management app with an AI study buddy, social features, and gamificat
 
 ### AI Study Buddy
 - Built-in AI chat to help you study and explain topics
-- Optional **Gemini API key** support for AI-powered features (configured in Settings)
-- Google Classroom “paste import” (Gemini-enabled) to extract class names + subjects from copied Classroom text
+- Optional **Bring Your Own API key** support for AI-powered features (configured in Settings)
+- Google Classroom “paste import” (AI-powered) to extract class names + subjects from copied Classroom text
 
 ### Classes & Subjects
 - Create/manage classes

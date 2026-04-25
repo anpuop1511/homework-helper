@@ -97,8 +97,11 @@ class AssignmentsProvider extends ChangeNotifier {
         _userProvider?.awardXp(_xpPerAssignment);
         _userProvider?.awardCoins(_coinsPerAssignment);
         _userProvider?.addSeasonXp(_seasonXpPerAssignment);
-        // Notify the ladder event provider about this completion.
-        _eventProvider?.recordCompletion(_assignments[idx].id);
+        // Notify the May event provider so it can award event XP progress.
+        _eventProvider?.recordAssignmentCompletion(
+          _assignments[idx].id,
+          baseXp: _xpPerAssignment,
+        );
       }
       notifyListeners();
       if (_uid != null) {

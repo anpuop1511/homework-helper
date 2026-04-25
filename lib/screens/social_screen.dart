@@ -119,14 +119,14 @@ class _SocialScreenState extends State<SocialScreen>
     );
   }
 
-  Future<void> _sendRequest(BuildContext context) async {
+  Future<bool> _sendRequest(BuildContext context) async {
     final handle = _handleController.text.trim();
-    if (handle.isEmpty) return;
+    if (handle.isEmpty) return false;
 
     setState(() => _searching = true);
     final social = context.read<SocialProvider>();
     final error = await social.sendFriendRequestByUsername(handle);
-    if (!mounted) return;
+    if (!mounted) return false;
     setState(() => _searching = false);
 
     if (error == null) {
@@ -138,6 +138,7 @@ class _SocialScreenState extends State<SocialScreen>
           backgroundColor: Theme.of(context).colorScheme.primaryContainer,
         ),
       );
+      return true;
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -146,6 +147,7 @@ class _SocialScreenState extends State<SocialScreen>
           backgroundColor: Theme.of(context).colorScheme.errorContainer,
         ),
       );
+      return false;
     }
   }
 
@@ -191,58 +193,71 @@ class _SocialScreenState extends State<SocialScreen>
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _handleController,
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        hintText: '@username or email',
-                        prefixIcon:
-                            const Icon(Icons.alternate_email_rounded),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      onSubmitted: (_) {
-                        Navigator.pop(context);
-                        _sendRequest(context);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: _searching
-                        ? const SizedBox(
-                            width: 48,
-                            height: 48,
-                            child: Padding(
-                              padding: EdgeInsets.all(12),
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2),
-                            ),
-                          )
-                        : FilledButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _sendRequest(context);
-                            },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _kElectricBlue,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(48, 48),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: const Icon(Icons.send_rounded),
+              AutofillGroup(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _handleController,
+                        autofocus: true,
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.send,
+                        autocorrect: false,
+                        autofillHints: const [
+                          AutofillHints.username,
+                          AutofillHints.email,
+                        ],
+                        decoration: InputDecoration(
+                          hintText: '@username or email',
+                          prefixIcon:
+                              const Icon(Icons.alternate_email_rounded),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                  ),
-                ],
+                        ),
+                        onSubmitted: (_) async {
+                          final ok = await _sendRequest(context);
+                          if (ok && context.mounted) {
+                            Navigator.pop(context);
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: _searching
+                          ? const SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: Padding(
+                                padding: EdgeInsets.all(12),
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2),
+                              ),
+                            )
+                          : FilledButton(
+                              onPressed: () async {
+                                final ok = await _sendRequest(context);
+                                if (ok && context.mounted) {
+                                  Navigator.pop(context);
+                                }
+                              },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: _kElectricBlue,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(48, 48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Icon(Icons.send_rounded),
+                            ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 12),
             ],
@@ -463,7 +478,7 @@ class _SocialScreenState extends State<SocialScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Social Quad',
+                  'Social HQ',
                   style: GoogleFonts.lexend(
                     fontSize: 21,
                     fontWeight: FontWeight.w700,
@@ -471,7 +486,7 @@ class _SocialScreenState extends State<SocialScreen>
                   ),
                 ),
                 Text(
-                  'Connect, bump, and study together',
+                  'Connect, collaborate, and level up together',
                   style: GoogleFonts.outfit(
                     fontSize: 12,
                     color: colorScheme.onSurfaceVariant,

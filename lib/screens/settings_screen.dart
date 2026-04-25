@@ -763,14 +763,14 @@ class _AiModelsSettingsPage extends StatelessWidget {
                   ],
                 ),
               ),
-              // Gemini BYOK key input -- only visible when Custom is selected
+              // BYOK key input -- only visible when Custom is selected
               if (chat.selectedModel == AiModel.custom) ...[
                 Divider(
                     height: 1,
                     color: colorScheme.outlineVariant.withAlpha(100)),
                 _ByokKeyField(colorScheme: colorScheme),
               ],
-              // Pass BYOK (non-Gemini) fields -- only when passCustom is selected
+              // Advanced BYOK fields -- only when passCustom is selected
               if (chat.selectedModel == AiModel.passCustom) ...[
                 Divider(
                     height: 1,
@@ -2084,12 +2084,12 @@ class _ByokKeyFieldState extends State<_ByokKeyField> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Your Gemini API Key',
+                    Text('Your API Key',
                         style: Theme.of(context)
                             .textTheme
                             .bodyLarge
                             ?.copyWith(fontWeight: FontWeight.w600)),
-                    Text('Paste your key from Google AI Studio.',
+                    Text('Bring your own key from your preferred AI provider.',
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
@@ -2144,15 +2144,58 @@ class _ByokKeyFieldState extends State<_ByokKeyField> {
               ),
             ),
           ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Free key quick start',
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelLarge
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '1) Google AI Studio: create a key for Gemini models.',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+                Text(
+                  '2) OpenRouter: create a key and use free-tier models.',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+                Text(
+                  '3) Groq: create a key for fast free-tier inference.',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-/// Pass-exclusive BYOK fields for non-Gemini providers (OpenAI-compatible).
+/// Advanced BYOK fields for custom endpoints (OpenAI-compatible).
 ///
-/// TODO(billing): Once the non-Gemini BYOK backend is fully implemented,
+/// TODO(billing): Once advanced BYOK backend routing is fully implemented,
 ///   this section should route API calls through the selected endpoint using
 ///   the provided key.  For now it stores the values safely and shows a stub
 ///   response note.
@@ -2212,7 +2255,7 @@ class _PassByokFieldsState extends State<_PassByokFields> {
                   children: [
                     Row(
                       children: [
-                        Text('Non-Gemini BYOK',
+                        Text('Advanced BYOK',
                             style: textTheme.bodyLarge
                                 ?.copyWith(fontWeight: FontWeight.w600)),
                         const SizedBox(width: 6),
@@ -2234,7 +2277,7 @@ class _PassByokFieldsState extends State<_PassByokFields> {
                       ],
                     ),
                     Text(
-                      'OpenAI-compatible endpoint + key.',
+                      'OpenAI-compatible endpoint + API key.',
                       style: textTheme.bodySmall
                           ?.copyWith(color: colorScheme.onSurfaceVariant),
                     ),
@@ -2295,10 +2338,10 @@ class _PassByokFieldsState extends State<_PassByokFields> {
                   FocusScope.of(context).unfocus();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      // TODO(billing): remove this note once the non-Gemini
+                        // TODO(billing): remove this note once advanced BYOK
                       //   chat backend is implemented.
                       content: const Text(
-                          'Credentials saved. Non-Gemini chat responses '
+                          'Credentials saved. Advanced endpoint chat responses '
                           'are a TODO and will be wired in a future update.'),
                       behavior: SnackBarBehavior.floating,
                       backgroundColor: colorScheme.surfaceContainerHighest,

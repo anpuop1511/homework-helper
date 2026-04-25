@@ -14,6 +14,7 @@ class SquircleAvatar extends StatelessWidget {
   final Uint8List? localPhotoBytes;
   final Color? backgroundColor;
   final Color? foregroundColor;
+  final String? frameCosmeticId;
 
   const SquircleAvatar({
     super.key,
@@ -23,6 +24,7 @@ class SquircleAvatar extends StatelessWidget {
     this.localPhotoBytes,
     this.backgroundColor,
     this.foregroundColor,
+    this.frameCosmeticId,
   });
 
   @override
@@ -39,7 +41,7 @@ class SquircleAvatar extends StatelessWidget {
       imageProvider = NetworkImage(photoUrl!);
     }
 
-    return ClipRRect(
+    final avatarCore = ClipRRect(
       borderRadius: BorderRadius.circular(radius * 0.55),
       child: Container(
         width: size,
@@ -63,6 +65,37 @@ class SquircleAvatar extends StatelessWidget {
                 radius: radius,
               ),
       ),
+    );
+
+    if (frameCosmeticId != 'sharpener_profile_frame') {
+      return avatarCore;
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: size + 10,
+          height: size + 10,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular((radius + 5) * 0.55),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFFEB3B), Color(0xFF212121)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0xAAFFEB3B),
+                blurRadius: 14,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+        ),
+        avatarCore,
+      ],
     );
   }
 }
