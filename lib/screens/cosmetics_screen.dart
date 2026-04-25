@@ -75,7 +75,7 @@ const _allCosmetics = [
   _CosmeticInfo(
     id: 'animated_golden_cherry_blossom',
     label: 'Golden Cherry Blossom',
-    emoji: '✨',
+    emoji: '🌟',
     type: _CosmeticType.nameplate,
   ),
   _CosmeticInfo(
@@ -99,7 +99,7 @@ const _allCosmetics = [
   _CosmeticInfo(
     id: 'animated_aplus_nameplate',
     label: 'Animated A+ Nameplate',
-    emoji: '✨',
+    emoji: '🅰️',
     type: _CosmeticType.nameplate,
   ),
   _CosmeticInfo(
@@ -142,7 +142,7 @@ const _allCosmetics = [
   _CosmeticInfo(
     id: 'study_streak_frame',
     label: 'Study Streak',
-    emoji: '🔥',
+    emoji: '💥',
     type: _CosmeticType.badge,
   ),
   _CosmeticInfo(
@@ -161,7 +161,7 @@ const _allCosmetics = [
   _CosmeticInfo(
     id: 'badge_blossom_brawler',
     label: 'Blossom Brawler',
-    emoji: '🌸',
+    emoji: '🥊',
     type: _CosmeticType.badge,
   ),
   _CosmeticInfo(
@@ -186,13 +186,13 @@ const _allCosmetics = [
   _CosmeticInfo(
     id: 'badge_sakura_storm',
     label: 'Sakura Storm',
-    emoji: '🌺',
+    emoji: '🌪️',
     type: _CosmeticType.badge,
   ),
   _CosmeticInfo(
     id: 'badge_petal_warrior',
     label: 'Petal Warrior',
-    emoji: '🌺',
+    emoji: '🛡️',
     type: _CosmeticType.badge,
   ),
   _CosmeticInfo(
@@ -210,7 +210,7 @@ const _allCosmetics = [
   _CosmeticInfo(
     id: 'badge_grand_blossom',
     label: 'Grand Blossom',
-    emoji: '🌺',
+    emoji: '💮',
     type: _CosmeticType.badge,
   ),
   _CosmeticInfo(

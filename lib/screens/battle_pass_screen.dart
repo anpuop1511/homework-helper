@@ -689,7 +689,7 @@ const _freeRewards = <_TierReward>[
   // T13
   _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
   // T14
-  _TierReward(label: 'Blossom Brawler Badge', emoji: '🌸', type: _RewardType.badge, value: 'blossom_brawler'),
+  _TierReward(label: 'Blossom Brawler Badge', emoji: '🥊', type: _RewardType.badge, value: 'blossom_brawler'),
   // T15
   _TierReward(label: 'Spring Mint Theme', emoji: '🌿', type: _RewardType.theme, value: 'springMint'),
   // T16
@@ -761,7 +761,7 @@ const _freeRewards = <_TierReward>[
   // T49
   _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
   // T50
-  _TierReward(label: 'Cherry Blossom Nameplate', emoji: '🌸', type: _RewardType.nameplate, value: 'Cherry Blossom'),
+  _TierReward(label: 'Cherry Blossom Nameplate', emoji: '🌺', type: _RewardType.nameplate, value: 'Cherry Blossom'),
 ];
 
 // ── Plus/Premium-track reward table ─────────────────────────────────────────
@@ -774,7 +774,7 @@ const _premiumRewards = <_TierReward>[
   // T3
   _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
   // T4
-  _TierReward(label: 'Sakura Storm Badge', emoji: '🌺', type: _RewardType.badge, value: 'sakura_storm'),
+  _TierReward(label: 'Sakura Storm Badge', emoji: '🌪️', type: _RewardType.badge, value: 'sakura_storm'),
   // T5
   _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
   // T6
@@ -794,7 +794,7 @@ const _premiumRewards = <_TierReward>[
   // T13
   _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
   // T14
-  _TierReward(label: 'Petal Warrior Badge', emoji: '🌺', type: _RewardType.badge, value: 'petal_warrior'),
+  _TierReward(label: 'Petal Warrior Badge', emoji: '🛡️', type: _RewardType.badge, value: 'petal_warrior'),
   // T15
   _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
   // T16
@@ -854,7 +854,7 @@ const _premiumRewards = <_TierReward>[
   // T43
   _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
   // T44
-  _TierReward(label: 'Grand Blossom Badge', emoji: '🌺', type: _RewardType.badge, value: 'grand_blossom'),
+  _TierReward(label: 'Grand Blossom Badge', emoji: '💮', type: _RewardType.badge, value: 'grand_blossom'),
   // T45
   _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
   // T46
