@@ -2723,7 +2723,7 @@ class _ThemeCategoriesState extends State<_ThemeCategories> {
           title: 'Season 1: Spring Bloomin\'',
           isExpanded: _season1Expanded,
           onExpand: () => setState(() => _season1Expanded = !_season1Expanded),
-          icon: Icons.entertainment_rounded,
+          icon: Icons.movie,
           vibes: season1Vibes,
           themeProvider: widget.themeProvider,
           colorScheme: widget.colorScheme,
