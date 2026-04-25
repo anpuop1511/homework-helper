@@ -12,6 +12,7 @@ import 'settings_screen.dart';
 
 // Electric Blue — same as the NFC bump screen glow.
 const Color _kElectricBlue = Color(0xFF007FFF);
+const int _kMaxImageAttachments = 5;
 
 /// AI Study Buddy chat screen backed by a BYOK AI API.
 /// V2.4: Voice-to-Voice mode with animated waveform UI.
@@ -24,13 +25,12 @@ class ChatScreen extends StatefulWidget {
 
 /// Voice interaction state machine.
 enum _VoiceState {
-  idle,      // normal text chat
+  idle, // normal text chat
   listening, // microphone active, user speaking
-  speaking,  // TTS reading the AI response
+  speaking, // TTS reading the AI response
 }
 
-class _ChatScreenState extends State<ChatScreen>
-    with TickerProviderStateMixin {
+class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
@@ -120,6 +120,38 @@ class _ChatScreenState extends State<ChatScreen>
     _scrollToBottom();
   }
 
+  Future<void> _pickAndSendImages() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickMultiImage(
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (picked.isEmpty || !mounted) return;
+
+    final capped = picked.take(_kMaxImageAttachments).toList();
+    if (picked.length > capped.length && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You can send up to 5 photos at once.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+
+    final bytes = <Uint8List>[];
+    for (final file in capped) {
+      bytes.add(await file.readAsBytes());
+    }
+
+    if (!mounted) return;
+    await context.read<ChatProvider>().sendImagesMessage(
+      bytes,
+      prompt: 'Please explain these homework problems step by step.',
+    );
+    _scrollToBottom();
+  }
+
   void _showImageSourceSheet() {
     showModalBottomSheet<void>(
       context: context,
@@ -129,8 +161,9 @@ class _ChatScreenState extends State<ChatScreen>
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(28),
-          border:
-              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -141,10 +174,9 @@ class _ChatScreenState extends State<ChatScreen>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurfaceVariant
-                      .withAlpha(80),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant.withAlpha(80),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -153,6 +185,7 @@ class _ChatScreenState extends State<ChatScreen>
             ListTile(
               leading: const Icon(Icons.camera_alt_rounded),
               title: const Text('Take a Photo'),
+              subtitle: const Text('Send one photo instantly'),
               onTap: () {
                 Navigator.pop(context);
                 _pickAndSendImage(ImageSource.camera);
@@ -161,9 +194,10 @@ class _ChatScreenState extends State<ChatScreen>
             ListTile(
               leading: const Icon(Icons.photo_library_rounded),
               title: const Text('Choose from Gallery'),
+              subtitle: const Text('Select up to 5 photos'),
               onTap: () {
                 Navigator.pop(context);
-                _pickAndSendImage(ImageSource.gallery);
+                _pickAndSendImages();
               },
             ),
             const SizedBox(height: 8),
@@ -285,15 +319,17 @@ class _ChatScreenState extends State<ChatScreen>
           // Quick-prompt chips – only shown before the first user message
           if (chat.messages.length <= 1) ...[
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.auto_awesome,
-                          size: 15, color: _kElectricBlue),
+                      const Icon(
+                        Icons.auto_awesome,
+                        size: 15,
+                        color: _kElectricBlue,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'Quick questions',
@@ -319,11 +355,13 @@ class _ChatScreenState extends State<ChatScreen>
                           ),
                         ),
                         onPressed: () => _sendMessage(prompt),
-                        avatar: const Icon(Icons.lightbulb_outline,
-                            size: 15, color: _kElectricBlue),
+                        avatar: const Icon(
+                          Icons.lightbulb_outline,
+                          size: 15,
+                          color: _kElectricBlue,
+                        ),
                         backgroundColor: _kElectricBlue.withAlpha(16),
-                        side: BorderSide(
-                            color: _kElectricBlue.withAlpha(65)),
+                        side: BorderSide(color: _kElectricBlue.withAlpha(65)),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -355,13 +393,14 @@ class _ChatScreenState extends State<ChatScreen>
             FadeInDown(
               duration: const Duration(milliseconds: 300),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: _kElectricBlue.withAlpha(20),
                   border: Border(
-                    bottom: BorderSide(
-                      color: _kElectricBlue.withAlpha(80),
-                    ),
+                    bottom: BorderSide(color: _kElectricBlue.withAlpha(80)),
                   ),
                 ),
                 child: Row(
@@ -385,8 +424,7 @@ class _ChatScreenState extends State<ChatScreen>
           // ── Ghost Mode banner ─────────────────────────────────────────
           if (!chat.isHistoryEnabled)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: colorScheme.secondaryContainer.withAlpha(180),
                 border: Border(
@@ -409,9 +447,8 @@ class _ChatScreenState extends State<ChatScreen>
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => context
-                        .read<ChatProvider>()
-                        .setHistoryEnabled(true),
+                    onTap: () =>
+                        context.read<ChatProvider>().setHistoryEnabled(true),
                     child: Icon(
                       Icons.close_rounded,
                       size: 16,
@@ -453,7 +490,9 @@ class _ChatScreenState extends State<ChatScreen>
                   );
                 }
                 return Dismissible(
-                  key: ValueKey('msg_${index}_${msg.time.millisecondsSinceEpoch}'),
+                  key: ValueKey(
+                    'msg_${index}_${msg.time.millisecondsSinceEpoch}',
+                  ),
                   direction: DismissDirection.endToStart,
                   background: Container(
                     alignment: Alignment.centerRight,
@@ -470,30 +509,32 @@ class _ChatScreenState extends State<ChatScreen>
                   ),
                   confirmDismiss: (_) async {
                     return await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        title: const Text('Delete message?'),
-                        content: const Text(
-                            'This will remove the message from your chat history.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('Cancel'),
-                          ),
-                          FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: colorScheme.error,
-                              foregroundColor: colorScheme.onError,
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('Delete'),
+                            title: const Text('Delete message?'),
+                            content: const Text(
+                              'This will remove the message from your chat history.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Cancel'),
+                              ),
+                              FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: colorScheme.error,
+                                  foregroundColor: colorScheme.onError,
+                                ),
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text('Delete'),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ) ?? false;
+                        ) ??
+                        false;
                   },
                   onDismissed: (_) {
                     context.read<ChatProvider>().deleteMessage(index);
@@ -554,16 +595,14 @@ class _VoiceOverlay extends StatelessWidget {
     final subLabel = isListening && partialWords.isNotEmpty
         ? '"$partialWords"'
         : isListening
-            ? 'Tap the mic to stop'
-            : 'Tap to stop';
+        ? 'Tap the mic to stop'
+        : 'Tap to stop';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest,
-        border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant),
-        ),
+        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
       ),
       child: Row(
         children: [
@@ -658,15 +697,11 @@ class _WaveformPainter extends CustomPainter {
 
     for (int i = 0; i < barCount; i++) {
       final phase = (progress + i * (1.0 / barCount)) % 1.0;
-      final h = minH + (math.sin(phase * 2 * math.pi) * 0.5 + 0.5) * (maxH - minH);
+      final h =
+          minH + (math.sin(phase * 2 * math.pi) * 0.5 + 0.5) * (maxH - minH);
       final x = i * barWidth * 2;
       final rect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          x,
-          (size.height - h) / 2,
-          barWidth,
-          h,
-        ),
+        Rect.fromLTWH(x, (size.height - h) / 2, barWidth, h),
         const Radius.circular(4),
       );
 
@@ -678,10 +713,7 @@ class _WaveformPainter extends CustomPainter {
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
       );
       // Solid layer
-      canvas.drawRRect(
-        rect,
-        Paint()..color = color,
-      );
+      canvas.drawRRect(rect, Paint()..color = color);
     }
   }
 
@@ -707,8 +739,7 @@ class _InlineWaveform extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(top: 4, bottom: 4),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHighest,
           borderRadius: const BorderRadius.only(
@@ -718,8 +749,7 @@ class _InlineWaveform extends StatelessWidget {
             bottomLeft: Radius.circular(4),
           ),
           border: Border(
-            left: BorderSide(
-                color: _kElectricBlue.withAlpha(170), width: 2.5),
+            left: BorderSide(color: _kElectricBlue.withAlpha(170), width: 2.5),
           ),
         ),
         child: _WaveformBars(controller: waveController, barCount: 7),
@@ -799,7 +829,7 @@ class _GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
                   Text(
                     isLiveActive
                         ? 'Live Voice Active 🎙️'
-                      : 'Powered by your API key',
+                        : 'Powered by your API key',
                     style: textTheme.bodySmall?.copyWith(
                       color: isLiveActive
                           ? _kElectricBlue
@@ -899,8 +929,7 @@ class _MessageBubble extends StatelessWidget {
             left: isUser ? 48 : 0,
             right: isUser ? 0 : 48,
           ),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             gradient: isUser
                 ? const LinearGradient(
@@ -919,7 +948,9 @@ class _MessageBubble extends StatelessWidget {
             border: !isUser
                 ? Border(
                     left: BorderSide(
-                        color: _kElectricBlue.withAlpha(170), width: 2.5),
+                      color: _kElectricBlue.withAlpha(170),
+                      width: 2.5,
+                    ),
                   )
                 : null,
             boxShadow: [
@@ -962,9 +993,7 @@ class _MessageBubble extends StatelessWidget {
               Text(
                 _sanitizeMarkdown(message.text),
                 style: textTheme.bodyMedium?.copyWith(
-                  color: isUser
-                      ? Colors.white
-                      : colorScheme.onSurface,
+                  color: isUser ? Colors.white : colorScheme.onSurface,
                   height: 1.4,
                 ),
               ),
@@ -1023,8 +1052,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(top: 4, bottom: 4),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: widget.colorScheme.surfaceContainerHighest,
           borderRadius: const BorderRadius.only(
@@ -1034,8 +1062,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
             bottomLeft: Radius.circular(4),
           ),
           border: Border(
-            left: BorderSide(
-                color: _kElectricBlue.withAlpha(170), width: 2.5),
+            left: BorderSide(color: _kElectricBlue.withAlpha(170), width: 2.5),
           ),
         ),
         child: SizedBox(
@@ -1075,9 +1102,7 @@ class _DotsPainter extends CustomPainter {
 
     for (int i = 0; i < dotCount; i++) {
       final phase = (progress - i * 0.25) % 1.0;
-      final bounce = phase < 0.5
-          ? phase * 2
-          : 1.0 - (phase - 0.5) * 2;
+      final bounce = phase < 0.5 ? phase * 2 : 1.0 - (phase - 0.5) * 2;
       final radius = baseRadius + bounce * 1.5;
       final alpha = (153 + bounce * 102).clamp(0, 255).toInt();
       paint.color = color.withAlpha(alpha);
@@ -1121,123 +1146,127 @@ class _ChatInputBar extends StatelessWidget {
 
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
         decoration: BoxDecoration(
-          color: colorScheme.surface,
-          boxShadow: [
-            BoxShadow(
-              color: _kElectricBlue.withAlpha(22),
-              blurRadius: 18,
-              offset: const Offset(0, -4),
-            ),
-          ],
+          color: colorScheme.surface.withAlpha(245),
           border: Border(
-            top: BorderSide(
-                color: _kElectricBlue.withAlpha(55), width: 1.5),
+            top: BorderSide(color: colorScheme.outlineVariant.withAlpha(130)),
           ),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 4,
-                minLines: 1,
-                enabled: !isLoading && voiceState == _VoiceState.idle,
-                decoration: InputDecoration(
-                  hintText: isLoading
-                      ? 'AI is thinking…'
-                      : isListening
-                          ? 'Listening…'
-                          : 'Ask anything…',
-                  hintStyle: GoogleFonts.lexend(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 18, vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(
-                        color: colorScheme.outline.withAlpha(45)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(
-                        color: _kElectricBlue.withAlpha(140),
-                        width: 1.5),
-                  ),
-                  filled: true,
-                  fillColor: colorScheme.surfaceContainerLow,
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Text(
+                'Send up to 5 photos with one question.',
+                style: GoogleFonts.lexend(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurfaceVariant,
                 ),
-                onSubmitted:
-                    isLoading || voiceState != _VoiceState.idle ? null : onSend,
               ),
             ),
-            const SizedBox(width: 8),
-            // Camera / AI Lens button
-            FloatingActionButton.small(
-              heroTag: 'camera_fab',
-              onPressed: isLoading || voiceState != _VoiceState.idle
-                  ? null
-                  : onCameraTab,
-              elevation: 0,
-              backgroundColor: colorScheme.surfaceContainerHighest,
-              child: Icon(
-                Icons.camera_alt_rounded,
-                color: isLoading || voiceState != _VoiceState.idle
-                    ? colorScheme.onSurfaceVariant.withAlpha(100)
-                    : colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Microphone button (shown when speech is supported)
-            if (speechEnabled) ...[
-              FloatingActionButton.small(
-                heroTag: 'mic_fab',
-                onPressed:
-                    isLoading || voiceState == _VoiceState.speaking
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    textCapitalization: TextCapitalization.sentences,
+                    maxLines: 4,
+                    minLines: 1,
+                    enabled: !isLoading && voiceState == _VoiceState.idle,
+                    decoration: InputDecoration(
+                      hintText: isLoading
+                          ? 'AI is thinking…'
+                          : isListening
+                          ? 'Listening…'
+                          : 'Type a question or add photos…',
+                      hintStyle: GoogleFonts.lexend(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide(
+                          color: colorScheme.outline.withAlpha(45),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide(
+                          color: _kElectricBlue.withAlpha(140),
+                          width: 1.5,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: colorScheme.surfaceContainerLow,
+                    ),
+                    onSubmitted: isLoading || voiceState != _VoiceState.idle
+                        ? null
+                        : onSend,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Camera / photo button
+                FloatingActionButton.small(
+                  heroTag: 'camera_fab',
+                  onPressed: isLoading || voiceState != _VoiceState.idle
+                      ? null
+                      : onCameraTab,
+                  elevation: 0,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                  child: Icon(
+                    Icons.add_photo_alternate_rounded,
+                    color: isLoading || voiceState != _VoiceState.idle
+                        ? colorScheme.onSurfaceVariant.withAlpha(100)
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Microphone button (shown when speech is supported)
+                if (speechEnabled) ...[
+                  FloatingActionButton.small(
+                    heroTag: 'mic_fab',
+                    onPressed: isLoading || voiceState == _VoiceState.speaking
                         ? null
                         : onMicTap,
-                elevation: 0,
-                backgroundColor: isListening
-                    ? _kElectricBlue
-                    : colorScheme.surfaceContainerHighest,
-                child: Icon(
-                  isListening
-                      ? Icons.mic_rounded
-                      : Icons.mic_none_rounded,
-                  color: isListening
-                      ? Colors.white
-                      : colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
-            // Send button with Electric Blue gradient
-            Container(
-              decoration: BoxDecoration(
-                gradient:
-                    isLoading || voiceState != _VoiceState.idle
+                    elevation: 0,
+                    backgroundColor: isListening
+                        ? _kElectricBlue
+                        : colorScheme.surfaceContainerHighest,
+                    child: Icon(
+                      isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
+                      color: isListening
+                          ? Colors.white
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                // Send button with Electric Blue gradient
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: isLoading || voiceState != _VoiceState.idle
                         ? null
                         : const LinearGradient(
-                            colors: [
-                              Color(0xFF007FFF),
-                              Color(0xFF0050C8),
-                            ],
+                            colors: [Color(0xFF007FFF), Color(0xFF0050C8)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                color: isLoading || voiceState != _VoiceState.idle
-                    ? colorScheme.surfaceContainerHighest
-                    : null,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow:
-                    isLoading || voiceState != _VoiceState.idle
+                    color: isLoading || voiceState != _VoiceState.idle
+                        ? colorScheme.surfaceContainerHighest
+                        : null,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: isLoading || voiceState != _VoiceState.idle
                         ? null
                         : [
                             BoxShadow(
@@ -1246,26 +1275,27 @@ class _ChatInputBar extends StatelessWidget {
                               offset: const Offset(0, 3),
                             ),
                           ],
-              ),
-              child: FloatingActionButton.small(
-                heroTag: 'send_fab',
-                onPressed: isLoading || voiceState != _VoiceState.idle
-                    ? null
-                    : () => onSend(controller.text),
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                child: isLoading
-                    ? SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: colorScheme.primary,
-                        ),
-                      )
-                    : const Icon(Icons.send_rounded,
-                        color: Colors.white),
-              ),
+                  ),
+                  child: FloatingActionButton.small(
+                    heroTag: 'send_fab',
+                    onPressed: isLoading || voiceState != _VoiceState.idle
+                        ? null
+                        : () => onSend(controller.text),
+                    elevation: 0,
+                    backgroundColor: Colors.transparent,
+                    child: isLoading
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: colorScheme.primary,
+                            ),
+                          )
+                        : const Icon(Icons.send_rounded, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1306,8 +1336,9 @@ class _SetupAiScreen extends StatelessWidget {
             const SizedBox(width: 12),
             Text(
               'AI Study Buddy',
-              style: textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
@@ -1334,8 +1365,9 @@ class _SetupAiScreen extends StatelessWidget {
             const SizedBox(height: 20),
             Text(
               '🔧 Under Maintenance',
-              style: textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w800),
+              style: textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
@@ -1353,7 +1385,8 @@ class _SetupAiScreen extends StatelessWidget {
             _SetupStep(
               number: '1',
               title: 'Visit Google AI Studio',
-              body: 'Go to  aistudio.google.com  and sign in with your Google account.',
+              body:
+                  'Go to  aistudio.google.com  and sign in with your Google account.',
               icon: Icons.open_in_new_rounded,
               colorScheme: colorScheme,
               textTheme: textTheme,
@@ -1362,7 +1395,8 @@ class _SetupAiScreen extends StatelessWidget {
             _SetupStep(
               number: '2',
               title: 'Get your free API key',
-              body: 'Click "Get API key" → "Create API key". Copy the key that starts with "AIza…".',
+              body:
+                  'Click "Get API key" → "Create API key". Copy the key that starts with "AIza…".',
               icon: Icons.vpn_key_rounded,
               colorScheme: colorScheme,
               textTheme: textTheme,
@@ -1371,7 +1405,8 @@ class _SetupAiScreen extends StatelessWidget {
             _SetupStep(
               number: '3',
               title: 'Paste it in Settings',
-              body: 'Open Settings → AI & Models → "Your API Key" and paste the key there.',
+              body:
+                  'Open Settings → AI & Models → "Your API Key" and paste the key there.',
               icon: Icons.settings_rounded,
               colorScheme: colorScheme,
               textTheme: textTheme,
@@ -1380,20 +1415,19 @@ class _SetupAiScreen extends StatelessWidget {
 
             // CTA button — navigate to Settings
             FilledButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              ),
+              onPressed: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
               icon: const Icon(Icons.settings_rounded),
               label: const Text('Open Settings'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(200, 48),
-              ),
+              style: FilledButton.styleFrom(minimumSize: const Size(200, 48)),
             ),
             const SizedBox(height: 16),
             Text(
               'The AI Study Buddy will unlock automatically once your key is saved.',
-              style: textTheme.bodySmall
-                  ?.copyWith(color: colorScheme.onSurfaceVariant),
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
               textAlign: TextAlign.center,
             ),
           ],

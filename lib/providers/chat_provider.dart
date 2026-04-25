@@ -17,11 +17,8 @@ class ChatMessage {
     required this.time,
   });
 
-  ChatMessage copyWith({String? text}) => ChatMessage(
-        text: text ?? this.text,
-        isUser: isUser,
-        time: time,
-      );
+  ChatMessage copyWith({String? text}) =>
+      ChatMessage(text: text ?? this.text, isUser: isUser, time: time);
 }
 
 /// Available AI model identifiers.
@@ -108,11 +105,12 @@ class ChatProvider extends ChangeNotifier {
   String _passCustomEndpoint = '';
 
   static ChatMessage _welcomeMessage() => ChatMessage(
-        text: 'Hi! I\'m your AI Study Buddy 🤖📚. '
-            'Ask me anything about your homework and I\'ll help you understand it!',
-        isUser: false,
-        time: DateTime.now(),
-      );
+    text:
+        'Hi! I\'m your AI Study Buddy 🤖📚. '
+        'Ask me anything about your homework and I\'ll help you understand it!',
+    isUser: false,
+    time: DateTime.now(),
+  );
 
   final List<ChatMessage> _messages = [_welcomeMessage()];
 
@@ -129,10 +127,9 @@ class ChatProvider extends ChangeNotifier {
   ///
   /// Returns the persistent list when history is enabled (normal mode),
   /// or the ephemeral ghost list when Ghost Mode is active.
-  List<ChatMessage> get messages =>
-      _isHistoryEnabled
-          ? List.unmodifiable(_messages)
-          : List.unmodifiable(_ghostMessages);
+  List<ChatMessage> get messages => _isHistoryEnabled
+      ? List.unmodifiable(_messages)
+      : List.unmodifiable(_ghostMessages);
 
   bool get isStreaming => _isStreaming;
   bool get isLiveActive => _isLiveActive;
@@ -287,26 +284,16 @@ class ChatProvider extends ChangeNotifier {
     final list = _isHistoryEnabled ? _messages : _ghostMessages;
 
     // Add user message immediately
-    list.add(ChatMessage(
-      text: trimmed,
-      isUser: true,
-      time: DateTime.now(),
-    ));
+    list.add(ChatMessage(text: trimmed, isUser: true, time: DateTime.now()));
     _isStreaming = true;
     notifyListeners();
 
     // Add placeholder for the AI response
-    list.add(ChatMessage(
-      text: '',
-      isUser: false,
-      time: DateTime.now(),
-    ));
+    list.add(ChatMessage(text: '', isUser: false, time: DateTime.now()));
     final aiIndex = list.length - 1;
 
     try {
-      final stream = _session!.sendMessageStream(
-        Content.text(trimmed),
-      );
+      final stream = _session!.sendMessageStream(Content.text(trimmed));
 
       await for (final chunk in stream) {
         final chunkText = chunk.text ?? '';
@@ -316,7 +303,8 @@ class ChatProvider extends ChangeNotifier {
       }
     } on GenerativeAIException catch (e) {
       list[aiIndex] = list[aiIndex].copyWith(
-        text: '⚠️ Sorry, I couldn\'t connect to the AI provider. '
+        text:
+            '⚠️ Sorry, I couldn\'t connect to the AI provider. '
             'Please check your internet connection.\n\n(${e.message})',
       );
       _error = e.message;
@@ -339,26 +327,36 @@ class ChatProvider extends ChangeNotifier {
     Uint8List imageBytes, {
     String prompt = 'Please explain this homework problem step by step.',
   }) async {
-    if (_isStreaming) return;
+    await sendImagesMessage([imageBytes], prompt: prompt);
+  }
+
+  /// Sends multiple images (with an optional text prompt) to Gemini Vision.
+  Future<void> sendImagesMessage(
+    List<Uint8List> imageBytesList, {
+    String prompt = 'Please explain this homework problem step by step.',
+  }) async {
+    if (imageBytesList.isEmpty || _isStreaming) return;
     _error = null;
 
     final list = _isHistoryEnabled ? _messages : _ghostMessages;
 
+    final imageCount = imageBytesList.length;
+
     // Add a user message indicating an image was sent.
-    list.add(ChatMessage(
-      text: '📷 ${prompt.isEmpty ? "What can you see in this image?" : prompt}',
-      isUser: true,
-      time: DateTime.now(),
-    ));
+    list.add(
+      ChatMessage(
+        text: imageCount == 1
+            ? '📷 ${prompt.isEmpty ? "What can you see in this image?" : prompt}'
+            : '📷 $imageCount images ${prompt.isEmpty ? "" : " • $prompt"}',
+        isUser: true,
+        time: DateTime.now(),
+      ),
+    );
     _isStreaming = true;
     notifyListeners();
 
     // Add placeholder for the AI response.
-    list.add(ChatMessage(
-      text: '',
-      isUser: false,
-      time: DateTime.now(),
-    ));
+    list.add(ChatMessage(text: '', isUser: false, time: DateTime.now()));
     final aiIndex = list.length - 1;
 
     try {
@@ -369,20 +367,26 @@ class ChatProvider extends ChangeNotifier {
         systemInstruction: Content.system(_systemPrompt),
       );
 
-      final response = await visionModel.generateContent([
-        Content.multi([
-          TextPart(prompt.isNotEmpty
+      final parts = <Part>[
+        TextPart(
+          prompt.isNotEmpty
               ? prompt
-              : 'Please explain this homework problem step by step.'),
+              : 'Please explain this homework problem step by step.',
+        ),
+        for (final imageBytes in imageBytesList)
           DataPart('image/jpeg', imageBytes),
-        ]),
+      ];
+
+      final response = await visionModel.generateContent([
+        Content.multi(parts),
       ]);
 
       final text = response.text ?? '⚠️ No response from Gemini Vision.';
       list[aiIndex] = list[aiIndex].copyWith(text: text);
     } on GenerativeAIException catch (e) {
       list[aiIndex] = list[aiIndex].copyWith(
-        text: '⚠️ Sorry, I couldn\'t analyse the image. '
+        text:
+            '⚠️ Sorry, I couldn\'t analyse the image. '
             'Please check your internet connection.\n\n(${e.message})',
       );
       _error = e.message;
