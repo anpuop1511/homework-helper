@@ -214,7 +214,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     return vertical
         ? SizedBox(width: double.infinity, child: content)
         : Expanded(child: content);
-    );
+    ),
   }
 
   Widget _betaNavToolbar({
