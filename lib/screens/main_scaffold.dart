@@ -458,14 +458,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     if (betaDesignEnabled) {
       return Scaffold(
         body: Stack(
-          children: [
-            IndexedStack(index: safeIndex, children: screens),
-            Positioned(
-              bottom: 104,
-              right: 16,
-              child: _userHubButton(colorScheme, user, auth),
-            ),
-          ],
+          children: [IndexedStack(index: safeIndex, children: screens)],
         ),
         bottomNavigationBar: _betaBottomToolbar(
           context,

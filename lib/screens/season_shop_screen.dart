@@ -265,8 +265,10 @@ List<_TimedShopItem> _buildTimedDrops(
   DateTime startsAtUtc,
   List<_ShopItem> templates,
 ) {
-  final offsets =
-      deterministicDropOffsets(seasonId: seasonId, itemCount: templates.length);
+  final offsets = deterministicDropOffsets(
+    seasonId: seasonId,
+    itemCount: templates.length,
+  );
   return List.generate(templates.length, (index) {
     final item = templates[index];
     return _TimedShopItem(
@@ -304,13 +306,15 @@ class _ShopBodyState extends State<_ShopBody> {
     _compensationChecked = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final granted =
-          context.read<UserProvider>().grantShopCompensationIfNeeded();
+      final granted = context
+          .read<UserProvider>()
+          .grantShopCompensationIfNeeded();
       if (!granted || !mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-              '🎁 Thanks for sticking with us! +50 coins added to your shop balance.'),
+            '🎁 Thanks for sticking with us! +50 coins added to your shop balance.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -320,7 +324,8 @@ class _ShopBodyState extends State<_ShopBody> {
   void _purchase(BuildContext context, _ShopItem item) {
     final user = context.read<UserProvider>();
 
-    final alreadyOwned = user.unlockedCosmetics.contains(item.id) ||
+    final alreadyOwned =
+        user.unlockedCosmetics.contains(item.id) ||
         user.unlockedCosmetics.contains('nameplate_${item.id}');
     if (alreadyOwned) {
       _autoEquip(context, user, item);
@@ -345,7 +350,8 @@ class _ShopBodyState extends State<_ShopBody> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              'Not enough coins! Need ${item.price} 🪙 (have ${user.coins})'),
+            'Not enough coins! Need ${item.price} 🪙 (have ${user.coins})',
+          ),
           backgroundColor: colorScheme.error,
         ),
       );
@@ -418,15 +424,25 @@ class _ShopBodyState extends State<_ShopBody> {
         .where((i) => !i.isUnlockedAt(nowUtc) && !timeTravelEnabled)
         .toList();
     final unlockedLegacyDrops = legacyTimed
-        .where((i) =>
-            i.isUnlockedAt(nowUtc) ||
-            timeTravelEnabled ||
-            activeSeason.id != kSeason1.id)
+        .where(
+          (i) =>
+              i.isUnlockedAt(nowUtc) ||
+              timeTravelEnabled ||
+              activeSeason.id != kSeason1.id,
+        )
         .toList();
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        _ShopHeroBanner(
+          colorScheme: colorScheme,
+          activeSeason: activeSeason,
+          rolloverUnlockAt: rolloverUnlockAt,
+          timeTravelEnabled: timeTravelEnabled,
+        ),
+        const SizedBox(height: 16),
+
         // ── Coin balance header ────────────────────────────────────────
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -463,10 +479,12 @@ class _ShopBodyState extends State<_ShopBody> {
           ),
         ),
 
-        // ── Available Now ──────────────────────────────────────────────
+        // ── Current season collection ─────────────────────────────────
         _SectionHeader(
-          title: 'Available Now',
-          subtitle: 'Season ${activeSeason.number} featured collection',
+          title: 'Season ${activeSeason.number}: Featured Now',
+          subtitle: activeSeason.id == kSeason1.id
+              ? 'Spring Bloomin\' collection'
+              : 'Finals Frenzy collection',
           colorScheme: colorScheme,
         ),
         const SizedBox(height: 12),
@@ -497,12 +515,38 @@ class _ShopBodyState extends State<_ShopBody> {
           }),
         ],
 
+        const SizedBox(height: 16),
+        _SectionHeader(
+          title: 'Battle Pass Exclusives',
+          subtitle:
+              'Season rewards move here after 60 days if they were missed.',
+          colorScheme: colorScheme,
+        ),
+        const SizedBox(height: 12),
+        ...unlockedRolloverItems.map((item) {
+          final owned = user.unlockedCosmetics.contains(item.id);
+          final equipped = _isEquipped(user, item);
+          return _ShopItemCard(
+            item: item,
+            owned: owned,
+            equipped: equipped,
+            colorScheme: colorScheme,
+            onTap: () => _purchase(context, item),
+          );
+        }),
+        if (lockedRolloverItems.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ...lockedRolloverItems.map(
+            (item) => _LockedItemCard(item: item, colorScheme: colorScheme),
+          ),
+        ],
+
         if (activeSeason.id == kSeason2.id) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _SectionHeader(
-            title: 'Season 1 Legacy Collection',
+            title: 'Season 1 Legacy Vault',
             subtitle:
-                'Missed rewards unlock in the shop after 60 days with a live timer.',
+                'Older seasonal items stay organized here for quick access.',
             colorScheme: colorScheme,
           ),
           const SizedBox(height: 12),
@@ -517,24 +561,6 @@ class _ShopBodyState extends State<_ShopBody> {
               onTap: () => _purchase(context, item),
             );
           }),
-          ...unlockedRolloverItems.map((item) {
-            final owned = user.unlockedCosmetics.contains(item.id);
-            final equipped = _isEquipped(user, item);
-            return _ShopItemCard(
-              item: item,
-              owned: owned,
-              equipped: equipped,
-              colorScheme: colorScheme,
-              onTap: () => _purchase(context, item),
-            );
-          }),
-          if (lockedRolloverItems.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ...lockedRolloverItems.map((item) => _LockedItemCard(
-                  item: item,
-                  colorScheme: colorScheme,
-                )),
-          ],
         ],
 
         // ── Coming Soon ────────────────────────────────────────────────
@@ -546,10 +572,9 @@ class _ShopBodyState extends State<_ShopBody> {
             colorScheme: colorScheme,
           ),
           const SizedBox(height: 12),
-          ...lockedDrops.map((item) => _LockedItemCard(
-                item: item,
-                colorScheme: colorScheme,
-              )),
+          ...lockedDrops.map(
+            (item) => _LockedItemCard(item: item, colorScheme: colorScheme),
+          ),
         ],
       ],
     );
@@ -587,10 +612,7 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Text(
           title,
-          style: GoogleFonts.lexend(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
+          style: GoogleFonts.lexend(fontSize: 18, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 2),
         Text(
@@ -598,6 +620,156 @@ class _SectionHeader extends StatelessWidget {
           style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
         ),
       ],
+    );
+  }
+}
+
+// ── Shop hero banner ────────────────────────────────────────────────────────
+
+class _ShopHeroBanner extends StatelessWidget {
+  final ColorScheme colorScheme;
+  final SeasonDefinition activeSeason;
+  final DateTime rolloverUnlockAt;
+  final bool timeTravelEnabled;
+
+  const _ShopHeroBanner({
+    required this.colorScheme,
+    required this.activeSeason,
+    required this.rolloverUnlockAt,
+    required this.timeTravelEnabled,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now().toUtc();
+    final remaining = rolloverUnlockAt.difference(now);
+    final countdown = remaining.isNegative
+        ? 'Available now'
+        : '${remaining.inDays}d ${remaining.inHours % 24}h until rollover';
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primaryContainer,
+            colorScheme.tertiaryContainer.withAlpha(220),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: colorScheme.surface.withAlpha(220),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.storefront_rounded,
+                  color: colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Season Shop',
+                      style: GoogleFonts.lexend(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Season ${activeSeason.number}: ${activeSeason.name}',
+                      style: TextStyle(
+                        color: colorScheme.onPrimaryContainer.withAlpha(210),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _HeroChip(
+                icon: Icons.new_releases_rounded,
+                label: 'Fresh drops every week',
+                colorScheme: colorScheme,
+              ),
+              _HeroChip(
+                icon: Icons.workspace_premium_rounded,
+                label: 'Battle Pass exclusives',
+                colorScheme: colorScheme,
+              ),
+              _HeroChip(
+                icon: Icons.lock_clock_rounded,
+                label: countdown,
+                colorScheme: colorScheme,
+              ),
+              if (timeTravelEnabled)
+                _HeroChip(
+                  icon: Icons.schedule_rounded,
+                  label: 'Dev shop time-travel on',
+                  colorScheme: colorScheme,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final ColorScheme colorScheme;
+
+  const _HeroChip({
+    required this.icon,
+    required this.label,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withAlpha(160),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: colorScheme.primary),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -647,13 +819,17 @@ class _ShopItemCard extends StatelessWidget {
                 Text(
                   item.name,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 15),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   item.description,
                   style: TextStyle(
-                      fontSize: 12, color: colorScheme.onSurfaceVariant),
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 if (equipped) ...[
                   const SizedBox(height: 4),
@@ -675,9 +851,12 @@ class _ShopItemCard extends StatelessWidget {
                   onPressed: onTap,
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                   child: Text(equipped ? 'Equipped' : 'Equip'),
                 )
@@ -685,9 +864,12 @@ class _ShopItemCard extends StatelessWidget {
                   onPressed: onTap,
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                   child: Text('${item.price} 🪙'),
                 ),
@@ -733,10 +915,7 @@ class _LockedItemCard extends StatefulWidget {
   final _TimedShopItem item;
   final ColorScheme colorScheme;
 
-  const _LockedItemCard({
-    required this.item,
-    required this.colorScheme,
-  });
+  const _LockedItemCard({required this.item, required this.colorScheme});
 
   @override
   State<_LockedItemCard> createState() => _LockedItemCardState();
@@ -841,8 +1020,11 @@ class _LockedItemCardState extends State<_LockedItemCard> {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Icon(Icons.lock_clock_rounded,
-                        size: 13, color: cs.onSurfaceVariant),
+                    Icon(
+                      Icons.lock_clock_rounded,
+                      size: 13,
+                      color: cs.onSurfaceVariant,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       _formatCountdown(_remaining),

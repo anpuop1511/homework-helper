@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config/season_live_ops.dart';
 import '../models/assignment.dart';
 import '../models/entitlement_model.dart';
+import '../services/auth_email_service.dart';
 import '../providers/assignments_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
@@ -477,14 +478,30 @@ class _AccountSettingsPage extends StatefulWidget {
 }
 
 class _AccountSettingsPageState extends State<_AccountSettingsPage> {
-  bool _deletionRequested = false;
-  String _deletionCode = '';
+  String _platformLabel() {
+    if (kIsWeb) return 'Web browser';
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'Android device';
+      case TargetPlatform.iOS:
+        return 'iPhone / iPad';
+      case TargetPlatform.macOS:
+        return 'Mac';
+      case TargetPlatform.windows:
+        return 'Windows PC';
+      case TargetPlatform.linux:
+        return 'Linux device';
+      case TargetPlatform.fuchsia:
+        return 'Fuchsia device';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final auth = context.watch<AuthProvider>();
+    final security = context.watch<SecurityProvider>();
 
     return _CategoryPage(
       title: 'Account Center',
@@ -578,9 +595,13 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
                 color: colorScheme.outlineVariant.withAlpha(100),
               ),
               _SecurityTile(
-                icon: Icons.verified_user_rounded,
-                title: 'Two-Factor Authentication',
-                subtitle: 'Coming soon — add extra security',
+                icon: security.isAppLockEnabled
+                    ? Icons.fingerprint_rounded
+                    : Icons.lock_open_rounded,
+                title: 'App Lock',
+                subtitle: security.isAppLockEnabled
+                    ? 'Enabled on this device'
+                    : 'Disabled on this device',
                 colorScheme: colorScheme,
                 onTap: null,
               ),
@@ -590,8 +611,8 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
               ),
               _SecurityTile(
                 icon: Icons.devices_rounded,
-                title: 'Active Sessions',
-                subtitle: 'Manage devices connected to your account',
+                title: 'Where you\'re signed in',
+                subtitle: '${_platformLabel()} • ${auth.email ?? 'signed in'}',
                 colorScheme: colorScheme,
                 onTap: null,
               ),
@@ -729,8 +750,12 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
       final code = (100000 + (DateTime.now().millisecondsSinceEpoch % 900000))
           .toString();
 
-      // In a real app, this would call a backend endpoint to send the email
-      // with the deletion confirmation link and code
+      await AuthEmailService.sendAccountDeletionEmail(
+        email: email,
+        confirmationCode: code,
+        displayName: context.read<AuthProvider>().currentUser?.displayName,
+      );
+
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(

@@ -25,9 +25,19 @@ class AuthEmailService {
   }
 
   static Future<void> sendPasswordResetEmail({required String email}) {
+    return _sendAuthEmail(action: 'resetPassword', email: email);
+  }
+
+  static Future<void> sendAccountDeletionEmail({
+    required String email,
+    required String confirmationCode,
+    String? displayName,
+  }) {
     return _sendAuthEmail(
-      action: 'resetPassword',
+      action: 'deleteAccount',
       email: email,
+      displayName: displayName,
+      extraFields: {'confirmationCode': confirmationCode},
     );
   }
 
@@ -35,16 +45,20 @@ class AuthEmailService {
     required String action,
     required String email,
     String? displayName,
+    Map<String, dynamic>? extraFields,
   }) async {
+    final payload = <String, dynamic>{
+      'action': action,
+      'email': email.trim(),
+      if (displayName != null && displayName.trim().isNotEmpty)
+        'displayName': displayName.trim(),
+      ...?extraFields,
+    };
+
     final response = await http.post(
       _sendAuthEmailUri,
       headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'action': action,
-        'email': email.trim(),
-        if (displayName != null && displayName.trim().isNotEmpty)
-          'displayName': displayName.trim(),
-      }),
+      body: jsonEncode(payload),
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
