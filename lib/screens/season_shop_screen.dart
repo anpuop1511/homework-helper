@@ -74,8 +74,7 @@ class _TimedShopItem extends _ShopItem {
 
   /// Whether the item is unlocked relative to the given UTC instant.
   /// Use this to respect the dev clock override.
-  bool isUnlockedAt(DateTime utcNow) =>
-      !utcNow.isBefore(unlocksAt.toUtc());
+  bool isUnlockedAt(DateTime utcNow) => !utcNow.isBefore(unlocksAt.toUtc());
 }
 
 const _season1PermanentItems = [
@@ -293,16 +292,25 @@ class _ShopBody extends StatefulWidget {
 }
 
 class _ShopBodyState extends State<_ShopBody> {
+  bool _compensationChecked = false;
+
   @override
   void initState() {
     super.initState();
+  }
+
+  void _maybeGrantCompensation(UserProvider user) {
+    if (_compensationChecked || !user.isLoaded) return;
+    _compensationChecked = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final granted = context.read<UserProvider>().grantShopCompensationIfNeeded();
+      final granted =
+          context.read<UserProvider>().grantShopCompensationIfNeeded();
       if (!granted || !mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('🎁 Thanks for sticking with us! +50 coins added to your shop balance.'),
+          content: Text(
+              '🎁 Thanks for sticking with us! +50 coins added to your shop balance.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -358,6 +366,7 @@ class _ShopBodyState extends State<_ShopBody> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<UserProvider>();
+    _maybeGrantCompensation(user);
     final colorScheme = Theme.of(context).colorScheme;
     final timeTravelEnabled = user.shopTimeTravelEnabled;
     final nowUtc = context.watch<DevClockProvider>().nowUtc();
@@ -586,8 +595,7 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           subtitle,
-          style: TextStyle(
-              fontSize: 12, color: colorScheme.onSurfaceVariant),
+          style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
         ),
       ],
     );
@@ -645,8 +653,7 @@ class _ShopItemCard extends StatelessWidget {
                 Text(
                   item.description,
                   style: TextStyle(
-                      fontSize: 12,
-                      color: colorScheme.onSurfaceVariant),
+                      fontSize: 12, color: colorScheme.onSurfaceVariant),
                 ),
                 if (equipped) ...[
                   const SizedBox(height: 4),
@@ -669,8 +676,8 @@ class _ShopItemCard extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                   child: Text(equipped ? 'Equipped' : 'Equip'),
                 )
@@ -679,8 +686,8 @@ class _ShopItemCard extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                   child: Text('${item.price} 🪙'),
                 ),
@@ -790,10 +797,26 @@ class _LockedItemCardState extends State<_LockedItemCard> {
           // Blurred / greyed-out preview
           ColorFiltered(
             colorFilter: const ColorFilter.matrix([
-              0.2126, 0.7152, 0.0722, 0, 0,
-              0.2126, 0.7152, 0.0722, 0, 0,
-              0.2126, 0.7152, 0.0722, 0, 0,
-              0,      0,      0,      1, 0,
+              0.2126,
+              0.7152,
+              0.0722,
+              0,
+              0,
+              0.2126,
+              0.7152,
+              0.0722,
+              0,
+              0,
+              0.2126,
+              0.7152,
+              0.0722,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
             ]),
             child: _ItemPreview(item: widget.item),
           ),
@@ -813,8 +836,7 @@ class _LockedItemCardState extends State<_LockedItemCard> {
                 const SizedBox(height: 2),
                 Text(
                   widget.item.description,
-                  style: TextStyle(
-                      fontSize: 12, color: cs.onSurfaceVariant),
+                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 6),
                 Row(
@@ -837,8 +859,7 @@ class _LockedItemCardState extends State<_LockedItemCard> {
           ),
           const SizedBox(width: 12),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),

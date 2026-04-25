@@ -56,6 +56,7 @@ class UserProvider extends ChangeNotifier {
   String _equippedNameColor = '';
   Map<String, int> _seasonTierHistory = {};
   Map<String, String> _seasonPassHistory = {};
+  bool _isLoaded = false;
 
   /// In-memory dev flag: when true the Season Shop shows all timed drops as
   /// available regardless of the real-time unlock date.  Not persisted.
@@ -81,9 +82,11 @@ class UserProvider extends ChangeNotifier {
   List<int> get claimedTiers => List.unmodifiable(_claimedTiers);
   String get equippedBadge => _equippedBadge;
   String get equippedNameColor => _equippedNameColor;
-  Map<String, int> get seasonTierHistory => Map.unmodifiable(_seasonTierHistory);
+  Map<String, int> get seasonTierHistory =>
+      Map.unmodifiable(_seasonTierHistory);
   Map<String, String> get seasonPassHistory =>
       Map.unmodifiable(_seasonPassHistory);
+  bool get isLoaded => _isLoaded;
 
   /// Dev-only: when true the Season Shop shows all timed drops as available.
   bool get shopTimeTravelEnabled => _shopTimeTravelEnabled;
@@ -109,6 +112,7 @@ class UserProvider extends ChangeNotifier {
   // ── Local persistence ────────────────────────────────────────────────────
 
   Future<void> _loadLocal() async {
+    _isLoaded = false;
     final prefs = await SharedPreferences.getInstance();
     _xp = prefs.getInt(_prefXp) ?? 0;
     _level = prefs.getInt(_prefLevel) ?? 1;
@@ -124,13 +128,11 @@ class UserProvider extends ChangeNotifier {
     _seasonXp = prefs.getInt(_prefBpSeasonXp) ?? 0;
     _passType = prefs.getString(_prefBpPassType) ?? 'free';
     _activeSeasonId = prefs.getString(_prefBpActiveSeasonId) ?? kSeason1.id;
-    _unlockedCosmetics =
-        prefs.getStringList(_prefBpUnlockedCosmetics) ?? [];
+    _unlockedCosmetics = prefs.getStringList(_prefBpUnlockedCosmetics) ?? [];
     _activeNameplate = prefs.getString(_prefBpActiveNameplate) ?? '';
-    _claimedTiers =
-        (prefs.getStringList(_prefBpClaimedTiers) ?? [])
-            .map(int.parse)
-            .toList();
+    _claimedTiers = (prefs.getStringList(_prefBpClaimedTiers) ?? [])
+        .map(int.parse)
+        .toList();
     _equippedBadge = prefs.getString(_prefBpEquippedBadge) ?? '';
     _equippedNameColor = prefs.getString(_prefBpEquippedNameColor) ?? '';
     _seasonTierHistory =
@@ -139,6 +141,7 @@ class UserProvider extends ChangeNotifier {
         _decodeStringMap(prefs.getStringList(_prefBpSeasonPassHistory));
     _rollSeasonIfNeeded();
     _updateStreak();
+    _isLoaded = true;
     notifyListeners();
   }
 
@@ -188,11 +191,16 @@ class UserProvider extends ChangeNotifier {
       await _loadLocal();
       return;
     }
+    _isLoaded = false;
+    notifyListeners();
     try {
       await _migrateIfNeeded(uid);
       await _loadFromCloud(uid);
     } catch (_) {
       // Firestore unavailable — continue with local data.
+    } finally {
+      _isLoaded = true;
+      notifyListeners();
     }
   }
 
@@ -474,8 +482,7 @@ class UserProvider extends ChangeNotifier {
   }
 
   /// Returns true if a specific tier+side reward has been claimed.
-  bool isTierRewardClaimed(int tier,
-      {String side = 'free', String? seasonId}) {
+  bool isTierRewardClaimed(int tier, {String side = 'free', String? seasonId}) {
     final sid = seasonId ?? _activeSeasonId;
     final cosmeticKey = 'claimed_${sid}_${side}_$tier';
     if (_unlockedCosmetics.contains(cosmeticKey)) return true;
@@ -641,8 +648,7 @@ class UserProvider extends ChangeNotifier {
     await prefs.remove(_prefBpEquippedNameColor);
   }
 
-  static DateTime _dateOnly(DateTime dt) =>
-      DateTime(dt.year, dt.month, dt.day);
+  static DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
   void _rollSeasonIfNeeded() {
     final nowSeason = activeSeasonNowUtc().id;
@@ -650,13 +656,13 @@ class UserProvider extends ChangeNotifier {
       _activeSeasonId = nowSeason;
     }
     if (_activeSeasonId == nowSeason) {
-      _seasonPassHistory[_activeSeasonId] =
-          _strongerPassType(_seasonPassHistory[_activeSeasonId] ?? 'free', _passType);
+      _seasonPassHistory[_activeSeasonId] = _strongerPassType(
+          _seasonPassHistory[_activeSeasonId] ?? 'free', _passType);
       return;
     }
     _seasonTierHistory[_activeSeasonId] = _seasonTier;
-    _seasonPassHistory[_activeSeasonId] =
-        _strongerPassType(_seasonPassHistory[_activeSeasonId] ?? 'free', _passType);
+    _seasonPassHistory[_activeSeasonId] = _strongerPassType(
+        _seasonPassHistory[_activeSeasonId] ?? 'free', _passType);
     _activeSeasonId = nowSeason;
     _seasonTier = 1;
     _seasonXp = 0;

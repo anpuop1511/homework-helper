@@ -10,6 +10,24 @@ String _normalizeNameplateId(String id) {
   return trimmed;
 }
 
+Color? nameplateBorderColor(String id) {
+  final normalized = _normalizeNameplateId(id);
+  switch (normalized) {
+    case 'blue_sky':
+      return const Color(0xFFE1F5FE);
+    case 'daffodil_yellow':
+      return const Color(0xFFFFD54F);
+    case 'notepad_nameplate':
+      return const Color(0xFFFFF59D);
+    case 'animated_aplus_nameplate':
+      return const Color(0xFFFFD600);
+    case 'animated_sharpener_nameplate':
+      return const Color(0xFFFFEB3B);
+    default:
+      return null;
+  }
+}
+
 /// Maps a nameplate cosmetic ID to a list of gradient colors.
 ///
 /// Returns an empty list when [id] is empty or unrecognised (= no nameplate).
@@ -19,9 +37,17 @@ List<Color> nameplateGradientColors(String id) {
     case 'notepad_nameplate':
       return [const Color(0xFFFFF59D), const Color(0xFF42A5F5)];
     case 'blue_sky':
-      return [const Color(0xFF4FC3F7), const Color(0xFF0288D1)];
+      return [
+        const Color(0xFFE1F5FE),
+        const Color(0xFF4FC3F7),
+        const Color(0xFF0288D1),
+      ];
     case 'daffodil_yellow':
-      return [const Color(0xFFFFEE58), const Color(0xFFFFA000)];
+      return [
+        const Color(0xFFFFFDE7),
+        const Color(0xFFFFEE58),
+        const Color(0xFFFFA000),
+      ];
     // Battle-pass reward value (legacy — stored as a human-readable name)
     case 'Cherry Blossom':
       return [const Color(0xFFFF80AB), const Color(0xFFFF4081)];
@@ -58,6 +84,8 @@ Color nameplateForegroundColor(String id) {
   switch (normalized) {
     case 'notepad_nameplate':
       return const Color(0xFF1A237E);
+    case 'blue_sky':
+      return const Color(0xFF0D47A1);
     case 'daffodil_yellow':
       return const Color(0xFF5D4037);
     default:
@@ -220,7 +248,8 @@ class _NameplateWidgetState extends State<NameplateWidget>
   @override
   Widget build(BuildContext context) {
     final colors = nameplateGradientColors(widget.nameplateId);
-    if (colors.isEmpty || widget.username.isEmpty) return const SizedBox.shrink();
+    if (colors.isEmpty || widget.username.isEmpty)
+      return const SizedBox.shrink();
 
     final fg = nameplateForegroundColor(widget.nameplateId);
     final animated = isAnimatedNameplate(widget.nameplateId);
@@ -233,31 +262,32 @@ class _NameplateWidgetState extends State<NameplateWidget>
           final t = _anim.value;
           final normalizedId = _normalizeNameplateId(widget.nameplateId);
           final List<Color> baseColors =
-            normalizedId == 'animated_sharpener_nameplate'
+              normalizedId == 'animated_sharpener_nameplate'
                   ? const [
                       Color(0xFFFFEB3B),
                       Color(0xFFFFC107),
                       Color(0xFF212121),
                       Color(0xFFFFEB3B),
                     ]
-              : normalizedId == 'animated_aplus_nameplate'
+                  : normalizedId == 'animated_aplus_nameplate'
                       ? const [
                           Color(0xFFFF6D00),
                           Color(0xFFFFC400),
                           Color(0xFF2962FF),
                           Color(0xFFFF6D00),
                         ]
-                  : const [
-                      Color(0xFFFFD700),
-                      Color(0xFFFFB347),
-                      Color(0xFFFF69B4),
-                      Color(0xFFFFD700),
-                    ];
+                      : const [
+                          Color(0xFFFFD700),
+                          Color(0xFFFFB347),
+                          Color(0xFFFF69B4),
+                          Color(0xFFFFD700),
+                        ];
           // Shimmer highlight positioned along the gradient.
           final shimmerPos = t;
           final shimmerColors = [
             baseColors[0],
-            Color.lerp(baseColors[1], Colors.white, 0.6 * math.sin(math.pi * shimmerPos))!,
+            Color.lerp(baseColors[1], Colors.white,
+                0.6 * math.sin(math.pi * shimmerPos))!,
             baseColors[2],
             baseColors[3],
           ];
@@ -270,9 +300,14 @@ class _NameplateWidgetState extends State<NameplateWidget>
                 end: Alignment(1.0 + 2.0 * t, 0),
               ),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: nameplateBorderColor(widget.nameplateId) ??
+                    baseColors.first.withAlpha(120),
+                width: 1.2,
+              ),
               boxShadow: [
                 BoxShadow(
-                    color: baseColors.first.withAlpha(
+                  color: baseColors.first.withAlpha(
                     (80 + 80 * math.sin(math.pi * t)).round(),
                   ),
                   blurRadius: 8 + 4 * t,
@@ -303,6 +338,11 @@ class _NameplateWidgetState extends State<NameplateWidget>
           end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: nameplateBorderColor(widget.nameplateId) ??
+              colors.first.withAlpha(120),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
             color: colors.last.withAlpha(80),
