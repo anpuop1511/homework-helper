@@ -144,6 +144,65 @@ extension AppVibeExtension on AppVibe {
         return const Color(0xFF003D8F); // deep navy blue
     }
   }
+
+  /// Returns the season number this vibe belongs to, or null if it's base/evergreen.
+  int? get seasonNumber {
+    switch (this) {
+      // Season 1 (Spring Bloomin') – Spring & Cherry themes
+      case AppVibe.springMint:
+      case AppVibe.cherryBlossom:
+      case AppVibe.skyBloom:
+      case AppVibe.daffodil:
+        return 1;
+      // Season 2 (Finals Frenzy) – Lava, Arctic, Neon Forest
+      case AppVibe.lavaPop:
+      case AppVibe.arcticPulse:
+      case AppVibe.neonForest:
+        return 2;
+      // Evergreen/Base themes
+      case AppVibe.systemDynamic:
+      case AppVibe.defaultPurple:
+      case AppVibe.midnight:
+      case AppVibe.sunset:
+      case AppVibe.forest:
+      case AppVibe.ocean:
+      case AppVibe.cyberpunk:
+      case AppVibe.sakura:
+      case AppVibe.neonSunrise:
+      case AppVibe.deepOcean:
+        return null;
+    }
+  }
+
+  /// Whether this vibe is a battle pass exclusive (locked until earned or 60 days after season end).
+  bool get isBattlePassExclusive {
+    // All season-specific vibes are battle pass exclusives when their season is active
+    return seasonNumber != null;
+  }
+
+  /// Returns the category label for this vibe's season/collection.
+  String get categoryLabel {
+    final season = seasonNumber;
+    if (season == 1) return 'Season 1: Spring Bloomin\'';
+    if (season == 2) return 'Season 2: Finals Frenzy';
+    return 'Classics';
+  }
+}
+
+/// Enum representing theme availability modes
+enum _ThemeAvailability {
+  evergreen, // Always available
+  season, // Available only during the season
+  battlePass, // Available only to those who earned it or after 60 days
+}
+
+/// Determines theme availability based on season and ownership
+extension _ThemeAvailabilityExt on AppVibe {
+  /// Returns the effective availability mode for this vibe.
+  _ThemeAvailability get _availabilityMode {
+    if (!isBattlePassExclusive) return _ThemeAvailability.evergreen;
+    return _ThemeAvailability.battlePass;
+  }
 }
 
 /// Manages the active [AppVibe] and notifies listeners on change.
@@ -152,13 +211,16 @@ extension AppVibeExtension on AppVibe {
 class ThemeProvider extends ChangeNotifier {
   static const _prefKey = 'app_vibe';
   static const _prefBetaDesign = 'beta_design_enabled';
+  static const _prefShowNavLabels = 'show_nav_labels';
 
   AppVibe _vibe = AppVibe.systemDynamic;
   String? _uid;
   bool _betaDesignEnabled = false;
+  bool _showNavLabels = true;
 
   AppVibe get vibe => _vibe;
   bool get betaDesignEnabled => _betaDesignEnabled;
+  bool get showNavLabels => _showNavLabels;
 
   ThemeProvider() {
     _loadVibe();
@@ -168,6 +230,7 @@ class ThemeProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final storedIndex = prefs.getInt(_prefKey);
     _betaDesignEnabled = prefs.getBool(_prefBetaDesign) ?? false;
+    _showNavLabels = prefs.getBool(_prefShowNavLabels) ?? true;
     if (storedIndex != null &&
         storedIndex >= 0 &&
         storedIndex < AppVibe.values.length) {
@@ -217,6 +280,14 @@ class ThemeProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefBetaDesign, enabled);
+  }
+
+  Future<void> setShowNavLabels(bool show) async {
+    if (_showNavLabels == show) return;
+    _showNavLabels = show;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefShowNavLabels, show);
   }
 
   /// Reverts to the default vibe if the currently-set vibe requires a

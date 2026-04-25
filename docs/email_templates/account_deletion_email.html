@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirm account deletion</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f7fb;
+        --surface: #ffffff;
+        --surface-variant: #fff3e0;
+        --text: #10172a;
+        --muted: #55607a;
+        --primary: #d32f2f;
+        --primary-strong: #b71c1c;
+        --danger: #d32f2f;
+        --outline: #d7deef;
+        --outline-strong: #bcc8e4;
+        --shadow: rgba(16, 23, 42, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background:
+          radial-gradient(circle at top left, rgba(211, 47, 47, 0.08), transparent 30%),
+          radial-gradient(circle at top right, rgba(244, 67, 54, 0.06), transparent 28%),
+          linear-gradient(180deg, #f8f9ff 0%, #f3f5fb 100%);
+        font-family: Roboto, Arial, Helvetica, sans-serif;
+        color: var(--text);
+      }
+
+      .wrap {
+        width: 100%;
+        padding: 44px 16px;
+      }
+
+      .card {
+        max-width: 640px;
+        margin: 0 auto;
+        background: var(--surface);
+        border: 1px solid #ffb3b3;
+        border-radius: 28px;
+        box-shadow: 0 20px 64px var(--shadow);
+        overflow: hidden;
+      }
+
+      .hero {
+        position: relative;
+        padding: 42px 40px 28px;
+        background:
+          linear-gradient(180deg, rgba(211, 47, 47, 0.1), rgba(244, 67, 54, 0.04) 58%, transparent),
+          var(--surface-variant);
+      }
+
+      .hero::after {
+        content: "";
+        position: absolute;
+        inset: 18px 18px auto auto;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(211, 47, 47, 0.12), transparent 68%);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(211, 47, 47, 0.12);
+        color: var(--primary-strong);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 18px 0 12px;
+        font-size: 32px;
+        line-height: 1.12;
+        letter-spacing: -0.03em;
+        color: var(--primary);
+      }
+
+      p {
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.75;
+        color: var(--muted);
+      }
+
+      .body {
+        padding: 0 40px 40px;
+      }
+
+      .warning-box {
+        margin: 20px 0;
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: #ffebee;
+        border: 1px solid #ffcdd2;
+      }
+
+      .warning-box p {
+        color: #c62828;
+        font-weight: 500;
+        margin: 8px 0;
+      }
+
+      .warning-box ul {
+        margin: 12px 0;
+        padding-left: 20px;
+        color: #c62828;
+      }
+
+      .warning-box li {
+        margin: 6px 0;
+        font-size: 13px;
+      }
+
+      .supporting-card {
+        margin-top: 18px;
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: #f8faff;
+        border: 1px solid var(--outline);
+      }
+
+      .code-section {
+        margin: 20px 0;
+        padding: 16px;
+        border-radius: 12px;
+        background: #f5f5f5;
+        border: 1px solid #e0e0e0;
+        text-align: center;
+      }
+
+      .code-label {
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 600;
+      }
+
+      .code {
+        font-family: 'Courier New', monospace;
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        color: var(--primary);
+        margin: 12px 0 0;
+      }
+
+      .button {
+        display: inline-block;
+        margin: 28px 0 20px;
+        padding: 16px 26px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, var(--primary), var(--primary-strong));
+        color: #fff !important;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 15px;
+        letter-spacing: 0.01em;
+        box-shadow: 0 12px 24px rgba(211, 47, 47, 0.28);
+      }
+
+      .meta {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid var(--outline);
+        font-size: 13px;
+        color: var(--muted);
+        word-break: break-word;
+      }
+
+      .footer {
+        padding: 18px 40px 36px;
+        font-size: 12px;
+        color: #6b7489;
+      }
+
+      @media (max-width: 640px) {
+        .hero,
+        .body,
+        .footer {
+          padding-left: 24px;
+          padding-right: 24px;
+        }
+
+        h1 {
+          font-size: 28px;
+        }
+
+        .hero::after {
+          width: 92px;
+          height: 92px;
+        }
+
+        .code {
+          font-size: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <div class="hero">
+          <span class="badge">⚠️ Account Deletion</span>
+          <h1>Confirm deletion request</h1>
+          <p>
+            Please review the information below before confirming your account deletion.
+          </p>
+        </div>
+        <div class="body">
+          <div class="warning-box">
+            <p>⚠️ This action cannot be undone. Deleting your account will:</p>
+            <ul>
+              <li>Permanently delete all your assignments and data</li>
+              <li>Remove you from all classes and group projects</li>
+              <li>Disable all your friends and social connections</li>
+              <li>Cancel any active subscriptions</li>
+            </ul>
+          </div>
+
+          <div class="code-section">
+            <div class="code-label">Your confirmation code</div>
+            <div class="code">{{CONFIRMATION_CODE}}</div>
+            <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">
+              This code is valid for 24 hours
+            </p>
+          </div>
+
+          <a class="button" href="{{ACTION_URL}}">Approve Deletion Request</a>
+
+          <div class="supporting-card">
+            <p>
+              <strong>Can't click the button?</strong> Copy and paste this link into your browser and enter the confirmation code above:
+            </p>
+            <div class="meta">{{ACTION_URL}}</div>
+          </div>
+
+          <p style="margin-top: 24px; font-size: 13px; color: var(--muted);">
+            If you did not request to delete your account, do not click the button above and do not share this code with anyone.
+          </p>
+        </div>
+        <div class="footer">
+          Homework Helper Account Deletion — {{TIMESTAMP}}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

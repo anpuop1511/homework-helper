@@ -24,7 +24,9 @@ import 'classes_screen.dart';
 /// Returns the single character to use as a profile avatar initial.
 /// Skips any leading '@' symbol (e.g. '@anpu' → 'A').
 String _avatarInitialFor(String displayName) {
-  final name = displayName.startsWith('@') ? displayName.substring(1) : displayName;
+  final name = displayName.startsWith('@')
+      ? displayName.substring(1)
+      : displayName;
   return name.isNotEmpty ? name[0].toUpperCase() : '?';
 }
 
@@ -102,7 +104,11 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
-  Widget _userHubButton(ColorScheme colorScheme, UserProvider user, AuthProvider auth) {
+  Widget _userHubButton(
+    ColorScheme colorScheme,
+    UserProvider user,
+    AuthProvider auth,
+  ) {
     final displayName = _resolveDisplayName(auth, user);
     return Material(
       color: Colors.transparent,
@@ -132,6 +138,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     required ColorScheme colorScheme,
     required VoidCallback onTap,
     required bool vertical,
+    required bool showLabels,
   }) {
     final icon = selected ? tab.selectedIcon : tab.icon;
     final background = selected
@@ -175,19 +182,22 @@ class _MainScaffoldState extends State<MainScaffold> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     iconWidget,
-                    const SizedBox(height: 6),
-                    Text(
-                      tab.label,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w500,
-                        color: foreground,
+                    if (showLabels) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        tab.label,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: foreground,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    ],
                   ],
                 )
               : Row(
@@ -195,16 +205,19 @@ class _MainScaffoldState extends State<MainScaffold> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     iconWidget,
-                    const SizedBox(width: 8),
-                    Text(
-                      tab.label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w500,
-                        color: foreground,
+                    if (showLabels) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        tab.label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: foreground,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
         ),
@@ -222,6 +235,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     required ColorScheme colorScheme,
     required bool hasPendingRequests,
     required bool vertical,
+    required bool showLabels,
   }) {
     return Material(
       color: colorScheme.surfaceContainerLow.withAlpha(245),
@@ -246,6 +260,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                       colorScheme: colorScheme,
                       onTap: () => _selectTab(i, visibleTabs),
                       vertical: true,
+                      showLabels: showLabels,
                     ),
                   ],
                 ],
@@ -261,6 +276,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                       colorScheme: colorScheme,
                       onTap: () => _selectTab(i, visibleTabs),
                       vertical: false,
+                      showLabels: showLabels,
                     ),
                   ],
                 ],
@@ -277,6 +293,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     bool hasPendingRequests,
     UserProvider user,
     AuthProvider auth,
+    bool showLabels,
   ) {
     return SafeArea(
       top: false,
@@ -291,6 +308,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                 colorScheme: colorScheme,
                 hasPendingRequests: hasPendingRequests,
                 vertical: false,
+                showLabels: showLabels,
               ),
             ),
             const SizedBox(width: 12),
@@ -392,10 +410,7 @@ class _MainScaffoldState extends State<MainScaffold> {
               color: colorScheme.outlineVariant,
             ),
             Expanded(
-              child: IndexedStack(
-                index: safeIndex,
-                children: screens,
-              ),
+              child: IndexedStack(index: safeIndex, children: screens),
             ),
           ],
         ),
@@ -418,6 +433,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                       colorScheme: colorScheme,
                       hasPendingRequests: hasPendingRequests,
                       vertical: true,
+                      showLabels: theme.showNavLabels,
                     ),
                     const Spacer(),
                     _userHubButton(colorScheme, user, auth),
@@ -431,10 +447,7 @@ class _MainScaffoldState extends State<MainScaffold> {
               color: colorScheme.outlineVariant,
             ),
             Expanded(
-              child: IndexedStack(
-                index: safeIndex,
-                children: screens,
-              ),
+              child: IndexedStack(index: safeIndex, children: screens),
             ),
           ],
         ),
@@ -446,10 +459,7 @@ class _MainScaffoldState extends State<MainScaffold> {
       return Scaffold(
         body: Stack(
           children: [
-            IndexedStack(
-              index: safeIndex,
-              children: screens,
-            ),
+            IndexedStack(index: safeIndex, children: screens),
             Positioned(
               bottom: 104,
               right: 16,
@@ -465,6 +475,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           hasPendingRequests,
           user,
           auth,
+          theme.showNavLabels,
         ),
       );
     }
@@ -472,10 +483,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     return Scaffold(
       body: Stack(
         children: [
-          IndexedStack(
-            index: safeIndex,
-            children: screens,
-          ),
+          IndexedStack(index: safeIndex, children: screens),
           // Floating User Hub button in bottom-right so screen headers remain clear.
           Positioned(
             bottom: 16,
@@ -497,8 +505,9 @@ class _MainScaffoldState extends State<MainScaffold> {
             data: NavigationBarThemeData(
               indicatorColor: colorScheme.secondaryContainer,
               indicatorShape: const StadiumBorder(),
-              iconTheme:
-                  WidgetStateProperty.resolveWith<IconThemeData>((states) {
+              iconTheme: WidgetStateProperty.resolveWith<IconThemeData>((
+                states,
+              ) {
                 final selected = states.contains(WidgetState.selected);
                 return IconThemeData(
                   size: selected ? 26 : 24,
@@ -555,8 +564,6 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 }
 
-
-
 /// The "Command Center" mini-panel that slides up when the user taps the
 /// profile avatar.  Provides quick access to identity, theme switching,
 /// security status, Ghost Mode, and settings.
@@ -574,8 +581,9 @@ class _UserHubSheet extends StatelessWidget {
     final chat = context.watch<ChatProvider>();
     final assignments = context.watch<AssignmentsProvider>();
     final displayName = _MainScaffoldState._resolveDisplayName(auth, user);
-    final completedCount =
-        assignments.assignments.where((a) => a.isCompleted).length;
+    final completedCount = assignments.assignments
+        .where((a) => a.isCompleted)
+        .length;
     final rank = _rankLabel(user.level, completedCount);
 
     return Container(
@@ -584,7 +592,9 @@ class _UserHubSheet extends StatelessWidget {
         color: colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(32),
         border: Border.all(
-            color: colorScheme.outlineVariant.withAlpha(160), width: 1),
+          color: colorScheme.outlineVariant.withAlpha(160),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(60),
@@ -629,10 +639,7 @@ class _UserHubSheet extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
-                        colors: [
-                          colorScheme.primary,
-                          colorScheme.tertiary,
-                        ],
+                        colors: [colorScheme.primary, colorScheme.tertiary],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -682,7 +689,9 @@ class _UserHubSheet extends StatelessWidget {
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 3),
+                                horizontal: 10,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: colorScheme.primaryContainer,
                                 borderRadius: BorderRadius.circular(20),
@@ -760,8 +769,7 @@ class _UserHubSheet extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _ThemeQuickSwitch(
                 currentVibe: theme.vibe,
-                onVibeSelected: (v) =>
-                    context.read<ThemeProvider>().setVibe(v),
+                onVibeSelected: (v) => context.read<ThemeProvider>().setVibe(v),
                 colorScheme: colorScheme,
                 textTheme: textTheme,
               ),
@@ -782,68 +790,68 @@ class _UserHubSheet extends StatelessWidget {
             const SizedBox(height: 16),
 
             Divider(
-                height: 1,
-                indent: 20,
-                endIndent: 20,
-                color: colorScheme.outlineVariant.withAlpha(100)),
+              height: 1,
+              indent: 20,
+              endIndent: 20,
+              color: colorScheme.outlineVariant.withAlpha(100),
+            ),
 
             // ── My Profile ───────────────────────────────────────────
             ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 20),
-              leading: Icon(Icons.person_rounded,
-                  color: colorScheme.primary),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+              leading: Icon(Icons.person_rounded, color: colorScheme.primary),
               title: Text('My Profile', style: textTheme.bodyLarge),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const ProfileScreen()),
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
                 );
               },
             ),
 
             // ── Battle Pass ───────────────────────────────────────────
             ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 20),
-              leading: Icon(Icons.workspace_premium_rounded,
-                  color: colorScheme.tertiary),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+              leading: Icon(
+                Icons.workspace_premium_rounded,
+                color: colorScheme.tertiary,
+              ),
               title: Text('Battle Pass 🌸', style: textTheme.bodyLarge),
               subtitle: Text(
                 'Season 1: Spring Bloomin\'',
-                style: textTheme.bodySmall
-                    ?.copyWith(color: colorScheme.onSurfaceVariant),
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const BattlePassScreen()),
+                  MaterialPageRoute(builder: (_) => const BattlePassScreen()),
                 );
               },
             ),
 
             // ── Season Shop ───────────────────────────────────────────
             ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 20),
-              leading: Icon(Icons.storefront_rounded,
-                  color: colorScheme.primary),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+              leading: Icon(
+                Icons.storefront_rounded,
+                color: colorScheme.primary,
+              ),
               title: Text('Season Shop 🛒', style: textTheme.bodyLarge),
               subtitle: Text(
                 'Exclusive cosmetics for coins',
-                style: textTheme.bodySmall
-                    ?.copyWith(color: colorScheme.onSurfaceVariant),
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const SeasonShopScreen()),
+                  MaterialPageRoute(builder: (_) => const SeasonShopScreen()),
                 );
               },
             ),
@@ -859,15 +867,16 @@ class _UserHubSheet extends StatelessWidget {
                     onPressed: () {
                       Navigator.pop(context);
                       Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const LoginScreen()),
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
                       );
                     },
                     icon: const Icon(Icons.login_rounded, size: 18),
                     label: const Text(
                       'Sign In',
                       style: TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 15),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
                     ),
                     style: FilledButton.styleFrom(
                       shape: RoundedRectangleBorder(
@@ -887,15 +896,13 @@ class _UserHubSheet extends StatelessWidget {
                   onPressed: () {
                     Navigator.pop(context);
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (_) => const SettingsScreen()),
+                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
                     );
                   },
                   icon: const Icon(Icons.settings_rounded, size: 18),
                   label: const Text(
                     'Full Settings',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 15),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                   ),
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(
@@ -948,8 +955,11 @@ class _ThemeQuickSwitch extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.palette_rounded,
-                  size: 16, color: colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.palette_rounded,
+                size: 16,
+                color: colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Vibe  ·  ${currentVibe.emoji} ${currentVibe.label}',
@@ -964,53 +974,54 @@ class _ThemeQuickSwitch extends StatelessWidget {
           Wrap(
             spacing: 8.0,
             runSpacing: 8.0,
-            children: const [
-              AppVibe.defaultPurple,
-              AppVibe.midnight,
-              AppVibe.sunset,
-              AppVibe.ocean,
-              AppVibe.sakura,
-            ].map((vibe) {
-              final isSelected = vibe == currentVibe;
-              return GestureDetector(
-                onTap: () => onVibeSelected(vibe),
-                child: Tooltip(
-                  message: '${vibe.emoji} ${vibe.label}',
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: isSelected ? 36 : 30,
-                    height: isSelected ? 36 : 30,
-                    decoration: BoxDecoration(
-                      color: vibe.seedColor,
-                      shape: BoxShape.circle,
-                      border: isSelected
-                          ? Border.all(
-                              color: colorScheme.onSurface,
-                              width: 2.5,
-                            )
-                          : null,
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: vibe.seedColor.withAlpha(120),
-                                blurRadius: 8,
+            children:
+                const [
+                  AppVibe.defaultPurple,
+                  AppVibe.midnight,
+                  AppVibe.sunset,
+                  AppVibe.ocean,
+                  AppVibe.sakura,
+                ].map((vibe) {
+                  final isSelected = vibe == currentVibe;
+                  return GestureDetector(
+                    onTap: () => onVibeSelected(vibe),
+                    child: Tooltip(
+                      message: '${vibe.emoji} ${vibe.label}',
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: isSelected ? 36 : 30,
+                        height: isSelected ? 36 : 30,
+                        decoration: BoxDecoration(
+                          color: vibe.seedColor,
+                          shape: BoxShape.circle,
+                          border: isSelected
+                              ? Border.all(
+                                  color: colorScheme.onSurface,
+                                  width: 2.5,
+                                )
+                              : null,
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: vibe.seedColor.withAlpha(120),
+                                    blurRadius: 8,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: isSelected
+                            ? Center(
+                                child: Icon(
+                                  Icons.check_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
                               )
-                            ]
-                          : null,
+                            : null,
+                      ),
                     ),
-                    child: isSelected
-                        ? Center(
-                            child: Icon(
-                              Icons.check_rounded,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                          )
-                        : null,
-                  ),
-                ),
-              );
-            }).toList(),
+                  );
+                }).toList(),
           ),
         ],
       ),
@@ -1043,16 +1054,13 @@ class _GhostModeRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
       ),
       child: SwitchListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         value: isEnabled,
         onChanged: onToggle,
         secondary: Text('👻', style: const TextStyle(fontSize: 22)),
         title: Text(
           'Ghost Mode',
-          style: textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+          style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
           isEnabled ? 'Chat history is paused' : 'History recording on',

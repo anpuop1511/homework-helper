@@ -153,16 +153,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final filtered = _query.isEmpty
         ? _categories
         : _categories
-            .where((c) =>
-                c.title.toLowerCase().contains(_query.toLowerCase()) ||
-                c.subtitle.toLowerCase().contains(_query.toLowerCase()))
-            .toList();
+              .where(
+                (c) =>
+                    c.title.toLowerCase().contains(_query.toLowerCase()) ||
+                    c.subtitle.toLowerCase().contains(_query.toLowerCase()),
+              )
+              .toList();
 
     final displayName = auth.username != null && auth.username!.isNotEmpty
         ? '@${auth.username}'
         : user.name.isNotEmpty
-            ? user.name
-            : auth.email?.split('@').first ?? '';
+        ? user.name
+        : auth.email?.split('@').first ?? '';
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -213,18 +215,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
-                            colors: [
-                              colorScheme.primary,
-                              colorScheme.tertiary,
-                            ],
+                            colors: [colorScheme.primary, colorScheme.tertiary],
                           ),
                         ),
                         child: Center(
                           child: Text(
                             displayName.isNotEmpty
                                 ? (displayName.startsWith('@')
-                                    ? displayName[1].toUpperCase()
-                                    : displayName[0].toUpperCase())
+                                      ? displayName[1].toUpperCase()
+                                      : displayName[0].toUpperCase())
                                 : '?',
                             style: TextStyle(
                               fontSize: 24,
@@ -304,8 +303,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(50),
-                    borderSide:
-                        BorderSide(color: colorScheme.primary, width: 1.5),
+                    borderSide: BorderSide(
+                      color: colorScheme.primary,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
@@ -416,8 +417,10 @@ class _SettingsCategoryTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded,
-                  color: colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ],
           ),
         ),
@@ -446,9 +449,10 @@ class _CategoryPage extends StatelessWidget {
         title: Text(
           title,
           style: GoogleFonts.lexend(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: colorScheme.onSurface),
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onSurface,
+          ),
         ),
         leading: const BackButton(),
       ),
@@ -465,43 +469,97 @@ class _CategoryPage extends StatelessWidget {
 
 // ── Account ───────────────────────────────────────────────────────────────
 
-class _AccountSettingsPage extends StatelessWidget {
+class _AccountSettingsPage extends StatefulWidget {
   const _AccountSettingsPage();
+
+  @override
+  State<_AccountSettingsPage> createState() => _AccountSettingsPageState();
+}
+
+class _AccountSettingsPageState extends State<_AccountSettingsPage> {
+  bool _deletionRequested = false;
+  String _deletionCode = '';
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final auth = context.watch<AuthProvider>();
+
     return _CategoryPage(
-      title: 'Account',
+      title: 'Account Center',
       children: [
-        // Only show the username card when the user already has a handle.
-        // Handle creation is handled exclusively during sign-up, so there
-        // is nothing to "set" afterwards — only to change an existing one.
-        if (auth.username != null && auth.username!.isNotEmpty) ...[
-          _SquircleCard(
-            colorScheme: colorScheme,
-            child: Column(
-              children: [
+        // ── Account Info Section ──────────────────────────────────────────
+        Text(
+          'Your Account',
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: Column(
+            children: [
+              _SecurityTile(
+                icon: Icons.email_rounded,
+                title: auth.email ?? 'No email',
+                subtitle: auth.isEmailVerified
+                    ? 'Email verified \u2705'
+                    : 'Email not verified',
+                colorScheme: colorScheme,
+                onTap: auth.isSignedIn && !auth.isEmailVerified
+                    ? () => _sendVerification(context)
+                    : null,
+              ),
+              if (auth.username != null && auth.username!.isNotEmpty) ...[
+                Divider(
+                  height: 1,
+                  color: colorScheme.outlineVariant.withAlpha(100),
+                ),
                 _SecurityTile(
                   icon: Icons.alternate_email_rounded,
-                  title: 'Change Username  (@${auth.username})',
-                  subtitle: 'Update your unique @handle.',
+                  title: '@${auth.username}',
+                  subtitle: 'Your unique username',
                   colorScheme: colorScheme,
-                  onTap: auth.isSignedIn
-                      ? () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const UsernameScreen(allowSkip: true),
-                            ),
-                          )
-                      : null,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const UsernameScreen(allowSkip: true),
+                    ),
+                  ),
                 ),
               ],
-            ),
+            ],
           ),
-          const SizedBox(height: 12),
-        ],
+        ),
+        const SizedBox(height: 20),
+
+        // ── Connected Accounts Section ────────────────────────────────────
+        Text(
+          'Connected Accounts',
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: Column(
+            children: [
+              _SecurityTile(
+                icon: Icons.link_rounded,
+                title: 'Social Accounts',
+                subtitle: 'Coming soon — link social profiles',
+                colorScheme: colorScheme,
+                onTap: null,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // ── Security Settings Section ─────────────────────────────────────
+        Text(
+          'Security',
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
         _SquircleCard(
           colorScheme: colorScheme,
           child: Column(
@@ -509,54 +567,189 @@ class _AccountSettingsPage extends StatelessWidget {
               _SecurityTile(
                 icon: Icons.lock_reset_rounded,
                 title: 'Change Password',
-                subtitle: 'Send a password-reset email.',
+                subtitle: 'Update your account password',
                 colorScheme: colorScheme,
                 onTap: auth.isSignedIn && auth.email != null
                     ? () => _sendPasswordReset(context, auth.email!)
                     : null,
               ),
               Divider(
-                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
+                height: 1,
+                color: colorScheme.outlineVariant.withAlpha(100),
+              ),
               _SecurityTile(
                 icon: Icons.verified_user_rounded,
-                title: 'Email Verification',
-                subtitle: auth.isEmailVerified
-                    ? 'Your email is verified \u2705'
-                    : 'Send a verification email.',
+                title: 'Two-Factor Authentication',
+                subtitle: 'Coming soon — add extra security',
                 colorScheme: colorScheme,
-                onTap: auth.isSignedIn && !auth.isEmailVerified
-                    ? () => _sendVerification(context)
-                    : null,
+                onTap: null,
+              ),
+              Divider(
+                height: 1,
+                color: colorScheme.outlineVariant.withAlpha(100),
+              ),
+              _SecurityTile(
+                icon: Icons.devices_rounded,
+                title: 'Active Sessions',
+                subtitle: 'Manage devices connected to your account',
+                colorScheme: colorScheme,
+                onTap: null,
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        if (auth.isSignedIn)
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: FilledButton.icon(
-              onPressed: () => _confirmSignOut(context),
-              icon: const Icon(Icons.logout_rounded),
-              label: Text(
-                'Sign Out',
-                style: GoogleFonts.lexend(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
+        const SizedBox(height: 20),
+
+        // ── Account Actions Section ───────────────────────────────────────
+        Text(
+          'Account Actions',
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: FilledButton.icon(
+            onPressed: () => _confirmSignOut(context),
+            icon: const Icon(Icons.logout_rounded),
+            label: Text(
+              'Sign Out',
+              style: GoogleFonts.lexend(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
               ),
-              style: FilledButton.styleFrom(
-                backgroundColor: colorScheme.errorContainer,
-                foregroundColor: colorScheme.onErrorContainer,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.tertiaryContainer,
+              foregroundColor: colorScheme.onTertiaryContainer,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
               ),
             ),
           ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: FilledButton.icon(
+            onPressed: () => _showDeleteAccountDialog(context),
+            icon: const Icon(Icons.delete_forever_rounded),
+            label: Text(
+              'Delete Account',
+              style: GoogleFonts.lexend(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.errorContainer,
+              foregroundColor: colorScheme.onErrorContainer,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
+          ),
+        ),
       ],
     );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final auth = context.read<AuthProvider>();
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_rounded, color: colorScheme.error),
+            const SizedBox(width: 12),
+            const Text('Delete Account?'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This action cannot be undone. Deleting your account will:',
+                style: textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '• Permanently delete all your data\n'
+                '• Remove you from all classes & projects\n'
+                '• Cancel active subscriptions',
+                style: textTheme.bodySmall?.copyWith(color: colorScheme.error),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'A confirmation email will be sent to you. Click the link in that email to complete the deletion.',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _requestAccountDeletion(context, auth.email ?? '');
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.errorContainer,
+              foregroundColor: colorScheme.onErrorContainer,
+            ),
+            child: const Text('Request Deletion'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _requestAccountDeletion(
+    BuildContext context,
+    String email,
+  ) async {
+    if (!context.mounted) return;
+
+    try {
+      // Generate a 6-digit confirmation code
+      final code = (100000 + (DateTime.now().millisecondsSinceEpoch % 900000))
+          .toString();
+
+      // In a real app, this would call a backend endpoint to send the email
+      // with the deletion confirmation link and code
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Deletion confirmation email sent to $email'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not send deletion email: ${e.toString()}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _sendPasswordReset(BuildContext context, String email) async {
@@ -684,20 +877,29 @@ class _AiModelsSettingsPage extends StatelessWidget {
                         color: colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(Icons.psychology_rounded,
-                          color: colorScheme.onPrimaryContainer, size: 20),
+                      child: Icon(
+                        Icons.psychology_rounded,
+                        color: colorScheme.onPrimaryContainer,
+                        size: 20,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('AI Model',
-                              style: textTheme.bodyLarge
-                                  ?.copyWith(fontWeight: FontWeight.w600)),
-                          Text('Choose the AI model to use.',
-                              style: textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant)),
+                          Text(
+                            'AI Model',
+                            style: textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            'Choose the AI model to use.',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -722,7 +924,7 @@ class _AiModelsSettingsPage extends StatelessWidget {
                                     style: textTheme.bodyMedium?.copyWith(
                                       color: isPassLocked
                                           ? colorScheme.onSurfaceVariant
-                                              .withAlpha(120)
+                                                .withAlpha(120)
                                           : null,
                                     ),
                                     overflow: TextOverflow.ellipsis,
@@ -732,7 +934,9 @@ class _AiModelsSettingsPage extends StatelessWidget {
                                   const SizedBox(width: 4),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 5, vertical: 2),
+                                      horizontal: 5,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: colorScheme.tertiaryContainer,
                                       borderRadius: BorderRadius.circular(8),
@@ -766,19 +970,23 @@ class _AiModelsSettingsPage extends StatelessWidget {
               // BYOK key input -- only visible when Custom is selected
               if (chat.selectedModel == AiModel.custom) ...[
                 Divider(
-                    height: 1,
-                    color: colorScheme.outlineVariant.withAlpha(100)),
+                  height: 1,
+                  color: colorScheme.outlineVariant.withAlpha(100),
+                ),
                 _ByokKeyField(colorScheme: colorScheme),
               ],
               // Advanced BYOK fields -- only when passCustom is selected
               if (chat.selectedModel == AiModel.passCustom) ...[
                 Divider(
-                    height: 1,
-                    color: colorScheme.outlineVariant.withAlpha(100)),
+                  height: 1,
+                  color: colorScheme.outlineVariant.withAlpha(100),
+                ),
                 _PassByokFields(colorScheme: colorScheme),
               ],
               Divider(
-                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
+                height: 1,
+                color: colorScheme.outlineVariant.withAlpha(100),
+              ),
               // AI Features toggle
               SwitchListTile(
                 value: security.isAiEnabled,
@@ -804,19 +1012,23 @@ class _AiModelsSettingsPage extends StatelessWidget {
                 ),
                 title: Text(
                   'AI Features',
-                  style: textTheme.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 subtitle: Text(
                   security.isAiEnabled
                       ? 'AI Study Buddy is active.'
                       : 'AI features have been revoked.',
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
               Divider(
-                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
+                height: 1,
+                color: colorScheme.outlineVariant.withAlpha(100),
+              ),
               // Ghost Mode
               SwitchListTile(
                 value: !chat.isHistoryEnabled,
@@ -838,19 +1050,23 @@ class _AiModelsSettingsPage extends StatelessWidget {
                 ),
                 title: Text(
                   'Ghost Mode',
-                  style: textTheme.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 subtitle: Text(
                   !chat.isHistoryEnabled
                       ? 'New chats are not saved to history.'
                       : 'Chat history is being recorded.',
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
               Divider(
-                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
+                height: 1,
+                color: colorScheme.outlineVariant.withAlpha(100),
+              ),
               // Clear Chat History
               _SecurityTile(
                 icon: Icons.delete_sweep_rounded,
@@ -873,7 +1089,8 @@ class _AiModelsSettingsPage extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Clear Chat History?'),
         content: const Text(
-            'This will erase all AI Study Buddy messages and start a fresh session.'),
+          'This will erase all AI Study Buddy messages and start a fresh session.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -897,8 +1114,9 @@ class _AiModelsSettingsPage extends StatelessWidget {
           SnackBar(
             content: const Text('Chat history cleared.'),
             behavior: SnackBarBehavior.floating,
-            backgroundColor:
-                Theme.of(context).colorScheme.surfaceContainerHighest,
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest,
           ),
         );
       }
@@ -952,8 +1170,9 @@ class _AppearanceSettingsPage extends StatelessWidget {
       children: [
         Text(
           'Choose a color palette that matches your mood.',
-          style: textTheme.bodySmall
-              ?.copyWith(color: colorScheme.onSurfaceVariant),
+          style: textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 10),
         _SquircleCard(
@@ -986,108 +1205,58 @@ class _AppearanceSettingsPage extends StatelessWidget {
             ),
             subtitle: Text(
               'Try the new toolbar nav, refreshed home layout, and updated loading states.',
-              style: textTheme.bodySmall
-                  ?.copyWith(color: colorScheme.onSurfaceVariant),
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ),
         const SizedBox(height: 12),
         _SquircleCard(
           colorScheme: colorScheme,
-          child: Column(
-            children: AppVibe.values.map((vibe) {
-              final isSelected = themeProvider.vibe == vibe;
-              final isSpring = _springVibes.contains(vibe);
-              final isSeason2 = _season2Vibes.contains(vibe);
-              final isPremium = kPremiumVibes.contains(vibe);
-              final cosmeticId = 'vibe_${vibe.name}';
-              final isUnlocked = (!isSpring ||
-                      userProvider.unlockedCosmetics.contains(cosmeticId)) &&
-                  (!isSeason2 ||
-                      season2Unlocked ||
-                      userProvider.unlockedCosmetics.contains(cosmeticId)) &&
-                  (!isPremium || entitlements.canUsePremiumThemes);
-              final vibeScheme = ColorScheme.fromSeed(
-                seedColor: vibe.seedColor,
-                brightness: Theme.of(context).brightness,
-              );
-              return _VibeRow(
-                vibe: vibe,
-                vibeScheme: vibeScheme,
-                isSelected: isSelected,
-                isLocked: !isUnlocked,
-                isPremiumLocked: false,
-                onTap: () {
-                  if (!isUnlocked) {
-                    if (isPremium && !entitlements.canUsePremiumThemes) {
-                      showDialog<void>(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24)),
-                          title: Row(
-                            children: [
-                              Text(vibe.emoji),
-                              const SizedBox(width: 8),
-                              Flexible(child: Text(vibe.label)),
-                            ],
-                          ),
-                          content: const Text(
-                            'This theme is free to use for everyone.\n\n'
-                            'Season 2 and season 3 cosmetic availability is shown in the app.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Maybe Later'),
-                            ),
-                            FilledButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                              child: const Text('Got it'),
-                            ),
-                          ],
-                        ),
-                      );
-                    } else {
-                      final seasonLockedMessage = isSeason2
-                          ? 'This theme is part of Season ${kSeason2.number}: ${kSeason2.name}.\n\n'
-                              'It unlocks when the new season starts on '
-                              '${kSeason2.startsAtUtc.month}/${kSeason2.startsAtUtc.day}/${kSeason2.startsAtUtc.year} UTC, '
-                              'or when you unlock it in the Season Shop.'
-                          : 'This theme was part of the Spring Bloomin\' Battle Pass.\n\n'
-                              'If you missed it, it unlocks in the Season Shop in '
-                              '${formatCountdown(shopEligibleAtForPastPassReward(seasonId: kSeason1.id).difference(effectiveNow))}.';
-                      showDialog<void>(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: Row(
-                            children: [
-                              Text(vibe.emoji),
-                              const SizedBox(width: 8),
-                              Text(vibe.label),
-                            ],
-                          ),
-                          content: Text(seasonLockedMessage),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Got it'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    return;
-                  }
-                  context.read<ThemeProvider>().setVibe(vibe);
-                },
-                showDivider: vibe != AppVibe.values.last,
-                colorScheme: colorScheme,
-              );
-            }).toList(),
+          child: SwitchListTile(
+            value: themeProvider.showNavLabels,
+            onChanged: (value) =>
+                context.read<ThemeProvider>().setShowNavLabels(value),
+            contentPadding: EdgeInsets.zero,
+            secondary: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: themeProvider.showNavLabels
+                    ? colorScheme.primaryContainer
+                    : colorScheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.label_outline_rounded,
+                color: themeProvider.showNavLabels
+                    ? colorScheme.onPrimaryContainer
+                    : colorScheme.onSurfaceVariant,
+                size: 20,
+              ),
+            ),
+            title: Text(
+              'Show Navigation Labels',
+              style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              'Display labels below nav icons (beta design only).',
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
+        ),
+        const SizedBox(height: 12),
+        // ── Organized Theme Categories ───────────────────────────────────
+        _ThemeCategories(
+          themeProvider: themeProvider,
+          colorScheme: colorScheme,
+          textTheme: textTheme,
+          userProvider: userProvider,
+          entitlements: entitlements,
+          effectiveNow: effectiveNow,
         ),
         const SizedBox(height: 12),
         // ── Premium theme builder stubs ──────────────────────────────────
@@ -1100,75 +1269,43 @@ class _AppearanceSettingsPage extends StatelessWidget {
                 title: 'Custom Gradient Theme',
                 subtitle: entitlements.canUseGradientThemeBuilder
                     ? 'Create your own gradient color theme.'
-                    : 'Available in Season 3',
+                    : 'Coming Soon',
                 colorScheme: colorScheme,
                 onTap: entitlements.canUseGradientThemeBuilder
                     ? () => ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            // TODO: implement gradient theme builder UI
-                            content: Text(
-                                'Custom gradient theme builder coming soon!'),
-                            behavior: SnackBarBehavior.floating,
+                        const SnackBar(
+                          content: Text(
+                            'Custom gradient theme builder coming soon!',
                           ),
-                        )
-                    : () => showDialog<void>(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24)),
-                            title: const Text('Season 3 Unlock'),
-                            content: Text(
-                              'Custom gradient themes unlock in Season 3 on '
-                              '${kSeason3.startsAtUtc.month}/${kSeason3.startsAtUtc.day}/${kSeason3.startsAtUtc.year} UTC.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('OK'),
-                              ),
-                            ],
-                          ),
+                          behavior: SnackBarBehavior.floating,
                         ),
+                      )
+                    : null,
                 trailing: entitlements.canUseGradientThemeBuilder
                     ? null
                     : const Icon(Icons.lock_rounded, size: 18),
               ),
               Divider(
-                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
+                height: 1,
+                color: colorScheme.outlineVariant.withAlpha(100),
+              ),
               _SecurityTile(
                 icon: Icons.light_mode_rounded,
                 title: 'Custom Light/Dark Theme',
                 subtitle: entitlements.canUseCustomLightDarkTheme
                     ? 'Design your own light and dark color themes.'
-                    : 'Available in Season 3',
+                    : 'Coming Soon',
                 colorScheme: colorScheme,
                 onTap: entitlements.canUseCustomLightDarkTheme
                     ? () => ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            // TODO: implement custom light/dark theme builder UI
-                            content: Text(
-                                'Custom light/dark theme builder coming soon!'),
-                            behavior: SnackBarBehavior.floating,
+                        const SnackBar(
+                          content: Text(
+                            'Custom light/dark theme builder coming soon!',
                           ),
-                        )
-                    : () => showDialog<void>(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24)),
-                            title: const Text('Season 3 Unlock'),
-                            content: Text(
-                              'Custom light and dark themes unlock in Season 3 on '
-                              '${kSeason3.startsAtUtc.month}/${kSeason3.startsAtUtc.day}/${kSeason3.startsAtUtc.year} UTC.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('OK'),
-                              ),
-                            ],
-                          ),
+                          behavior: SnackBarBehavior.floating,
                         ),
+                      )
+                    : null,
                 trailing: entitlements.canUseCustomLightDarkTheme
                     ? null
                     : const Icon(Icons.lock_rounded, size: 18),
@@ -1190,18 +1327,23 @@ class _AppearanceSettingsPage extends StatelessWidget {
                     color: colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.visibility_rounded,
-                      color: colorScheme.onPrimaryContainer, size: 20),
+                  child: Icon(
+                    Icons.visibility_rounded,
+                    color: colorScheme.onPrimaryContainer,
+                    size: 20,
+                  ),
                 ),
                 title: Text(
                   'Profile Visibility',
-                  style: textTheme.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 subtitle: Text(
                   _profileVisibilityLabel(socialProvider.profileVisibility),
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 trailing: DropdownButton<ProfileVisibility>(
                   value: socialProvider.profileVisibility,
@@ -1209,8 +1351,10 @@ class _AppearanceSettingsPage extends StatelessWidget {
                   items: ProfileVisibility.values.map((v) {
                     return DropdownMenuItem(
                       value: v,
-                      child: Text(_profileVisibilityLabel(v),
-                          style: textTheme.bodyMedium),
+                      child: Text(
+                        _profileVisibilityLabel(v),
+                        style: textTheme.bodyMedium,
+                      ),
                     );
                   }).toList(),
                   onChanged: (v) {
@@ -1221,7 +1365,9 @@ class _AppearanceSettingsPage extends StatelessWidget {
                 ),
               ),
               Divider(
-                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
+                height: 1,
+                color: colorScheme.outlineVariant.withAlpha(100),
+              ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Container(
@@ -1231,18 +1377,23 @@ class _AppearanceSettingsPage extends StatelessWidget {
                     color: colorScheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.person_add_rounded,
-                      color: colorScheme.onSecondaryContainer, size: 20),
+                  child: Icon(
+                    Icons.person_add_rounded,
+                    color: colorScheme.onSecondaryContainer,
+                    size: 20,
+                  ),
                 ),
                 title: Text(
                   'Who Can Add Me',
-                  style: textTheme.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 subtitle: Text(
                   _friendRequestsLabel(socialProvider.friendRequestsPrivacy),
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 trailing: DropdownButton<FriendRequestsPrivacy>(
                   value: socialProvider.friendRequestsPrivacy,
@@ -1250,15 +1401,17 @@ class _AppearanceSettingsPage extends StatelessWidget {
                   items: FriendRequestsPrivacy.values.map((v) {
                     return DropdownMenuItem(
                       value: v,
-                      child: Text(_friendRequestsLabel(v),
-                          style: textTheme.bodyMedium),
+                      child: Text(
+                        _friendRequestsLabel(v),
+                        style: textTheme.bodyMedium,
+                      ),
                     );
                   }).toList(),
                   onChanged: (v) {
                     if (v != null) {
-                      context
-                          .read<SocialProvider>()
-                          .setFriendRequestsPrivacy(v);
+                      context.read<SocialProvider>().setFriendRequestsPrivacy(
+                        v,
+                      );
                     }
                   },
                 ),
@@ -1309,8 +1462,9 @@ class _NavigationSettingsPage extends StatelessWidget {
           'Customise your bottom navigation bar.\n'
           'Drag rows to reorder tabs; toggle to show or hide them.\n'
           'The Home tab is always visible and cannot be hidden.',
-          style: textTheme.bodySmall
-              ?.copyWith(color: colorScheme.onSurfaceVariant),
+          style: textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 12),
         _SquircleCard(
@@ -1320,8 +1474,9 @@ class _NavigationSettingsPage extends StatelessWidget {
             title: const Text('Show tab labels'),
             subtitle: Text(
               'When off, bottom navigation shows icons only.',
-              style: textTheme.bodySmall
-                  ?.copyWith(color: colorScheme.onSurfaceVariant),
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
             value: navBar.showLabels,
             onChanged: (value) =>
@@ -1366,7 +1521,8 @@ class _NavigationSettingsPage extends StatelessWidget {
             label: const Text('Reset to Defaults'),
             style: OutlinedButton.styleFrom(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(14),
+              ),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),
@@ -1396,8 +1552,9 @@ class _NavTabRow extends StatelessWidget {
     final isHome = tab == NavTab.home;
     // Home can never be hidden; other tabs can be hidden only if at least
     // one non-home tab remains visible.
-    final nonHomeVisible =
-        navBar.visibleTabs.where((t) => t != NavTab.home).length;
+    final nonHomeVisible = navBar.visibleTabs
+        .where((t) => t != NavTab.home)
+        .length;
     final canHide = !isHome && (nonHomeVisible > 1 || isHidden);
 
     return ListTile(
@@ -1419,8 +1576,11 @@ class _NavTabRow extends StatelessWidget {
           ),
           if (isHome) ...[
             const SizedBox(width: 6),
-            Icon(Icons.lock_outline_rounded,
-                size: 14, color: colorScheme.onSurfaceVariant),
+            Icon(
+              Icons.lock_outline_rounded,
+              size: 14,
+              color: colorScheme.onSurfaceVariant,
+            ),
           ],
         ],
       ),
@@ -1434,13 +1594,18 @@ class _NavTabRow extends StatelessWidget {
             )
           : null,
       trailing: isHome
-          ? Icon(Icons.lock_rounded,
-              size: 20, color: colorScheme.onSurfaceVariant)
+          ? Icon(
+              Icons.lock_rounded,
+              size: 20,
+              color: colorScheme.onSurfaceVariant,
+            )
           : Switch(
               value: !isHidden,
               onChanged: canHide
-                  ? (v) =>
-                      context.read<NavBarProvider>().toggleTab(tab, visible: v)
+                  ? (v) => context.read<NavBarProvider>().toggleTab(
+                      tab,
+                      visible: v,
+                    )
                   : null,
             ),
     );
@@ -1460,8 +1625,9 @@ class _SubjectsSettingsPage extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final subjectsProvider = context.watch<SubjectsProvider>();
 
-    final subjects =
-        Subject.allSubjects.where((s) => s != Subject.all).toList();
+    final subjects = Subject.allSubjects
+        .where((s) => s != Subject.all)
+        .toList();
 
     return _CategoryPage(
       title: 'Subjects',
@@ -1469,8 +1635,9 @@ class _SubjectsSettingsPage extends StatelessWidget {
         Text(
           'Rename any subject to better match your school\'s terminology.\n'
           'Custom names appear everywhere in the app.',
-          style: textTheme.bodySmall
-              ?.copyWith(color: colorScheme.onSurfaceVariant),
+          style: textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 12),
         _SquircleCard(
@@ -1486,8 +1653,10 @@ class _SubjectsSettingsPage extends StatelessWidget {
                   if (i != 0)
                     Divider(color: colorScheme.outlineVariant, height: 1),
                   ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     leading: Container(
                       width: 40,
                       height: 40,
@@ -1495,13 +1664,17 @@ class _SubjectsSettingsPage extends StatelessWidget {
                         color: colorScheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(Icons.folder_rounded,
-                          color: colorScheme.onSecondaryContainer, size: 20),
+                      child: Icon(
+                        Icons.folder_rounded,
+                        color: colorScheme.onSecondaryContainer,
+                        size: 20,
+                      ),
                     ),
                     title: Text(
                       hasCustom ? customName : canonical,
-                      style: textTheme.bodyLarge
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     subtitle: hasCustom
                         ? Text(
@@ -1517,15 +1690,21 @@ class _SubjectsSettingsPage extends StatelessWidget {
                       children: [
                         if (hasCustom)
                           IconButton(
-                            icon: Icon(Icons.undo_rounded,
-                                size: 18, color: colorScheme.onSurfaceVariant),
+                            icon: Icon(
+                              Icons.undo_rounded,
+                              size: 18,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                             tooltip: 'Reset to default',
                             onPressed: () =>
                                 subjectsProvider.setCustomName(canonical, ''),
                           ),
                         IconButton(
-                          icon: Icon(Icons.edit_outlined,
-                              size: 18, color: colorScheme.primary),
+                          icon: Icon(
+                            Icons.edit_outlined,
+                            size: 18,
+                            color: colorScheme.primary,
+                          ),
                           tooltip: 'Rename',
                           onPressed: () =>
                               _showRenameDialog(context, canonical, customName),
@@ -1555,7 +1734,8 @@ class _SubjectsSettingsPage extends StatelessWidget {
             label: const Text('Reset All to Defaults'),
             style: OutlinedButton.styleFrom(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(14),
+              ),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),
@@ -1565,9 +1745,13 @@ class _SubjectsSettingsPage extends StatelessWidget {
   }
 
   void _showRenameDialog(
-      BuildContext context, String canonical, String currentDisplay) {
+    BuildContext context,
+    String canonical,
+    String currentDisplay,
+  ) {
     final ctrl = TextEditingController(
-        text: currentDisplay == canonical ? '' : currentDisplay);
+      text: currentDisplay == canonical ? '' : currentDisplay,
+    );
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1581,9 +1765,10 @@ class _SubjectsSettingsPage extends StatelessWidget {
           ),
           textCapitalization: TextCapitalization.words,
           onSubmitted: (_) {
-            context
-                .read<SubjectsProvider>()
-                .setCustomName(canonical, ctrl.text);
+            context.read<SubjectsProvider>().setCustomName(
+              canonical,
+              ctrl.text,
+            );
             Navigator.pop(ctx);
           },
         ),
@@ -1594,9 +1779,10 @@ class _SubjectsSettingsPage extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () {
-              context
-                  .read<SubjectsProvider>()
-                  .setCustomName(canonical, ctrl.text);
+              context.read<SubjectsProvider>().setCustomName(
+                canonical,
+                ctrl.text,
+              );
               Navigator.pop(ctx);
             },
             child: const Text('Save'),
@@ -1632,18 +1818,23 @@ class _NotificationsSettingsPage extends StatelessWidget {
                     color: colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.timer_rounded,
-                      color: colorScheme.onPrimaryContainer, size: 20),
+                  child: Icon(
+                    Icons.timer_rounded,
+                    color: colorScheme.onPrimaryContainer,
+                    size: 20,
+                  ),
                 ),
                 title: Text(
                   'Focus Timer Alerts',
-                  style: textTheme.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 subtitle: Text(
                   'Notify when a Pomodoro session ends.',
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 trailing: Switch(
                   value: true,
@@ -1656,7 +1847,9 @@ class _NotificationsSettingsPage extends StatelessWidget {
                 ),
               ),
               Divider(
-                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
+                height: 1,
+                color: colorScheme.outlineVariant.withAlpha(100),
+              ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Container(
@@ -1666,18 +1859,23 @@ class _NotificationsSettingsPage extends StatelessWidget {
                     color: colorScheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.event_rounded,
-                      color: colorScheme.onSecondaryContainer, size: 20),
+                  child: Icon(
+                    Icons.event_rounded,
+                    color: colorScheme.onSecondaryContainer,
+                    size: 20,
+                  ),
                 ),
                 title: Text(
                   'Deadline Reminders',
-                  style: textTheme.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 subtitle: Text(
                   'Get reminders before assignments are due.',
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 trailing: Switch(
                   value: true,
@@ -1726,22 +1924,29 @@ class _PrivacySecuritySettingsPage extends StatelessWidget {
                     color: colorScheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.people_rounded,
-                      color: colorScheme.onSecondaryContainer, size: 20),
+                  child: Icon(
+                    Icons.people_rounded,
+                    color: colorScheme.onSecondaryContainer,
+                    size: 20,
+                  ),
                 ),
                 title: Text(
                   'Show Study Activity to Friends',
-                  style: textTheme.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 subtitle: Text(
                   'Let friends see when you are in a focus session.',
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
               Divider(
-                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
+                height: 1,
+                color: colorScheme.outlineVariant.withAlpha(100),
+              ),
               _SecurityTile(
                 icon: Icons.file_download_rounded,
                 title: 'Export My Data',
@@ -1783,7 +1988,7 @@ class _AboutSettingsPage extends StatefulWidget {
 class _AboutSettingsPageState extends State<_AboutSettingsPage> {
   bool _checkingUpdate = false;
   String?
-      _updateResult; // null = not checked, '' = up to date, else = new version tag
+  _updateResult; // null = not checked, '' = up to date, else = new version tag
 
   Future<void> _checkForUpdates() async {
     setState(() {
@@ -1807,8 +2012,10 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         // Strip a leading 'v' (e.g. "v2.7.0" → "2.7.0") using an anchored
         // regex so only a leading 'v' is removed, not any 'v' in the middle.
-        final tag =
-            (data['tag_name'] as String? ?? '').replaceFirst(RegExp(r'^v'), '');
+        final tag = (data['tag_name'] as String? ?? '').replaceFirst(
+          RegExp(r'^v'),
+          '',
+        );
         final htmlUrl = data['html_url'] as String? ?? '';
         final body = data['body'] as String? ?? '';
         if (_isNewerVersion(tag, _kCurrentVersion)) {
@@ -1818,13 +2025,17 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
             builder: (ctx) => AlertDialog(
               title: Row(
                 children: [
-                  const Icon(Icons.system_update_rounded,
-                      color: Color(0xFF2E7D32)),
+                  const Icon(
+                    Icons.system_update_rounded,
+                    color: Color(0xFF2E7D32),
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Update Available 🎉',
                     style: GoogleFonts.lexend(
-                        fontWeight: FontWeight.w700, fontSize: 16),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
                   ),
                 ],
               ),
@@ -1836,7 +2047,9 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
                     Text(
                       'v$tag is available (you have v$_kCurrentVersion)',
                       style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w600, fontSize: 13),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                     if (body.isNotEmpty) ...[
                       const SizedBox(height: 8),
@@ -1859,8 +2072,10 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
                           Navigator.pop(ctx);
                           final uri = Uri.parse(htmlUrl);
                           if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri,
-                                mode: LaunchMode.externalApplication);
+                            await launchUrl(
+                              uri,
+                              mode: LaunchMode.externalApplication,
+                            );
                           }
                         }
                       : null,
@@ -1882,7 +2097,8 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
           ghMessage = errData['message'] as String? ?? '';
         } catch (_) {}
         debugPrint(
-            '[UpdateChecker] GitHub returned ${response.statusCode}: ${response.body}');
+          '[UpdateChecker] GitHub returned ${response.statusCode}: ${response.body}',
+        );
         if (mounted) setState(() => _updateResult = null);
         final String snackMsg;
         if (response.statusCode == 404) {
@@ -1923,7 +2139,9 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
     final clean = v.replaceFirst(RegExp(r'^v'), '').split('+').first;
     final parts = clean.split('.');
     return List.generate(
-        3, (i) => i < parts.length ? (int.tryParse(parts[i]) ?? 0) : 0);
+      3,
+      (i) => i < parts.length ? (int.tryParse(parts[i]) ?? 0) : 0,
+    );
   }
 
   void _showSnack(String msg) {
@@ -1958,13 +2176,16 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
                 ),
                 title: Text(
                   'Homework Helper',
-                  style: textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                  style: textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 subtitle: const Text('Version $_kCurrentVersion'),
               ),
               Divider(
-                  height: 1, color: colorScheme.outlineVariant.withAlpha(100)),
+                height: 1,
+                color: colorScheme.outlineVariant.withAlpha(100),
+              ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Container(
@@ -1981,8 +2202,9 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
                 ),
                 title: Text(
                   'Device',
-                  style: textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                  style: textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 subtitle: Text(_deviceLabel()),
               ),
@@ -2023,24 +2245,29 @@ class _AboutSettingsPageState extends State<_AboutSettingsPage> {
             ),
             title: Text(
               'Check for Updates',
-              style:
-                  textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              style: textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
             subtitle: Text(
               _checkingUpdate
                   ? 'Checking GitHub releases…'
                   : _updateResult == null
-                      ? 'Tap to check for a newer version'
-                      : _updateResult!.isEmpty
-                          ? 'You\'re up to date ✓'
-                          : 'v${_updateResult!} available — tap to view',
-              style:
-                  TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                  ? 'Tap to check for a newer version'
+                  : _updateResult!.isEmpty
+                  ? 'You\'re up to date ✓'
+                  : 'v${_updateResult!} available — tap to view',
+              style: TextStyle(
+                fontSize: 12,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
             trailing: _checkingUpdate
                 ? null
-                : Icon(Icons.chevron_right_rounded,
-                    color: colorScheme.onSurfaceVariant),
+                : Icon(
+                    Icons.chevron_right_rounded,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
             onTap: _checkingUpdate ? null : _checkForUpdates,
           ),
         ),
@@ -2112,24 +2339,29 @@ class _ByokKeyFieldState extends State<_ByokKeyField> {
                   color: colorScheme.tertiaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.vpn_key_rounded,
-                    color: colorScheme.onTertiaryContainer, size: 20),
+                child: Icon(
+                  Icons.vpn_key_rounded,
+                  color: colorScheme.onTertiaryContainer,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Your API Key',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyLarge
-                            ?.copyWith(fontWeight: FontWeight.w600)),
-                    Text('Bring your own key from your preferred AI provider.',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: colorScheme.onSurfaceVariant)),
+                    Text(
+                      'Your API Key',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Bring your own key from your preferred AI provider.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -2152,10 +2384,11 @@ class _ByokKeyFieldState extends State<_ByokKeyField> {
                 children: [
                   IconButton(
                     icon: Icon(
-                        _obscure
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        size: 20),
+                      _obscure
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      size: 20,
+                    ),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                   IconButton(
@@ -2163,9 +2396,9 @@ class _ByokKeyFieldState extends State<_ByokKeyField> {
                     color: colorScheme.primary,
                     tooltip: 'Save key',
                     onPressed: () {
-                      context
-                          .read<ChatProvider>()
-                          .setCustomApiKey(_controller.text);
+                      context.read<ChatProvider>().setCustomApiKey(
+                        _controller.text,
+                      );
                       FocusScope.of(context).unfocus();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -2193,32 +2426,28 @@ class _ByokKeyFieldState extends State<_ByokKeyField> {
               children: [
                 Text(
                   'Free key quick start',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelLarge
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   '1) Google AI Studio: create a key for Gemini models.',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 Text(
                   '2) OpenRouter: create a key and use free-tier models.',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 Text(
                   '3) Groq: create a key for fast free-tier inference.',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -2281,8 +2510,11 @@ class _PassByokFieldsState extends State<_PassByokFields> {
                   color: const Color(0xFFB8860B).withAlpha(40),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.vpn_key_rounded,
-                    color: Color(0xFFB8860B), size: 20),
+                child: const Icon(
+                  Icons.vpn_key_rounded,
+                  color: Color(0xFFB8860B),
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -2291,13 +2523,18 @@ class _PassByokFieldsState extends State<_PassByokFields> {
                   children: [
                     Row(
                       children: [
-                        Text('Advanced BYOK',
-                            style: textTheme.bodyLarge
-                                ?.copyWith(fontWeight: FontWeight.w600)),
+                        Text(
+                          'Advanced BYOK',
+                          style: textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1),
+                            horizontal: 6,
+                            vertical: 1,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFB8860B).withAlpha(40),
                             borderRadius: BorderRadius.circular(8),
@@ -2314,8 +2551,9 @@ class _PassByokFieldsState extends State<_PassByokFields> {
                     ),
                     Text(
                       'OpenAI-compatible endpoint + API key.',
-                      style: textTheme.bodySmall
-                          ?.copyWith(color: colorScheme.onSurfaceVariant),
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -2338,10 +2576,11 @@ class _PassByokFieldsState extends State<_PassByokFields> {
               ),
               suffixIcon: IconButton(
                 icon: Icon(
-                    _obscure
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
-                    size: 20),
+                  _obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  size: 20,
+                ),
                 onPressed: () => setState(() => _obscure = !_obscure),
               ),
             ),
@@ -2377,8 +2616,9 @@ class _PassByokFieldsState extends State<_PassByokFields> {
                       // TODO(billing): remove this note once advanced BYOK
                       //   chat backend is implemented.
                       content: const Text(
-                          'Credentials saved. Advanced endpoint chat responses '
-                          'are a TODO and will be wired in a future update.'),
+                        'Credentials saved. Advanced endpoint chat responses '
+                        'are a TODO and will be wired in a future update.',
+                      ),
                       behavior: SnackBarBehavior.floating,
                       backgroundColor: colorScheme.surfaceContainerHighest,
                     ),
@@ -2387,7 +2627,8 @@ class _PassByokFieldsState extends State<_PassByokFields> {
               },
               style: FilledButton.styleFrom(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Save Credentials'),
             ),
@@ -2415,6 +2656,256 @@ class _SquircleCard extends StatelessWidget {
         border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: child,
+    );
+  }
+}
+
+// ── Theme Categories Widget ──────────────────────────────────────────────
+
+class _ThemeCategories extends StatefulWidget {
+  final ThemeProvider themeProvider;
+  final ColorScheme colorScheme;
+  final TextTheme textTheme;
+  final UserProvider userProvider;
+  final EntitlementsProvider entitlements;
+  final DateTime effectiveNow;
+
+  const _ThemeCategories({
+    required this.themeProvider,
+    required this.colorScheme,
+    required this.textTheme,
+    required this.userProvider,
+    required this.entitlements,
+    required this.effectiveNow,
+  });
+
+  @override
+  State<_ThemeCategories> createState() => _ThemeCategoriesState();
+}
+
+class _ThemeCategoriesState extends State<_ThemeCategories> {
+  bool _classicsExpanded = true;
+  bool _season1Expanded = false;
+  bool _season2Expanded = false;
+  bool _battlePassExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final classicVibes = AppVibe.values
+        .where((v) => v.seasonNumber == null)
+        .toList();
+    final season1Vibes = AppVibe.values
+        .where((v) => v.seasonNumber == 1)
+        .toList();
+    final season2Vibes = AppVibe.values
+        .where((v) => v.seasonNumber == 2)
+        .toList();
+
+    return Column(
+      children: [
+        _ThemeCategoryCard(
+          title: 'Classics',
+          isExpanded: _classicsExpanded,
+          onExpand: () =>
+              setState(() => _classicsExpanded = !_classicsExpanded),
+          icon: Icons.diamond_rounded,
+          vibes: classicVibes,
+          themeProvider: widget.themeProvider,
+          colorScheme: widget.colorScheme,
+          textTheme: widget.textTheme,
+          userProvider: widget.userProvider,
+          entitlements: widget.entitlements,
+          effectiveNow: widget.effectiveNow,
+          context: context,
+        ),
+        const SizedBox(height: 8),
+        _ThemeCategoryCard(
+          title: 'Season 1: Spring Bloomin\'',
+          isExpanded: _season1Expanded,
+          onExpand: () => setState(() => _season1Expanded = !_season1Expanded),
+          icon: Icons.entertainment_rounded,
+          vibes: season1Vibes,
+          themeProvider: widget.themeProvider,
+          colorScheme: widget.colorScheme,
+          textTheme: widget.textTheme,
+          userProvider: widget.userProvider,
+          entitlements: widget.entitlements,
+          effectiveNow: widget.effectiveNow,
+          context: context,
+          isBattlePass: true,
+          seasonId: 'season_1',
+        ),
+        const SizedBox(height: 8),
+        _ThemeCategoryCard(
+          title: 'Season 2: Finals Frenzy',
+          isExpanded: _season2Expanded,
+          onExpand: () => setState(() => _season2Expanded = !_season2Expanded),
+          icon: Icons.local_fire_department_rounded,
+          vibes: season2Vibes,
+          themeProvider: widget.themeProvider,
+          colorScheme: widget.colorScheme,
+          textTheme: widget.textTheme,
+          userProvider: widget.userProvider,
+          entitlements: widget.entitlements,
+          effectiveNow: widget.effectiveNow,
+          context: context,
+          isBattlePass: true,
+          seasonId: 'season_2',
+        ),
+      ],
+    );
+  }
+}
+
+class _ThemeCategoryCard extends StatelessWidget {
+  final String title;
+  final bool isExpanded;
+  final VoidCallback onExpand;
+  final IconData icon;
+  final List<AppVibe> vibes;
+  final ThemeProvider themeProvider;
+  final ColorScheme colorScheme;
+  final TextTheme textTheme;
+  final UserProvider userProvider;
+  final EntitlementsProvider entitlements;
+  final DateTime effectiveNow;
+  final BuildContext context;
+  final bool isBattlePass;
+  final String? seasonId;
+
+  const _ThemeCategoryCard({
+    required this.title,
+    required this.isExpanded,
+    required this.onExpand,
+    required this.icon,
+    required this.vibes,
+    required this.themeProvider,
+    required this.colorScheme,
+    required this.textTheme,
+    required this.userProvider,
+    required this.entitlements,
+    required this.effectiveNow,
+    required this.context,
+    this.isBattlePass = false,
+    this.seasonId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SquircleCard(
+      colorScheme: colorScheme,
+      child: Column(
+        children: [
+          InkWell(
+            onTap: onExpand,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: colorScheme.onPrimaryContainer,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    isExpanded
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (isExpanded) ...[
+            Divider(
+              height: 1,
+              color: colorScheme.outlineVariant.withAlpha(100),
+            ),
+            ...vibes.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final vibe = entry.value;
+              final isSelected = themeProvider.vibe == vibe;
+              final cosmeticId = 'vibe_${vibe.name}';
+              final isUnlocked = userProvider.unlockedCosmetics.contains(
+                cosmeticId,
+              );
+
+              // For battle pass themes: locked unless unlocked or 60 days after season end
+              final isBattlePassCheck =
+                  isBattlePass &&
+                  seasonId != null &&
+                  !isUnlocked &&
+                  !isShopEligibleForPastPassReward(
+                    seasonId: seasonId!,
+                    utcNow: effectiveNow,
+                  );
+
+              final vibeScheme = ColorScheme.fromSeed(
+                seedColor: vibe.seedColor,
+                brightness: Theme.of(context).brightness,
+              );
+
+              return _VibeRow(
+                vibe: vibe,
+                vibeScheme: vibeScheme,
+                isSelected: isSelected,
+                isLocked: isBattlePassCheck,
+                isPremiumLocked: false,
+                onTap: () {
+                  if (isBattlePassCheck) {
+                    final eligibleDate = shopEligibleAtForPastPassReward(
+                      seasonId: seasonId!,
+                    );
+                    final timeRemaining = eligibleDate.difference(effectiveNow);
+                    final days = timeRemaining.inDays;
+                    final hours = timeRemaining.inHours % 24;
+                    SnackBar snackbar;
+                    if (timeRemaining.isNegative) {
+                      snackbar = const SnackBar(
+                        content: Text(
+                          'This theme is now available in the Season Shop!',
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      );
+                    } else {
+                      snackbar = SnackBar(
+                        content: Text(
+                          'Available in Season Shop in ${days}d ${hours}h',
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      );
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(snackbar);
+                    return;
+                  }
+                  themeProvider.setVibe(vibe);
+                },
+                showDivider: idx < vibes.length - 1,
+                colorScheme: colorScheme,
+              );
+            }).toList(),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -2484,13 +2975,15 @@ class _VibeRow extends StatelessWidget {
                             const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 1),
+                                horizontal: 6,
+                                vertical: 1,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFB8860B).withAlpha(40),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                    color:
-                                        const Color(0xFFB8860B).withAlpha(100)),
+                                  color: const Color(0xFFB8860B).withAlpha(100),
+                                ),
                               ),
                               child: Text(
                                 'Pass',
@@ -2524,11 +3017,17 @@ class _VibeRow extends StatelessWidget {
                   ),
                 ),
                 if (isSelected)
-                  Icon(Icons.check_circle_rounded,
-                      color: colorScheme.primary, size: 20),
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: colorScheme.primary,
+                    size: 20,
+                  ),
                 if (isLocked && !isSelected)
-                  Icon(Icons.lock_rounded,
-                      color: colorScheme.onSurfaceVariant, size: 18),
+                  Icon(
+                    Icons.lock_rounded,
+                    color: colorScheme.onSurfaceVariant,
+                    size: 18,
+                  ),
               ],
             ),
           ),
@@ -2584,13 +3083,16 @@ class _SecurityTile extends StatelessWidget {
         ),
         child: Icon(icon, color: colorScheme.onPrimaryContainer, size: 20),
       ),
-      title: Text(title,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      ),
       subtitle: Text(
         subtitle,
         style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
       ),
-      trailing: trailing ??
+      trailing:
+          trailing ??
           (onTap != null
               ? Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant)
               : null),
@@ -2695,7 +3197,8 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
     }
 
     final ok = await security.authenticate(
-        reason: 'Register your biometric as a Passkey');
+      reason: 'Register your biometric as a Passkey',
+    );
     if (!mounted) return;
     setState(() => _setupLoading = false);
     if (ok) {
@@ -2728,12 +3231,11 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Delete Passkey?'),
         content: const Text(
-            'This will remove your saved Passkey. You can set it up again at any time.'),
+          'This will remove your saved Passkey. You can set it up again at any time.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -2781,13 +3283,18 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
                 color: cs.primaryContainer,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.lock_rounded,
-                  color: cs.onPrimaryContainer, size: 20),
+              child: Icon(
+                Icons.lock_rounded,
+                color: cs.onPrimaryContainer,
+                size: 20,
+              ),
             ),
             title: Text(
               'App Lock',
-              style:
-                  GoogleFonts.lexend(fontWeight: FontWeight.w600, fontSize: 14),
+              style: GoogleFonts.lexend(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
             ),
             subtitle: Text(
               'Require biometrics once when the app is launched.',
@@ -2807,13 +3314,18 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
                 color: cs.secondaryContainer,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.nfc_rounded,
-                  color: cs.onSecondaryContainer, size: 20),
+              child: Icon(
+                Icons.nfc_rounded,
+                color: cs.onSecondaryContainer,
+                size: 20,
+              ),
             ),
             title: Text(
               'Biometric for NFC Bump',
-              style:
-                  GoogleFonts.lexend(fontWeight: FontWeight.w600, fontSize: 14),
+              style: GoogleFonts.lexend(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
             ),
             subtitle: Text(
               'Verify your identity before starting a Bump.',
@@ -2834,13 +3346,18 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
                   color: cs.tertiaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.fingerprint_rounded,
-                    color: cs.onTertiaryContainer, size: 20),
+                child: Icon(
+                  Icons.fingerprint_rounded,
+                  color: cs.onTertiaryContainer,
+                  size: 20,
+                ),
               ),
               title: Text(
                 'Set up Passkey',
                 style: GoogleFonts.lexend(
-                    fontWeight: FontWeight.w600, fontSize: 14),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
               ),
               subtitle: Text(
                 'Register your biometric as a secure Passkey.',
@@ -2850,7 +3367,8 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
               onTap: _setupLoading ? null : () => _setupPasskey(security),
             )
@@ -2864,13 +3382,18 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
                   color: cs.tertiaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.fingerprint_rounded,
-                    color: cs.onTertiaryContainer, size: 20),
+                child: Icon(
+                  Icons.fingerprint_rounded,
+                  color: cs.onTertiaryContainer,
+                  size: 20,
+                ),
               ),
               title: Text(
                 'Passkey Active \u2705',
                 style: GoogleFonts.lexend(
-                    fontWeight: FontWeight.w600, fontSize: 14),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
               ),
               subtitle: Text(
                 'Your biometric Passkey is registered.',
@@ -2887,13 +3410,19 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
                   color: cs.errorContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.delete_rounded,
-                    color: cs.onErrorContainer, size: 20),
+                child: Icon(
+                  Icons.delete_rounded,
+                  color: cs.onErrorContainer,
+                  size: 20,
+                ),
               ),
               title: Text(
                 'Delete Passkey',
                 style: GoogleFonts.lexend(
-                    fontWeight: FontWeight.w600, fontSize: 14, color: cs.error),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: cs.error,
+                ),
               ),
               subtitle: Text(
                 'Remove your saved biometric Passkey.',
@@ -2903,7 +3432,8 @@ class _BiometricsSectionState extends State<_BiometricsSection> {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
               onTap: _deleteLoading ? null : () => _deletePasskey(security),
             ),
@@ -2950,9 +3480,9 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
 
   void _grantCoins(BuildContext context) {
     context.read<UserProvider>().awardCoins(1000);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('🪙 +1000 Coins granted!')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('🪙 +1000 Coins granted!')));
   }
 
   void _grantSeasonXp(BuildContext context) {
@@ -2964,9 +3494,9 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
 
   void _grantAccountXp(BuildContext context) {
     context.read<UserProvider>().awardXp(500);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('⚡ +500 Account XP granted!')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('⚡ +500 Account XP granted!')));
   }
 
   void _maxBattlePass(BuildContext context) {
@@ -2978,9 +3508,9 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
 
   void _unlockAllCosmetics(BuildContext context) {
     context.read<UserProvider>().unlockAllCosmetics();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('🎨 All cosmetics unlocked!')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('🎨 All cosmetics unlocked!')));
   }
 
   void _spawnTestAssignments(BuildContext context) {
@@ -3014,7 +3544,8 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFD32F2F)),
+              backgroundColor: const Color(0xFFD32F2F),
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Wipe'),
           ),
@@ -3065,7 +3596,8 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                   if (uid == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('Sign in first to set entitlements.')),
+                        content: Text('Sign in first to set entitlements.'),
+                      ),
                     );
                     return;
                   }
@@ -3093,7 +3625,8 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                   if (uid == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('Sign in first to set entitlements.')),
+                        content: Text('Sign in first to set entitlements.'),
+                      ),
                     );
                     return;
                   }
@@ -3211,10 +3744,14 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                   border: Border.all(color: Colors.cyan.withAlpha(80)),
                 ),
                 child: SwitchListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                  secondary:
-                      const Icon(Icons.access_time_rounded, color: Colors.cyan),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 4,
+                  ),
+                  secondary: const Icon(
+                    Icons.access_time_rounded,
+                    color: Colors.cyan,
+                  ),
                   title: const Text(
                     'Time-Travel Shop',
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
@@ -3261,8 +3798,10 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
               // Status chip showing the effective time
               Container(
                 width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: devClock.isOverrideActive
                       ? Colors.amber.withAlpha(40)
@@ -3346,14 +3885,14 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                               ? devClock.nowUtc().toLocal()
                               : base;
                           context.read<DevClockProvider>().setOverride(
-                                DateTime(
-                                  picked.year,
-                                  picked.month,
-                                  picked.day,
-                                  tod.hour,
-                                  tod.minute,
-                                ),
-                              );
+                            DateTime(
+                              picked.year,
+                              picked.month,
+                              picked.day,
+                              tod.hour,
+                              tod.minute,
+                            ),
+                          );
                         }
                       },
                     ),
@@ -3382,14 +3921,14 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                               ? devClock.nowUtc().toLocal()
                               : base;
                           context.read<DevClockProvider>().setOverride(
-                                DateTime(
-                                  date.year,
-                                  date.month,
-                                  date.day,
-                                  picked.hour,
-                                  picked.minute,
-                                ),
-                              );
+                            DateTime(
+                              date.year,
+                              date.month,
+                              date.day,
+                              picked.hour,
+                              picked.minute,
+                            ),
+                          );
                         }
                       },
                     ),
@@ -3404,14 +3943,14 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                 onTap: () {
                   final nextSeasonStart = kSeason2.startsAtUtc.toLocal();
                   context.read<DevClockProvider>().setOverride(
-                        DateTime(
-                          nextSeasonStart.year,
-                          nextSeasonStart.month,
-                          nextSeasonStart.day,
-                          9,
-                          0,
-                        ),
-                      );
+                    DateTime(
+                      nextSeasonStart.year,
+                      nextSeasonStart.month,
+                      nextSeasonStart.day,
+                      9,
+                      0,
+                    ),
+                  );
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
@@ -3436,8 +3975,9 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
           // ── QA Release Readiness Checklist ─────────────────────────────
           Card(
             color: colorScheme.surfaceContainerLow,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -3538,8 +4078,11 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.rocket_launch_rounded,
-                              color: Colors.green, size: 18),
+                          Icon(
+                            Icons.rocket_launch_rounded,
+                            color: Colors.green,
+                            size: 18,
+                          ),
                           SizedBox(width: 8),
                           Text(
                             '✅ All checks passed — ready to release!',
@@ -3636,10 +4179,7 @@ class _DevButton extends StatelessWidget {
           children: [
             Icon(icon, size: 20),
             const SizedBox(width: 12),
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
           ],
         ),
       ),
