@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../config/season_live_ops.dart';
 import '../config/secrets.dart';
 import '../models/assignment.dart';
@@ -25,6 +26,7 @@ import 'ladder_event_screen.dart';
 import 'subjects_screen.dart' show SubjectFolderSection;
 import 'settings_screen.dart';
 import 'chat_screen.dart';
+import 'study_tools_screen.dart';
 
 /// The main dashboard screen featuring Material 3 Expressive design.
 /// Displays a motivational header, subject filter chips, and assignment list.
@@ -507,9 +509,6 @@ class _ClassesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final classes = context.watch<ClassesProvider>().classes;
-    final effectiveNow = context.watch<DevClockProvider>().nowUtc();
-    final season2Enabled =
-        !effectiveNow.isBefore(kSeason2.startsAtUtc);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 0, 0),
@@ -532,9 +531,7 @@ class _ClassesSection extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextButton.icon(
-                      onPressed: season2Enabled
-                          ? () => _showAiImportSheet(context)
-                          : () => _showSeason2LockedMessage(context),
+                      onPressed: () => _showAiImportSheet(context),
                       icon: const Icon(Icons.auto_awesome_outlined, size: 16),
                       label: const Text('AI Import'),
                       style: TextButton.styleFrom(
@@ -559,42 +556,35 @@ class _ClassesSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          if (season2Enabled) ...[
-            Padding(
-              padding: const EdgeInsets.only(right: 16, bottom: 8),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ActionChip(
-                    avatar: const Icon(Icons.folder_copy_rounded, size: 16),
-                    label: const Text('Study guides organizing'),
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content:
-                            Text('Study guides organizing is now enabled for Season 2.'),
-                      ),
-                    ),
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.camera_alt_rounded, size: 16),
-                    label: const Text('Take pics'),
-                    onPressed: () => _openStudyBuddy(context),
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.auto_awesome_rounded, size: 16),
-                    label: const Text('Gemini organize'),
-                    onPressed: () => _openGeminiOrganizer(context),
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.upload_file_rounded, size: 16),
-                    label: const Text('Upload notes'),
-                    onPressed: () => _openStudyBuddy(context),
-                  ),
-                ],
-              ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16, bottom: 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ActionChip(
+                  avatar: const Icon(Icons.sticky_note_2_rounded, size: 16),
+                  label: const Text('Notepad'),
+                  onPressed: () => _openStudyTools(context, initialTab: 0),
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.quiz_rounded, size: 16),
+                  label: const Text('Quiz from pics'),
+                  onPressed: () => _openStudyTools(context, initialTab: 1),
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.auto_awesome_rounded, size: 16),
+                  label: const Text('Gemini organize'),
+                  onPressed: () => _openGeminiOrganizer(context),
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.upload_file_rounded, size: 16),
+                  label: const Text('AI Import'),
+                  onPressed: () => _showAiImportSheet(context),
+                ),
+              ],
             ),
-          ],
+          ),
           // Horizontal list
           SizedBox(
             height: 120,
@@ -648,6 +638,14 @@ class _ClassesSection extends StatelessWidget {
       return;
     }
     _showAiImportSheet(context);
+  }
+
+  void _openStudyTools(BuildContext context, {int initialTab = 0}) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => StudyToolsScreen(initialTab: initialTab),
+      ),
+    );
   }
 
   void _showSeason2LockedMessage(BuildContext context) {
@@ -744,6 +742,17 @@ class _ClassCard extends StatelessWidget {
                 Icon(Icons.school_rounded,
                     size: 18, color: colorScheme.onPrimaryContainer),
                 const Spacer(),
+                if ((schoolClass.googleClassroomUrl ?? '').trim().isNotEmpty)
+                  GestureDetector(
+                    onTap: () => _openClassroomLink(context),
+                    child: Icon(
+                      Icons.open_in_new_rounded,
+                      size: 16,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                if ((schoolClass.googleClassroomUrl ?? '').trim().isNotEmpty)
+                  const SizedBox(width: 8),
                 GestureDetector(
                   onTap: () => _showOptions(context),
                   child: Icon(Icons.more_vert_rounded,
@@ -791,6 +800,19 @@ class _ClassCard extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _openClassroomLink(BuildContext context) async {
+    final raw = schoolClass.googleClassroomUrl?.trim();
+    if (raw == null || raw.isEmpty) return;
+    final uri = Uri.tryParse(raw);
+    if (uri == null) return;
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open Google Classroom link.')),
+      );
+    }
+  }
 }
 
 /// Bottom-sheet with edit / delete actions for a class.
@@ -811,6 +833,27 @@ class _ClassOptionsSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if ((schoolClass.googleClassroomUrl ?? '').trim().isNotEmpty)
+              ListTile(
+                leading: Icon(Icons.open_in_new_rounded,
+                    color: colorScheme.primary),
+                title: const Text('Open Google Classroom link'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final raw = schoolClass.googleClassroomUrl?.trim();
+                  final uri = raw == null ? null : Uri.tryParse(raw);
+                  if (uri == null) return;
+                  final ok =
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  if (!ok && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Could not open Google Classroom link.'),
+                      ),
+                    );
+                  }
+                },
+              ),
             ListTile(
               leading: Icon(Icons.edit_rounded, color: colorScheme.primary),
               title: const Text('Edit class'),
@@ -853,6 +896,7 @@ class _ClassEditDialog extends StatefulWidget {
 class _ClassEditDialogState extends State<_ClassEditDialog> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _descCtrl;
+  late final TextEditingController _classroomUrlCtrl;
   late List<String> _subjects;
 
   @override
@@ -861,6 +905,8 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
     final c = widget.existing;
     _nameCtrl = TextEditingController(text: c?.name ?? '');
     _descCtrl = TextEditingController(text: c?.description ?? '');
+    _classroomUrlCtrl =
+      TextEditingController(text: c?.googleClassroomUrl ?? '');
     _subjects = List<String>.from(c?.subjects ?? []);
   }
 
@@ -868,6 +914,7 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
   void dispose() {
     _nameCtrl.dispose();
     _descCtrl.dispose();
+    _classroomUrlCtrl.dispose();
     super.dispose();
   }
 
@@ -892,6 +939,9 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
       name: name,
       description: _descCtrl.text.trim(),
       subjects: List<String>.from(_subjects),
+      googleClassroomUrl: _classroomUrlCtrl.text.trim().isEmpty
+          ? null
+          : _classroomUrlCtrl.text.trim(),
     );
 
     if (existing == null) {
@@ -972,6 +1022,15 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
                 labelText: 'Teacher / description (optional)',
                 hintText: 'e.g. Mr. Smith',
               ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _classroomUrlCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Google Classroom URL (optional)',
+                hintText: 'https://classroom.google.com/c/...',
+              ),
+              keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 16),
             Text(

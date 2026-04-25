@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/assignment.dart';
 import '../models/class_model.dart';
 import '../providers/classes_provider.dart';
@@ -127,6 +128,20 @@ class _ClassListTile extends StatelessWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
+            if ((schoolClass.googleClassroomUrl ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              GestureDetector(
+                onTap: () => _openClassroomLink(context),
+                child: Text(
+                  'Open Google Classroom link',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
             if (displaySubjects.isNotEmpty) ...[
               const SizedBox(height: 4),
               Wrap(
@@ -178,6 +193,16 @@ class _ClassListTile extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if ((schoolClass.googleClassroomUrl ?? '').trim().isNotEmpty)
+                ListTile(
+                  leading: Icon(Icons.open_in_new_rounded,
+                      color: colorScheme.primary),
+                  title: const Text('Open Google Classroom link'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _openClassroomLink(context);
+                  },
+                ),
               ListTile(
                 leading: Icon(Icons.edit_rounded, color: colorScheme.primary),
                 title: const Text('Edit class'),
@@ -204,6 +229,19 @@ class _ClassListTile extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openClassroomLink(BuildContext context) async {
+    final raw = schoolClass.googleClassroomUrl?.trim();
+    if (raw == null || raw.isEmpty) return;
+    final uri = Uri.tryParse(raw);
+    if (uri == null) return;
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open Google Classroom link.')),
+      );
+    }
   }
 }
 
@@ -271,6 +309,7 @@ class _ClassEditDialog extends StatefulWidget {
 class _ClassEditDialogState extends State<_ClassEditDialog> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _descCtrl;
+  late final TextEditingController _classroomUrlCtrl;
   late List<String> _subjects;
 
   @override
@@ -279,6 +318,8 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
     final c = widget.existing;
     _nameCtrl = TextEditingController(text: c?.name ?? '');
     _descCtrl = TextEditingController(text: c?.description ?? '');
+    _classroomUrlCtrl =
+      TextEditingController(text: c?.googleClassroomUrl ?? '');
     _subjects = List<String>.from(c?.subjects ?? []);
   }
 
@@ -286,6 +327,7 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
   void dispose() {
     _nameCtrl.dispose();
     _descCtrl.dispose();
+    _classroomUrlCtrl.dispose();
     super.dispose();
   }
 
@@ -310,6 +352,9 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
       name: name,
       description: _descCtrl.text.trim(),
       subjects: List<String>.from(_subjects),
+      googleClassroomUrl: _classroomUrlCtrl.text.trim().isEmpty
+          ? null
+          : _classroomUrlCtrl.text.trim(),
     );
 
     if (existing == null) {
@@ -393,6 +438,15 @@ class _ClassEditDialogState extends State<_ClassEditDialog> {
                 hintText: 'e.g. Mr. Smith',
               ),
               textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _classroomUrlCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Google Classroom URL (optional)',
+                hintText: 'https://classroom.google.com/c/...',
+              ),
+              keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 16),
             Text(
