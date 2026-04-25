@@ -285,8 +285,29 @@ List<_TimedShopItem> _buildTimedDrops(
 
 // ── Shop body ────────────────────────────────────────────────────────────────
 
-class _ShopBody extends StatelessWidget {
+class _ShopBody extends StatefulWidget {
   const _ShopBody();
+
+  @override
+  State<_ShopBody> createState() => _ShopBodyState();
+}
+
+class _ShopBodyState extends State<_ShopBody> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final granted = context.read<UserProvider>().grantShopCompensationIfNeeded();
+      if (!granted || !mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎁 Thanks for sticking with us! +50 coins added to your shop balance.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    });
+  }
 
   void _purchase(BuildContext context, _ShopItem item) {
     final user = context.read<UserProvider>();

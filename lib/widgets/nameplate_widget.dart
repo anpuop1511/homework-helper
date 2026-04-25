@@ -2,11 +2,22 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+String _normalizeNameplateId(String id) {
+  final trimmed = id.trim();
+  if (trimmed.startsWith('nameplate_')) {
+    return trimmed.substring('nameplate_'.length);
+  }
+  return trimmed;
+}
+
 /// Maps a nameplate cosmetic ID to a list of gradient colors.
 ///
 /// Returns an empty list when [id] is empty or unrecognised (= no nameplate).
 List<Color> nameplateGradientColors(String id) {
-  switch (id) {
+  final normalized = _normalizeNameplateId(id);
+  switch (normalized) {
+    case 'notepad_nameplate':
+      return [const Color(0xFFFFF59D), const Color(0xFF42A5F5)];
     case 'blue_sky':
       return [const Color(0xFF4FC3F7), const Color(0xFF0288D1)];
     case 'daffodil_yellow':
@@ -23,7 +34,7 @@ List<Color> nameplateGradientColors(String id) {
     case 'honor_roll_card':
       return [const Color(0xFFFFD54F), const Color(0xFFFF8F00)];
     case 'glow_name_card':
-      return [const Color(0xFF80DEEA), const Color(0xFF00ACC1)];
+      return [const Color(0xFFEF9A9A), const Color(0xFFD81B60)];
     case 'exam_master_card':
       return [const Color(0xFFB39DDB), const Color(0xFF512DA8)];
     case 'valedictorian_card':
@@ -35,7 +46,7 @@ List<Color> nameplateGradientColors(String id) {
     case 'aurora_purple':
       return [const Color(0xFFCE93D8), const Color(0xFF7B1FA2)];
     case 'ocean_deep':
-      return [const Color(0xFF26C6DA), const Color(0xFF00695C)];
+      return [const Color(0xFF1565C0), const Color(0xFF001F54)];
     default:
       return [];
   }
@@ -43,7 +54,10 @@ List<Color> nameplateGradientColors(String id) {
 
 /// Returns the text color to use on top of the nameplate gradient.
 Color nameplateForegroundColor(String id) {
-  switch (id) {
+  final normalized = _normalizeNameplateId(id);
+  switch (normalized) {
+    case 'notepad_nameplate':
+      return const Color(0xFF1A237E);
     case 'daffodil_yellow':
       return const Color(0xFF5D4037);
     default:
@@ -61,14 +75,14 @@ String badgeEmoji(String id) {
     case 'spring_petal_badge':
       return '🌸';
     case 'study_streak_frame':
-      return '🔥';
+      return '💥';
     case 'night_owl_badge':
       return '🦉';
     // ── Battle-pass badges (stored as 'badge_{value}') ──────────────────
     case 'badge_spring_sprout':
       return '🌱';
     case 'badge_blossom_brawler':
-      return '🌸';
+      return '🥊';
     case 'badge_petal_collector':
       return '🌼';
     case 'badge_bloom_scholar':
@@ -76,15 +90,15 @@ String badgeEmoji(String id) {
     case 'badge_blossom_warrior':
       return '⚔️';
     case 'badge_sakura_storm':
-      return '🌺';
+      return '🌪️';
     case 'badge_petal_warrior':
-      return '🌺';
+      return '🛡️';
     case 'badge_spring_royale':
       return '👑';
     case 'badge_sakura_legend':
       return '🌟';
     case 'badge_grand_blossom':
-      return '🌺';
+      return '💮';
     case 'badge_finals_focus':
       return '🎯';
     case 'badge_exam_ace':
@@ -134,9 +148,10 @@ Color? nameColorValue(String id) {
 
 /// Returns `true` when the nameplate ID uses a looping animation.
 bool isAnimatedNameplate(String id) {
-  return id == 'animated_golden_cherry_blossom' ||
-  id == 'animated_aplus_nameplate' ||
-  id == 'animated_sharpener_nameplate';
+  final normalized = _normalizeNameplateId(id);
+  return normalized == 'animated_golden_cherry_blossom' ||
+      normalized == 'animated_aplus_nameplate' ||
+      normalized == 'animated_sharpener_nameplate';
 }
 
 /// Renders a username (or any text) inside a coloured nameplate background.
@@ -216,14 +231,22 @@ class _NameplateWidgetState extends State<NameplateWidget>
         builder: (context, child) {
           // Sweep the shimmer highlight from left-to-right and back.
           final t = _anim.value;
+          final normalizedId = _normalizeNameplateId(widget.nameplateId);
           final List<Color> baseColors =
-              widget.nameplateId == 'animated_sharpener_nameplate'
+            normalizedId == 'animated_sharpener_nameplate'
                   ? const [
                       Color(0xFFFFEB3B),
                       Color(0xFFFFC107),
                       Color(0xFF212121),
                       Color(0xFFFFEB3B),
                     ]
+              : normalizedId == 'animated_aplus_nameplate'
+                      ? const [
+                          Color(0xFFFF6D00),
+                          Color(0xFFFFC400),
+                          Color(0xFF2962FF),
+                          Color(0xFFFF6D00),
+                        ]
                   : const [
                       Color(0xFFFFD700),
                       Color(0xFFFFB347),
