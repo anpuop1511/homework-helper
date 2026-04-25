@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:animate_do/animate_do.dart';
