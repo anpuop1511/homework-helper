@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuthException;
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth, FirebaseAuthException;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -480,6 +480,67 @@ class _AccountSettingsPage extends StatefulWidget {
 }
 
 class _AccountSettingsPageState extends State<_AccountSettingsPage> {
+  static const _kDeleteCodePref = 'pending_delete_account_code';
+  static const _kDeleteEmailPref = 'pending_delete_account_email';
+  static const _kDeleteSentAtPref = 'pending_delete_account_sent_at';
+  static const _kDeleteResendCooldown = Duration(seconds: 90);
+
+  String? _pendingDeleteCode;
+  String? _pendingDeleteEmail;
+  DateTime? _pendingDeleteSentAt;
+  bool _sendingDeleteEmail = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPendingDeleteState();
+  }
+
+  Future<void> _loadPendingDeleteState() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _pendingDeleteCode = prefs.getString(_kDeleteCodePref);
+      _pendingDeleteEmail = prefs.getString(_kDeleteEmailPref);
+      final sentAtMillis = prefs.getInt(_kDeleteSentAtPref);
+      _pendingDeleteSentAt = sentAtMillis == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(sentAtMillis);
+    });
+  }
+
+  Future<void> _savePendingDeleteState({
+    required String code,
+    required String email,
+    required DateTime sentAt,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kDeleteCodePref, code);
+    await prefs.setString(_kDeleteEmailPref, email);
+    await prefs.setInt(_kDeleteSentAtPref, sentAt.millisecondsSinceEpoch);
+  }
+
+  Future<void> _clearPendingDeleteState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kDeleteCodePref);
+    await prefs.remove(_kDeleteEmailPref);
+    await prefs.remove(_kDeleteSentAtPref);
+    if (!mounted) return;
+    setState(() {
+      _pendingDeleteCode = null;
+      _pendingDeleteEmail = null;
+      _pendingDeleteSentAt = null;
+    });
+  }
+
+  Duration _deleteCooldownRemaining() {
+    final sentAt = _pendingDeleteSentAt;
+    if (sentAt == null) return Duration.zero;
+    final elapsed = DateTime.now().difference(sentAt);
+    final remaining = _kDeleteResendCooldown - elapsed;
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
   String _providerLabel(String providerId) {
     switch (providerId) {
       case 'google.com':
@@ -738,10 +799,12 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
           width: double.infinity,
           height: 54,
           child: FilledButton.icon(
-            onPressed: () => _showDeleteAccountDialog(context),
+            onPressed: _sendingDeleteEmail
+                ? null
+                : () => _showDeleteAccountDialog(context),
             icon: const Icon(Icons.delete_forever_rounded),
             label: Text(
-              'Delete Account',
+              _sendingDeleteEmail ? 'Sending...' : 'Request Deletion Email',
               style: GoogleFonts.lexend(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -756,6 +819,31 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
             ),
           ),
         ),
+        if (_pendingDeleteCode != null) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: FilledButton.icon(
+              onPressed: () => _showDeletionCodeDialog(context),
+              icon: const Icon(Icons.password_rounded),
+              label: Text(
+                'Enter Deletion Code',
+                style: GoogleFonts.lexend(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: colorScheme.primaryContainer,
+                foregroundColor: colorScheme.onPrimaryContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -829,10 +917,25 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
   ) async {
     if (!context.mounted) return;
 
+    final cooldownRemaining = _deleteCooldownRemaining();
+    if (cooldownRemaining > Duration.zero) {
+      final seconds = cooldownRemaining.inSeconds;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please wait ${seconds}s before requesting another email.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _sendingDeleteEmail = true);
+
     try {
       // Generate a 6-digit confirmation code
       final code = (100000 + (DateTime.now().millisecondsSinceEpoch % 900000))
           .toString();
+      final sentAt = DateTime.now();
 
       await AuthEmailService.sendAccountDeletionEmail(
         email: email,
@@ -840,11 +943,22 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
         displayName: context.read<AuthProvider>().currentUser?.displayName,
       );
 
+      await _savePendingDeleteState(code: code, email: email, sentAt: sentAt);
+
+      if (!context.mounted) return;
+      setState(() {
+        _pendingDeleteCode = code;
+        _pendingDeleteEmail = email;
+        _pendingDeleteSentAt = sentAt;
+      });
+
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Deletion confirmation email sent to $email'),
+          content: Text(
+            'Deletion confirmation email sent to $email. Enter the code in Account Center to finish.',
+          ),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 4),
         ),
@@ -855,6 +969,113 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Could not send deletion email: ${e.toString()}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _sendingDeleteEmail = false);
+      }
+    }
+  }
+
+  void _showDeletionCodeDialog(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final controller = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Enter Deletion Code'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _pendingDeleteEmail == null
+                  ? 'Enter the code from your email.'
+                  : 'Enter the code sent to $_pendingDeleteEmail.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              decoration: InputDecoration(
+                labelText: '6-digit code',
+                counterText: '',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.errorContainer,
+              foregroundColor: colorScheme.onErrorContainer,
+            ),
+            onPressed: () async {
+              final entered = controller.text.trim();
+              final expected = _pendingDeleteCode;
+              if (expected == null || entered != expected) {
+                if (!ctx.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Incorrect deletion code.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+              Navigator.pop(ctx);
+              await _confirmDeleteAccount(context);
+            },
+            child: const Text('Delete Account'),
+          ),
+        ],
+      ),
+    ).then((_) => controller.dispose());
+  }
+
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw StateError('No signed-in user found.');
+      }
+
+      await user.delete();
+      await _clearPendingDeleteState();
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your account was deleted.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      if (context.mounted) Navigator.of(context).pop();
+    } on FirebaseAuthException catch (e) {
+      if (!context.mounted) return;
+      final message = e.code == 'requires-recent-login'
+          ? 'Please sign out and sign back in, then try deletion again.'
+          : AuthProvider.friendlyError(e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not complete account deletion: $e'),
           behavior: SnackBarBehavior.floating,
         ),
       );
