@@ -4057,6 +4057,53 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
     await prefs.setString(_kDevNewsletterDraftText, _newsletterDraftText);
   }
 
+  void _insertOrWrapSelection(
+    TextEditingController controller,
+    String prefix,
+    String suffix,
+  ) {
+    final text = controller.text;
+    final selection = controller.selection;
+    final start = selection.start;
+    final end = selection.end;
+
+    if (start < 0 || end < 0) {
+      final updated = '$text$prefix$suffix';
+      controller.value = TextEditingValue(
+        text: updated,
+        selection: TextSelection.collapsed(offset: updated.length - suffix.length),
+      );
+      return;
+    }
+
+    final from = start <= end ? start : end;
+    final to = start <= end ? end : start;
+    final selected = text.substring(from, to);
+    final replacement = '$prefix$selected$suffix';
+    final updated = text.replaceRange(from, to, replacement);
+    final cursorOffset = selected.isEmpty
+        ? from + prefix.length
+        : from + replacement.length;
+
+    controller.value = TextEditingValue(
+      text: updated,
+      selection: TextSelection.collapsed(offset: cursorOffset),
+    );
+  }
+
+  Widget _formatButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return IconButton(
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+    );
+  }
+
   String _escapeHtml(String value) {
     return value
         .replaceAll('&', '&amp;')
@@ -4149,6 +4196,69 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                   decoration: const InputDecoration(
                     labelText: 'HTML Body',
                     alignLabelWithHint: true,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 2,
+                  runSpacing: 0,
+                  children: [
+                    _formatButton(
+                      icon: Icons.format_bold_rounded,
+                      tooltip: 'Bold',
+                      onTap: () => _insertOrWrapSelection(
+                        htmlCtrl,
+                        '<strong>',
+                        '</strong>',
+                      ),
+                    ),
+                    _formatButton(
+                      icon: Icons.format_italic_rounded,
+                      tooltip: 'Italic',
+                      onTap: () =>
+                          _insertOrWrapSelection(htmlCtrl, '<em>', '</em>'),
+                    ),
+                    _formatButton(
+                      icon: Icons.title_rounded,
+                      tooltip: 'Heading',
+                      onTap: () =>
+                          _insertOrWrapSelection(htmlCtrl, '<h2>', '</h2>'),
+                    ),
+                    _formatButton(
+                      icon: Icons.format_list_bulleted_rounded,
+                      tooltip: 'Bullet list item',
+                      onTap: () => _insertOrWrapSelection(
+                        htmlCtrl,
+                        '<ul><li>',
+                        '</li></ul>',
+                      ),
+                    ),
+                    _formatButton(
+                      icon: Icons.link_rounded,
+                      tooltip: 'Link',
+                      onTap: () => _insertOrWrapSelection(
+                        htmlCtrl,
+                        '<a href="https://">',
+                        '</a>',
+                      ),
+                    ),
+                    _formatButton(
+                      icon: Icons.smart_button_rounded,
+                      tooltip: 'Button link',
+                      onTap: () => _insertOrWrapSelection(
+                        htmlCtrl,
+                        '<a href="https://" style="display:inline-block;background:#3559e0;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700;">',
+                        '</a>',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Tip: highlight text first, then tap a format button.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 12),
