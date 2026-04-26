@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuthException;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/season_live_ops.dart';
 import '../models/assignment.dart';
@@ -478,6 +480,36 @@ class _AccountSettingsPage extends StatefulWidget {
 }
 
 class _AccountSettingsPageState extends State<_AccountSettingsPage> {
+  String _providerLabel(String providerId) {
+    switch (providerId) {
+      case 'google.com':
+        return 'Google';
+      case 'apple.com':
+        return 'Apple';
+      case 'password':
+        return 'Email & Password';
+      case 'phone':
+        return 'Phone';
+      default:
+        return providerId;
+    }
+  }
+
+  IconData _providerIcon(String providerId) {
+    switch (providerId) {
+      case 'google.com':
+        return Icons.g_mobiledata_rounded;
+      case 'apple.com':
+        return Icons.apple_rounded;
+      case 'password':
+        return Icons.email_rounded;
+      case 'phone':
+        return Icons.phone_rounded;
+      default:
+        return Icons.link_rounded;
+    }
+  }
+
   String _platformLabel() {
     if (kIsWeb) return 'Web browser';
     switch (defaultTargetPlatform) {
@@ -502,6 +534,13 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
     final textTheme = Theme.of(context).textTheme;
     final auth = context.watch<AuthProvider>();
     final security = context.watch<SecurityProvider>();
+    final providerIds =
+        auth.currentUser?.providerData
+            .map((p) => p.providerId)
+            .where((id) => id.isNotEmpty)
+            .toSet()
+            .toList() ??
+        const <String>[];
 
     return _CategoryPage(
       title: 'Account Center',
@@ -559,13 +598,35 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
           colorScheme: colorScheme,
           child: Column(
             children: [
-              _SecurityTile(
-                icon: Icons.link_rounded,
-                title: 'Social Accounts',
-                subtitle: 'Coming soon — link social profiles',
-                colorScheme: colorScheme,
-                onTap: null,
-              ),
+              if (providerIds.isEmpty)
+                _SecurityTile(
+                  icon: Icons.link_off_rounded,
+                  title: 'No linked providers',
+                  subtitle: 'You are currently using a basic account sign-in.',
+                  colorScheme: colorScheme,
+                  onTap: null,
+                )
+              else
+                ...providerIds.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final id = entry.value;
+                  return Column(
+                    children: [
+                      _SecurityTile(
+                        icon: _providerIcon(id),
+                        title: _providerLabel(id),
+                        subtitle: 'Connected and active',
+                        colorScheme: colorScheme,
+                        onTap: null,
+                      ),
+                      if (idx < providerIds.length - 1)
+                        Divider(
+                          height: 1,
+                          color: colorScheme.outlineVariant.withAlpha(100),
+                        ),
+                    ],
+                  );
+                }),
             ],
           ),
         ),
@@ -643,6 +704,29 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
             style: FilledButton.styleFrom(
               backgroundColor: colorScheme.tertiaryContainer,
               foregroundColor: colorScheme.onTertiaryContainer,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: FilledButton.icon(
+            onPressed: () => _copyAccountSnapshot(context),
+            icon: const Icon(Icons.copy_all_rounded),
+            label: Text(
+              'Copy Account Diagnostics',
+              style: GoogleFonts.lexend(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.secondaryContainer,
+              foregroundColor: colorScheme.onSecondaryContainer,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
@@ -775,6 +859,32 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
         ),
       );
     }
+  }
+
+  Future<void> _copyAccountSnapshot(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    final payload = {
+      'email': auth.email,
+      'emailVerified': auth.isEmailVerified,
+      'platform': _platformLabel(),
+      'linkedProviders':
+          auth.currentUser?.providerData
+              .map((p) => p.providerId)
+              .where((id) => id.isNotEmpty)
+              .toSet()
+              .toList() ??
+          [],
+      'generatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+    await Clipboard.setData(ClipboardData(text: jsonEncode(payload)));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Account diagnostics copied to clipboard.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _sendPasswordReset(BuildContext context, String email) async {
@@ -1820,8 +1930,48 @@ class _SubjectsSettingsPage extends StatelessWidget {
 
 // ── Notifications ─────────────────────────────────────────────────────────
 
-class _NotificationsSettingsPage extends StatelessWidget {
+class _NotificationsSettingsPage extends StatefulWidget {
   const _NotificationsSettingsPage();
+
+  @override
+  State<_NotificationsSettingsPage> createState() =>
+      _NotificationsSettingsPageState();
+}
+
+class _NotificationsSettingsPageState
+    extends State<_NotificationsSettingsPage> {
+  static const _prefFocusAlerts = 'notif_focus_timer_alerts';
+  static const _prefDeadlineReminders = 'notif_deadline_reminders';
+
+  bool _focusAlerts = true;
+  bool _deadlineReminders = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _focusAlerts = prefs.getBool(_prefFocusAlerts) ?? true;
+      _deadlineReminders = prefs.getBool(_prefDeadlineReminders) ?? true;
+    });
+  }
+
+  Future<void> _setFocusAlerts(bool value) async {
+    setState(() => _focusAlerts = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefFocusAlerts, value);
+  }
+
+  Future<void> _setDeadlineReminders(bool value) async {
+    setState(() => _deadlineReminders = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefDeadlineReminders, value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1862,13 +2012,8 @@ class _NotificationsSettingsPage extends StatelessWidget {
                   ),
                 ),
                 trailing: Switch(
-                  value: true,
-                  onChanged: (_) => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Notification settings coming soon.'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  ),
+                  value: _focusAlerts,
+                  onChanged: _setFocusAlerts,
                 ),
               ),
               Divider(
@@ -1903,13 +2048,8 @@ class _NotificationsSettingsPage extends StatelessWidget {
                   ),
                 ),
                 trailing: Switch(
-                  value: true,
-                  onChanged: (_) => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Notification settings coming soon.'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  ),
+                  value: _deadlineReminders,
+                  onChanged: _setDeadlineReminders,
                 ),
               ),
             ],
@@ -1924,6 +2064,75 @@ class _NotificationsSettingsPage extends StatelessWidget {
 
 class _PrivacySecuritySettingsPage extends StatelessWidget {
   const _PrivacySecuritySettingsPage();
+
+  Future<void> _exportMyData(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    final user = context.read<UserProvider>();
+    final social = context.read<SocialProvider>();
+    final chat = context.read<ChatProvider>();
+    final payload = {
+      'exportedAt': DateTime.now().toUtc().toIso8601String(),
+      'account': {
+        'email': auth.email,
+        'username': auth.username,
+        'emailVerified': auth.isEmailVerified,
+      },
+      'progress': {
+        'xp': user.xp,
+        'level': user.level,
+        'streak': user.streak,
+        'coins': user.coins,
+      },
+      'privacy': {
+        'showStudyActivity': social.showStudyActivity,
+        'profileVisibility': social.profileVisibility.name,
+        'friendRequestsPrivacy': social.friendRequestsPrivacy.name,
+      },
+      'chat': {
+        'historyEnabled': chat.isHistoryEnabled,
+        'selectedModel': chat.selectedModel.name,
+      },
+    };
+    final jsonText = const JsonEncoder.withIndent('  ').convert(payload);
+
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: const Text('Your Data Export'),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              jsonText,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: jsonText));
+              if (!ctx.mounted) return;
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Export copied to clipboard.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Copy JSON'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1977,13 +2186,7 @@ class _PrivacySecuritySettingsPage extends StatelessWidget {
                 title: 'Export My Data',
                 subtitle: 'Download a copy of your data.',
                 colorScheme: colorScheme,
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Data export coming soon.'),
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: colorScheme.surfaceContainerHighest,
-                  ),
-                ),
+                onTap: () => _exportMyData(context),
               ),
             ],
           ),
