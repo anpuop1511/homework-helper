@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -31,6 +32,8 @@ class _AuthActionCodeScreenState extends State<AuthActionCodeScreen> {
   bool _loading = true;
   bool _submitting = false;
   bool _completed = false;
+  String? _deletionCode;
+  String? _deletionEmail;
 
   @override
   void initState() {
@@ -63,6 +66,15 @@ class _AuthActionCodeScreenState extends State<AuthActionCodeScreen> {
 
     if (link.isPasswordReset) {
       await _loadResetEmail(link);
+      return;
+    }
+
+    if (link.isDeleteAccount) {
+      setState(() {
+        _loading = false;
+        _deletionCode = link.confirmationCode;
+        _deletionEmail = link.targetEmail;
+      });
       return;
     }
 
@@ -233,10 +245,10 @@ class _AuthActionCodeScreenState extends State<AuthActionCodeScreen> {
                       child: _loading
                           ? _buildLoading(context, mode)
                           : _completed
-                              ? _buildSuccess(context, mode)
-                              : _errorMessage != null
-                                  ? _buildError(context, mode)
-                                  : _buildForm(context, mode),
+                          ? _buildSuccess(context, mode)
+                          : _errorMessage != null
+                          ? _buildError(context, mode)
+                          : _buildForm(context, mode),
                     ),
                   ),
                 ),
@@ -282,10 +294,14 @@ class _AuthActionCodeScreenState extends State<AuthActionCodeScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final title = mode == AuthActionType.verifyEmail
         ? 'Email verified'
-        : 'Password reset complete';
+        : mode == AuthActionType.resetPassword
+        ? 'Password reset complete'
+        : 'Action complete';
     final body = mode == AuthActionType.verifyEmail
         ? 'Your account email has been verified. You can return to the app.'
-        : 'Your password has been updated. You can sign in with the new password.';
+        : mode == AuthActionType.resetPassword
+        ? 'Your password has been updated. You can sign in with the new password.'
+        : 'The action has been completed.';
 
     return Column(
       key: const ValueKey('success'),
@@ -365,6 +381,10 @@ class _AuthActionCodeScreenState extends State<AuthActionCodeScreen> {
   }
 
   Widget _buildForm(BuildContext context, AuthActionType mode) {
+    if (mode == AuthActionType.deleteAccount) {
+      return _buildDeleteAccountApproval(context);
+    }
+
     final colorScheme = Theme.of(context).colorScheme;
     return Form(
       key: _formKey,
@@ -454,6 +474,97 @@ class _AuthActionCodeScreenState extends State<AuthActionCodeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDeleteAccountApproval(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final code = _deletionCode;
+
+    return Column(
+      key: const ValueKey('delete-account-approval'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Icon(
+          Icons.mark_email_read_rounded,
+          size: 68,
+          color: colorScheme.primary,
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Deletion request approved',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.lexend(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Use the code below in Account Center to complete account deletion.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.lexend(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        if (_deletionEmail != null && _deletionEmail!.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            _deletionEmail!,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.lexend(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: colorScheme.primary,
+            ),
+          ),
+        ],
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: colorScheme.outlineVariant),
+          ),
+          child: SelectableText(
+            code ?? 'Missing code',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.lexend(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 2,
+              color: colorScheme.onSurface,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: code == null
+              ? null
+              : () async {
+                  await Clipboard.setData(ClipboardData(text: code));
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Deletion code copied.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+          icon: const Icon(Icons.copy_rounded),
+          label: const Text('Copy Code'),
+        ),
+        const SizedBox(height: 10),
+        TextButton(
+          onPressed: () => widget.onCompleted?.call(),
+          child: const Text('Back to app'),
+        ),
+      ],
     );
   }
 }

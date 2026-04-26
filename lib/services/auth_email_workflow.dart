@@ -4,6 +4,7 @@ enum AuthActionType {
   verifyEmail,
   resetPassword,
   recoverEmail,
+  deleteAccount,
   unknown,
 }
 
@@ -13,6 +14,8 @@ class AuthActionLink {
   final Uri uri;
 
   String? get oobCode => uri.queryParameters['oobCode'];
+  String? get confirmationCode => uri.queryParameters['confirmationCode'];
+  String? get targetEmail => uri.queryParameters['email'];
 
   AuthActionType get type {
     switch (uri.queryParameters['mode']) {
@@ -22,19 +25,30 @@ class AuthActionLink {
         return AuthActionType.resetPassword;
       case 'recoverEmail':
         return AuthActionType.recoverEmail;
+      case 'deleteAccount':
+        return AuthActionType.deleteAccount;
       default:
         return AuthActionType.unknown;
     }
   }
 
-  bool get isSupported =>
-      oobCode != null &&
-      type != AuthActionType.unknown &&
-      _isAuthHandlerUri(uri);
+  bool get isSupported {
+    if (type == AuthActionType.unknown || !_isAuthHandlerUri(uri)) {
+      return false;
+    }
+
+    if (type == AuthActionType.deleteAccount) {
+      return confirmationCode != null && confirmationCode!.isNotEmpty;
+    }
+
+    return oobCode != null && oobCode!.isNotEmpty;
+  }
 
   bool get isVerification => type == AuthActionType.verifyEmail;
 
   bool get isPasswordReset => type == AuthActionType.resetPassword;
+
+  bool get isDeleteAccount => type == AuthActionType.deleteAccount;
 }
 
 class AuthEmailWorkflow {
@@ -44,16 +58,10 @@ class AuthEmailWorkflow {
   static final Uri authHandlerUri = Uri.parse(authHandlerUrl);
 
   static final ActionCodeSettings emailVerificationActionCodeSettings =
-      ActionCodeSettings(
-    url: authHandlerUrl,
-    handleCodeInApp: true,
-  );
+      ActionCodeSettings(url: authHandlerUrl, handleCodeInApp: true);
 
   static final ActionCodeSettings passwordResetActionCodeSettings =
-      ActionCodeSettings(
-    url: authHandlerUrl,
-    handleCodeInApp: true,
-  );
+      ActionCodeSettings(url: authHandlerUrl, handleCodeInApp: true);
 
   static AuthActionLink? tryParse(Uri uri) {
     final link = AuthActionLink(uri);
@@ -70,6 +78,8 @@ class AuthEmailWorkflow {
         return 'Reset your password';
       case AuthActionType.recoverEmail:
         return 'Recover email';
+      case AuthActionType.deleteAccount:
+        return 'Confirm account deletion';
       case AuthActionType.unknown:
         return 'Unknown action';
     }
@@ -85,8 +95,12 @@ bool _isAuthHandlerUri(Uri uri) {
     return false;
   }
 
-  final hasActionQuery = uri.queryParameters.containsKey('mode') &&
-      uri.queryParameters.containsKey('oobCode');
+  final mode = uri.queryParameters['mode'];
+  if (mode == null || mode.isEmpty) return false;
+
+  final hasActionQuery = mode == 'deleteAccount'
+      ? uri.queryParameters.containsKey('confirmationCode')
+      : uri.queryParameters.containsKey('oobCode');
 
   if (!hasActionQuery) return false;
 
