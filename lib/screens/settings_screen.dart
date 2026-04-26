@@ -12,6 +12,7 @@ import '../config/season_live_ops.dart';
 import '../models/assignment.dart';
 import '../models/entitlement_model.dart';
 import '../services/auth_email_service.dart';
+import '../services/newsletter_service.dart';
 import '../providers/assignments_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
@@ -480,11 +481,14 @@ class _AccountSettingsPage extends StatefulWidget {
 }
 
 class _AccountSettingsPageState extends State<_AccountSettingsPage> {
+  static const _kNewsletterSubscribedPref = 'newsletter_subscribed_pref';
   static const _kDeleteCodePref = 'pending_delete_account_code';
   static const _kDeleteEmailPref = 'pending_delete_account_email';
   static const _kDeleteSentAtPref = 'pending_delete_account_sent_at';
   static const _kDeleteResendCooldown = Duration(seconds: 90);
 
+  bool _newsletterSubscribed = true;
+  bool _newsletterUpdating = false;
   String? _pendingDeleteCode;
   String? _pendingDeleteEmail;
   DateTime? _pendingDeleteSentAt;
@@ -493,7 +497,68 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
   @override
   void initState() {
     super.initState();
+    _loadNewsletterPreference();
     _loadPendingDeleteState();
+  }
+
+  Future<void> _loadNewsletterPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _newsletterSubscribed = prefs.getBool(_kNewsletterSubscribedPref) ?? true;
+    });
+  }
+
+  Future<void> _setNewsletterSubscription(
+    BuildContext context,
+    bool subscribed,
+    String? email,
+  ) async {
+    final safeEmail = email?.trim() ?? '';
+    if (safeEmail.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add an email to your account first.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _newsletterUpdating = true);
+    try {
+      if (subscribed) {
+        await NewsletterService.subscribe(safeEmail);
+      } else {
+        await NewsletterService.unsubscribe(safeEmail);
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kNewsletterSubscribedPref, subscribed);
+
+      if (!mounted) return;
+      setState(() => _newsletterSubscribed = subscribed);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            subscribed
+                ? 'Newsletter subscription enabled.'
+                : 'You have been unsubscribed from newsletters.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not update newsletter preference: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _newsletterUpdating = false);
+    }
   }
 
   Future<void> _loadPendingDeleteState() async {
@@ -739,6 +804,41 @@ class _AccountSettingsPageState extends State<_AccountSettingsPage> {
                 onTap: null,
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // ── Email Preferences Section ────────────────────────────────────
+        Text(
+          'Email Preferences',
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+        _SquircleCard(
+          colorScheme: colorScheme,
+          child: SwitchListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 6,
+            ),
+            secondary: Icon(
+              Icons.campaign_rounded,
+              color: colorScheme.primary,
+            ),
+            title: const Text(
+              'Product Newsletters',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              _newsletterUpdating
+                  ? 'Updating preference...'
+                  : 'Get feature drops and updates by email.',
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
+            value: _newsletterSubscribed,
+            onChanged: _newsletterUpdating
+                ? null
+                : (v) => _setNewsletterSubscription(context, v, auth.email),
           ),
         ),
         const SizedBox(height: 20),
@@ -3908,6 +4008,11 @@ class _DeveloperMenuPage extends StatefulWidget {
 }
 
 class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
+  static const _kDevNewsletterDraftSubject = 'dev_newsletter_draft_subject';
+  static const _kDevNewsletterDraftHtml = 'dev_newsletter_draft_html';
+  static const _kDevNewsletterDraftText = 'dev_newsletter_draft_text';
+  static const _kDevNewsletterAdminToken = 'dev_newsletter_admin_token';
+
   // ── QA Checklist items ──────────────────────────────────────────────────
   static const _qaItems = [
     'Test Auth — sign up / sign in / sign out',
@@ -3924,6 +4029,339 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
   ];
 
   final Set<int> _checked = {};
+  String _newsletterDraftSubject = '';
+  String _newsletterDraftHtml = '';
+  String _newsletterDraftText = '';
+  bool _sendingNewsletter = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNewsletterDraft();
+  }
+
+  Future<void> _loadNewsletterDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _newsletterDraftSubject = prefs.getString(_kDevNewsletterDraftSubject) ?? '';
+      _newsletterDraftHtml = prefs.getString(_kDevNewsletterDraftHtml) ?? '';
+      _newsletterDraftText = prefs.getString(_kDevNewsletterDraftText) ?? '';
+    });
+  }
+
+  Future<void> _saveNewsletterDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kDevNewsletterDraftSubject, _newsletterDraftSubject);
+    await prefs.setString(_kDevNewsletterDraftHtml, _newsletterDraftHtml);
+    await prefs.setString(_kDevNewsletterDraftText, _newsletterDraftText);
+  }
+
+  String _escapeHtml(String value) {
+    return value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+  }
+
+  bool _looksLikeHtml(String value) {
+    final v = value.toLowerCase();
+    return v.contains('<html') ||
+        v.contains('<body') ||
+        v.contains('<div') ||
+        v.contains('<p') ||
+        v.contains('<h1') ||
+        v.contains('<table');
+  }
+
+  String _plainTextFromHtml(String html) {
+    return html
+        .replaceAll(RegExp(r'<[^>]*>'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  String _buildNewsletterHtmlTemplate({
+    required String subject,
+    required String bodyText,
+  }) {
+    final safeSubject = _escapeHtml(subject);
+    final safeLines = bodyText
+        .split(RegExp(r'\r?\n'))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .map((line) => '<p style="margin:0 0 12px;color:#4b5563;font-size:15px;line-height:1.7;">${_escapeHtml(line)}</p>')
+        .join();
+
+    return '''
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>$safeSubject</title>
+  </head>
+  <body style="margin:0;background:#eef2ff;padding:24px;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #d7deef;border-radius:20px;overflow:hidden;">
+      <tr>
+        <td style="padding:28px 28px 16px;background:#eef2ff;">
+          <div style="display:inline-block;padding:6px 12px;border-radius:999px;background:#dbe7ff;color:#2442b5;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">HwHelper.tech</div>
+          <h1 style="margin:14px 0 0;font-size:28px;line-height:1.2;color:#0f172a;">$safeSubject</h1>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:20px 28px 28px;">
+          $safeLines
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+''';
+  }
+
+  Future<void> _openNewsletterComposer(BuildContext context) async {
+    final subjectCtrl = TextEditingController(text: _newsletterDraftSubject);
+    final htmlCtrl = TextEditingController(text: _newsletterDraftHtml);
+    final textCtrl = TextEditingController(text: _newsletterDraftText);
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Create Newsletter Draft'),
+        content: SizedBox(
+          width: 560,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: subjectCtrl,
+                  decoration: const InputDecoration(labelText: 'Subject'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: htmlCtrl,
+                  minLines: 6,
+                  maxLines: 10,
+                  decoration: const InputDecoration(
+                    labelText: 'HTML Body',
+                    alignLabelWithHint: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: textCtrl,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: const InputDecoration(
+                    labelText: 'Plain Text (optional)',
+                    alignLabelWithHint: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final subject = subjectCtrl.text.trim();
+              final htmlInput = htmlCtrl.text.trim();
+              final textInput = textCtrl.text.trim();
+              if (subject.isEmpty || (htmlInput.isEmpty && textInput.isEmpty)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Subject and body are required.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+
+              final normalizedText = textInput.isNotEmpty
+                  ? textInput
+                  : _plainTextFromHtml(htmlInput);
+              final normalizedHtml = htmlInput.isEmpty
+                  ? _buildNewsletterHtmlTemplate(
+                      subject: subject,
+                      bodyText: normalizedText,
+                    )
+                  : (_looksLikeHtml(htmlInput)
+                        ? htmlInput
+                        : _buildNewsletterHtmlTemplate(
+                            subject: subject,
+                            bodyText: htmlInput,
+                          ));
+
+              setState(() {
+                _newsletterDraftSubject = subject;
+                _newsletterDraftHtml = normalizedHtml;
+                _newsletterDraftText = normalizedText;
+              });
+              await _saveNewsletterDraft();
+
+              if (!ctx.mounted) return;
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Newsletter draft saved.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Save Draft'),
+          ),
+        ],
+      ),
+    );
+
+    subjectCtrl.dispose();
+    htmlCtrl.dispose();
+    textCtrl.dispose();
+  }
+
+  Future<void> _sendNewsletter(BuildContext context) async {
+    final subject = _newsletterDraftSubject.trim();
+    final html = _newsletterDraftHtml.trim().isNotEmpty
+        ? _newsletterDraftHtml.trim()
+        : _buildNewsletterHtmlTemplate(
+            subject: subject,
+            bodyText: _newsletterDraftText.trim(),
+          );
+    final plainText = _newsletterDraftText.trim().isNotEmpty
+        ? _newsletterDraftText.trim()
+        : _plainTextFromHtml(html);
+
+    if (subject.isEmpty || html.isEmpty || plainText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Create a newsletter draft first.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final tokenCtrl = TextEditingController(
+      text: prefs.getString(_kDevNewsletterAdminToken) ?? '',
+    );
+    final recipientsCtrl = TextEditingController();
+
+    bool sendAllSubscribers = true;
+    final shouldSend = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocalState) => AlertDialog(
+          title: const Text('Send Newsletter'),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: tokenCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Admin Token',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Send to all subscribed users'),
+                    value: sendAllSubscribers,
+                    onChanged: (v) => setLocalState(() => sendAllSubscribers = v),
+                  ),
+                  if (!sendAllSubscribers)
+                    TextField(
+                      controller: recipientsCtrl,
+                      minLines: 2,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'Specific recipients (comma-separated)',
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Send Now'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (shouldSend != true) {
+      tokenCtrl.dispose();
+      recipientsCtrl.dispose();
+      return;
+    }
+
+    final adminToken = tokenCtrl.text.trim();
+    await prefs.setString(_kDevNewsletterAdminToken, adminToken);
+
+    final recipients = recipientsCtrl.text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    tokenCtrl.dispose();
+    recipientsCtrl.dispose();
+
+    setState(() => _sendingNewsletter = true);
+    try {
+      final result = await NewsletterService.sendCampaign(
+        adminToken: adminToken,
+        subject: subject,
+        html: html,
+        text: plainText,
+        recipients: recipients.isEmpty ? null : recipients,
+      );
+
+      if (!context.mounted) return;
+      final attempted = result['attempted'] ?? 0;
+      final sent = result['sent'] ?? 0;
+      final failed = (result['failed'] is List) ? (result['failed'] as List).length : 0;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Newsletter sent. Attempted: $attempted, Sent: $sent, Failed: $failed.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not send newsletter: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _sendingNewsletter = false);
+    }
+  }
 
   // ── Action helpers ──────────────────────────────────────────────────────
 
@@ -4111,6 +4549,50 @@ class _DeveloperMenuPageState extends State<_DeveloperMenuPage> {
                   );
                 },
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // ── Newsletter Admin ────────────────────────────────────────
+          _DevCard(
+            title: 'Newsletter Admin',
+            colorScheme: colorScheme,
+            children: [
+              _DevButton(
+                icon: Icons.edit_note_rounded,
+                label: 'Create Newsletter Draft',
+                color: Colors.blue,
+                onTap: () => _openNewsletterComposer(context),
+              ),
+              const SizedBox(height: 8),
+              _DevButton(
+                icon: Icons.send_rounded,
+                label: _sendingNewsletter
+                    ? 'Sending Newsletter...'
+                    : 'Send Newsletter',
+                color: Colors.green,
+                onTap: _sendingNewsletter ? () {} : () => _sendNewsletter(context),
+              ),
+              if (_newsletterDraftSubject.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer.withAlpha(90),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: colorScheme.primary.withAlpha(80)),
+                  ),
+                  child: Text(
+                    'Draft ready: $_newsletterDraftSubject',
+                    style: TextStyle(
+                      color: colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),

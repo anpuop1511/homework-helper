@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_email_service.dart';
 import '../services/database_service.dart';
+import '../services/newsletter_service.dart';
 
 /// Manages Firebase Email/Password authentication state.
 ///
@@ -329,6 +330,14 @@ class AuthProvider extends ChangeNotifier {
         await auth.currentUser?.reload();
         _user = auth.currentUser;
         notifyListeners();
+      }
+
+      // Best-effort auto-subscribe for marketing updates.
+      // This should not block account creation if the newsletter API fails.
+      try {
+        await NewsletterService.subscribe(email.trim());
+      } catch (e) {
+        debugPrint('[AuthProvider] newsletter subscribe failed: $e');
       }
     } on FirebaseAuthException catch (e) {
       debugPrint('[AuthProvider] signUp failed: ${e.code} - ${e.message}');
