@@ -17,6 +17,13 @@ import 'settings_screen.dart';
 import 'upsell_screen.dart';
 import 'username_screen.dart';
 
+/// Holiday (Season 4: Holiday Hustle) accent palette — small festive
+/// touches layered on top of the theme, not a re-skin.  Gold is already
+/// used elsewhere on this screen for the premium/pass badges.
+const _kHolidayGold = Color(0xFFB8860B);
+const _kHolidayPine = Color(0xFF2E7D32);
+const _kHolidayBerry = Color(0xFFC62828);
+
 /// The user profile screen showing gamification stats:
 /// level, XP progress bar, study streak, and assignment summary.
 ///
@@ -196,13 +203,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // ── Header row ────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.only(top: 8, bottom: 8),
-              child: Text(
-                'My Profile',
-                style: GoogleFonts.lexend(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
-                  color: colorScheme.onSurface,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'My Profile',
+                    style: GoogleFonts.lexend(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Season 4 chip — holiday accent, dates match the
+                  // December Drop splash.
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: _kHolidayGold.withAlpha(90),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('🎄', style: TextStyle(fontSize: 13)),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Season 4 · Holiday Hustle · Nov 18 – Jan 1',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -273,56 +314,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Center(
               child: Column(
                 children: [
+                  // Holiday halo — a soft pine/gold/berry ring behind the
+                  // avatar.  Sits behind any equipped frame (rendered by
+                  // SquircleAvatar) so the two never fight.
                   Stack(
+                    alignment: Alignment.center,
                     children: [
-                      SquircleAvatar(
-                        radius: 50,
-                        initial: displayName,
-                        photoUrl: photoUrl,
-                        localPhotoBytes: _localPhotoBytes,
-                        frameCosmeticId:
-                            user.unlockedCosmetics.contains('sharpener_profile_frame')
-                                ? 'sharpener_profile_frame'
-                                : null,
+                      Container(
+                        width: 112,
+                        height: 112,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(112 * 0.55),
+                          gradient: const LinearGradient(
+                            colors: [_kHolidayPine, _kHolidayGold, _kHolidayBerry],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _kHolidayGold.withAlpha(70),
+                              blurRadius: 16,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
                       ),
-                      if (_uploadingPhoto)
-                        Positioned.fill(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black38,
-                              borderRadius:
-                                  BorderRadius.circular(50 * 0.55),
-                            ),
-                            child: const Center(
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            ),
+                      Stack(
+                        children: [
+                          SquircleAvatar(
+                            radius: 50,
+                            initial: displayName,
+                            photoUrl: photoUrl,
+                            localPhotoBytes: _localPhotoBytes,
+                            // Cocoa Clash frame wins when unlocked (newest
+                            // seasonal frame takes precedence — there is no
+                            // separate "equipped frame" field, unlocked is the
+                            // existing proxy, same as the sharpener frame).
+                            frameCosmeticId:
+                                user.unlockedCosmetics.contains('cocoa_profile_frame')
+                                    ? 'cocoa_profile_frame'
+                                    : user.unlockedCosmetics.contains('sharpener_profile_frame')
+                                        ? 'sharpener_profile_frame'
+                                        : null,
                           ),
-                        ),
-                      if (auth.isSignedIn)
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap: _pickPhoto,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                    color: colorScheme.surface, width: 2),
-                              ),
-                              child: Icon(
-                                Icons.camera_alt_rounded,
-                                size: 16,
-                                color: colorScheme.onPrimary,
+                          if (_uploadingPhoto)
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.black38,
+                                  borderRadius:
+                                      BorderRadius.circular(50 * 0.55),
+                                ),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
+                          if (auth.isSignedIn)
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: _pickPhoto,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primary,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: colorScheme.surface, width: 2),
+                                  ),
+                                  child: Icon(
+                                    Icons.camera_alt_rounded,
+                                    size: 16,
+                                    color: colorScheme.onPrimary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -544,8 +618,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
 
             // ── Level + XP Card ───────────────────────────────────────
+            // Holiday accent: gold border so the season's progress card
+            // stands out, matching the Season 4 chip above.
             _StatCard(
               colorScheme: colorScheme,
+              borderColor: _kHolidayGold.withAlpha(110),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -608,7 +685,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const Spacer(),
                       Text(
-                        'Battle Pass Tier ${user.seasonTier}',
+                        '🎄 Battle Pass Tier ${user.seasonTier}',
                         style: textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -862,7 +939,14 @@ class _StatCard extends StatelessWidget {
   final ColorScheme colorScheme;
   final Widget child;
 
-  const _StatCard({required this.colorScheme, required this.child});
+  /// Optional border override — used for the holiday-gold Level/XP card.
+  final Color? borderColor;
+
+  const _StatCard({
+    required this.colorScheme,
+    required this.child,
+    this.borderColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -871,7 +955,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outlineVariant),
+        border: Border.all(color: borderColor ?? colorScheme.outlineVariant),
       ),
       child: child,
     );

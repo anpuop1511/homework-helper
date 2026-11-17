@@ -4,10 +4,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/assignment.dart';
+import '../models/assignment_template.dart';
 import '../providers/assignments_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/entitlements_provider.dart';
 import '../screens/upsell_screen.dart';
+import '../utils/due_date.dart' as due;
 
 /// A modal bottom sheet for adding a new assignment.
 /// Uses [ChoiceChip]s for subject selection and [showDatePicker] for the due date.
@@ -27,6 +29,23 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
 
   /// Whether this assignment should repeat.  Gated behind Plus/Pass.
   bool _isRepeatable = false;
+
+  /// Weekday the repeating template spawns on (DateTime.monday..sunday).
+  /// Defaults to the picked due date's weekday and follows it when the
+  /// date changes, until the user picks a different weekday by hand.
+  late int _selectedWeekday;
+
+  /// Rough estimate of how long the assignment takes, in minutes.
+  /// Null = the user gave no estimate.
+  int? _estimatedMinutes;
+
+  static const List<int?> _estimateOptions = [null, 15, 30, 45, 60, 90];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedWeekday = _dueDate.weekday;
+  }
 
   static const List<String> _subjectOptions = [
     Subject.math,
@@ -85,19 +104,51 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (picked != null) {
-      setState(() => _dueDate = picked);
+      setState(() {
+        _dueDate = picked;
+        _selectedWeekday = picked.weekday;
+      });
     }
   }
 
   void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
+      final provider = context.read<AssignmentsProvider>();
+      final now = DateTime.now();
+      final title = _titleController.text.trim();
+
+      // When repeating, the template owns the schedule.  The one-off
+      // assignment below is created FIRST (tagged with the template id) so
+      // the template's spawn guard sees it and does not spawn a duplicate
+      // for today.  If the picked due date is today and matches the
+      // template weekday, it also counts as this week's spawn.
+      String? templateId;
+      if (_isRepeatable) {
+        templateId = now.millisecondsSinceEpoch.toString();
+      }
       final assignment = Assignment(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: _titleController.text.trim(),
+        id: (now.millisecondsSinceEpoch + 1).toString(),
+        title: title,
         subject: _selectedSubject,
         dueDate: _dueDate,
+        estimatedMinutes: _estimatedMinutes,
+        templateId: templateId,
       );
-      context.read<AssignmentsProvider>().add(assignment);
+      provider.add(assignment);
+      if (_isRepeatable) {
+        final isThisWeeksOccurrence =
+            due.dateOnly(_dueDate) == due.dateOnly(now) &&
+                _dueDate.weekday == _selectedWeekday;
+        provider.addTemplate(AssignmentTemplate(
+          id: templateId!,
+          title: title,
+          subject: _selectedSubject,
+          weekday: _selectedWeekday,
+          estimatedMinutes: _estimatedMinutes,
+          lastSpawnedDate:
+              isThisWeeksOccurrence ? due.dateOnly(_dueDate) : null,
+        ));
+      }
       Navigator.of(context).pop();
     }
   }
@@ -228,11 +279,76 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
               ),
             ),
             const SizedBox(height: 24),
+            // Time estimate — feeds "Tonight's workload" on Home.
+            Text(
+              'How long will it take?',
+              style: textTheme.labelLarge?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _estimateOptions.map((minutes) {
+                final isSelected = _estimatedMinutes == minutes;
+                return ChoiceChip(
+                  label: Text(minutes == null
+                      ? 'No estimate'
+                      : due.formatEstimatedMinutes(minutes)),
+                  selected: isSelected,
+                  onSelected: (_) =>
+                      setState(() => _estimatedMinutes = minutes),
+                  showCheckmark: false,
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
             // Repeatable task toggle (Plus/Pass only)
             _RepeatableToggle(
               isRepeatable: _isRepeatable,
               onChanged: (value) => setState(() => _isRepeatable = value),
             ),
+            // Weekday picker for the repeating template.
+            if (_isRepeatable) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Repeat every',
+                style: textTheme.labelLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  DateTime.monday,
+                  DateTime.tuesday,
+                  DateTime.wednesday,
+                  DateTime.thursday,
+                  DateTime.friday,
+                  DateTime.saturday,
+                  DateTime.sunday,
+                ].map((weekday) {
+                  final isSelected = _selectedWeekday == weekday;
+                  return ChoiceChip(
+                    label: Text(_weekdayShortLabel(weekday)),
+                    selected: isSelected,
+                    onSelected: (_) =>
+                        setState(() => _selectedWeekday = weekday),
+                    showCheckmark: false,
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'A new copy of this task will be created every ${_weekdayLongLabel(_selectedWeekday)}.',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             // Submit button
             SizedBox(
@@ -254,6 +370,48 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
         ),
       ),
     );
+  }
+}
+
+String _weekdayShortLabel(int weekday) {
+  switch (weekday) {
+    case DateTime.monday:
+      return 'Mon';
+    case DateTime.tuesday:
+      return 'Tue';
+    case DateTime.wednesday:
+      return 'Wed';
+    case DateTime.thursday:
+      return 'Thu';
+    case DateTime.friday:
+      return 'Fri';
+    case DateTime.saturday:
+      return 'Sat';
+    case DateTime.sunday:
+      return 'Sun';
+    default:
+      return '';
+  }
+}
+
+String _weekdayLongLabel(int weekday) {
+  switch (weekday) {
+    case DateTime.monday:
+      return 'Monday';
+    case DateTime.tuesday:
+      return 'Tuesday';
+    case DateTime.wednesday:
+      return 'Wednesday';
+    case DateTime.thursday:
+      return 'Thursday';
+    case DateTime.friday:
+      return 'Friday';
+    case DateTime.saturday:
+      return 'Saturday';
+    case DateTime.sunday:
+      return 'Sunday';
+    default:
+      return '';
   }
 }
 
@@ -319,7 +477,7 @@ class _RepeatableToggle extends StatelessWidget {
                     ],
                   ),
                   Text(
-                    'Mark this task as repeatable.',
+                    'Creates a weekly template — a new copy of this task spawns every week on the day you pick.',
                     style: textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),

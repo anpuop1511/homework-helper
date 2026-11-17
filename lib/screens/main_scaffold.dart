@@ -810,9 +810,9 @@ class _UserHubSheet extends StatelessWidget {
                 Icons.workspace_premium_rounded,
                 color: colorScheme.tertiary,
               ),
-              title: Text('Battle Pass 🌸', style: textTheme.bodyLarge),
+              title: Text('Battle Pass 🎄', style: textTheme.bodyLarge),
               subtitle: Text(
-                'Season 1: Spring Bloomin\'',
+                'Season 4: Holiday Hustle',
                 style: textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),

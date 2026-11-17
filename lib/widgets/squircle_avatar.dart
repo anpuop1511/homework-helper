@@ -67,7 +67,10 @@ class SquircleAvatar extends StatelessWidget {
       ),
     );
 
-    if (frameCosmeticId != 'sharpener_profile_frame') {
+    // Cocoa Clash frame — warm cocoa browns with a cocoa glow, mirroring
+    // the sharpener frame in the same block.
+    final isCocoaFrame = frameCosmeticId == 'cocoa_profile_frame';
+    if (frameCosmeticId != 'sharpener_profile_frame' && !isCocoaFrame) {
       return avatarCore;
     }
 
@@ -80,14 +83,18 @@ class SquircleAvatar extends StatelessWidget {
           height: size + 10,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular((radius + 5) * 0.55),
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFFEB3B), Color(0xFF212121)],
+            gradient: LinearGradient(
+              colors: isCocoaFrame
+                  ? [const Color(0xFF8D6E63), const Color(0xFF4E342E)]
+                  : const [Color(0xFFFFEB3B), Color(0xFF212121)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(
-                color: Color(0xAAFFEB3B),
+                color: isCocoaFrame
+                    ? const Color(0xAA8D6E63)
+                    : const Color(0xAAFFEB3B),
                 blurRadius: 14,
                 spreadRadius: 1,
               ),

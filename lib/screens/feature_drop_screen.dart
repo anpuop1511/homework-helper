@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// The unique preference key used to track whether this feature-drop
 /// splash has already been shown.  Bump the suffix for each new drop.
-const _kShownKey = 'feature_drop_v5_shown';
+const _kShownKey = 'feature_drop_holiday_shown';
 
 /// Checks (once) whether the Feature Drop screen should be shown, and if so,
 /// pushes it as a full-screen route.  Call from a post-frame callback.
@@ -26,11 +26,15 @@ Future<void> showFeatureDropIfNeeded(BuildContext context) async {
 }
 
 /// A "What's New" full-screen overlay shown exactly once after the Feature
-/// Drop update.  Summarises the April Drop:
-///   1. Notepad with photo attachments and Gemini note reading
-///   2. Study guide photo quizzes powered by Gemini
-///   3. Classes with Google Classroom links and better organization
-///   4. A cleaner, more useful home page
+/// Drop update.  Summarises the December Drop:
+///   1. Season 4: Holiday Hustle (Nov 18, 2026 – Jan 1, 2027)
+///   2. Cocoa Clash holiday event (Dec 1–25, 2026)
+///   3. A real activity feed
+///   4. A friends leaderboard
+///   5. Holiday profile frames and nameplates
+///   6. Smart due-date reminders with a countdown on Home
+///   7. Recurring assignment templates
+///   8. A "tonight's workload" summary
 class FeatureDropScreen extends StatelessWidget {
   const FeatureDropScreen({super.key});
 
@@ -82,7 +86,7 @@ class FeatureDropScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        'APRIL DROP',
+                        'DECEMBER DROP',
                         style: GoogleFonts.lexend(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
@@ -93,7 +97,7 @@ class FeatureDropScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      "April Drop ✨",
+                      "December Drop 🎄",
                       style: GoogleFonts.lexend(
                         fontSize: 30,
                         fontWeight: FontWeight.w800,
@@ -103,10 +107,19 @@ class FeatureDropScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'New tools for notes, quizzes, classes, and a much better home page.',
+                      'Season 4: Holiday Hustle is here — plus the Cocoa Clash event and a sleigh-full of new features.',
                       style: GoogleFonts.outfit(
                         fontSize: 14,
                         color: colorScheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '❄️  ❄️  ❄️',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colorScheme.onSurfaceVariant.withAlpha(160),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -122,40 +135,74 @@ class FeatureDropScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       _FeatureCard(
-                        emoji: '🗒️',
-                        title: 'Notepad + Sticky Notes',
+                        emoji: '🎄',
+                        title: 'Season 4: Holiday Hustle',
                         description:
-                            'Save quick notes, pin sticky thoughts, and attach photos so important facts stay in one place. '
-                            'If you connect a Gemini API key, it can read your notes back and help explain them.',
+                            'A brand-new season runs Nov 18, 2026 – Jan 1, 2027, with a holiday battle pass full of festive rewards to earn.',
                         color: colorScheme.primary,
                         onSurface: colorScheme.onPrimary,
                       ),
                       const SizedBox(height: 12),
                       _FeatureCard(
-                        emoji: '🧠',
-                        title: 'Practice Quizzes',
+                        emoji: '☕',
+                        title: 'Cocoa Clash',
                         description:
-                            'Turn study guide photos into practice quizzes and review with Gemini-backed prompts. '
-                            'Requires a Gemini API key.',
+                            'Our holiday event, Dec 1–25, 2026. Warm up with limited-time challenges and cocoa-themed rewards.',
+                        color: const Color(0xFF6D4C41),
+                        onSurface: Colors.white,
+                      ),
+                      const SizedBox(height: 12),
+                      _FeatureCard(
+                        emoji: '📰',
+                        title: 'Real Activity Feed',
+                        description:
+                            'See what your friends are actually up to — completed assignments, streaks, and milestones, live in the feed.',
                         color: colorScheme.secondary,
                         onSurface: colorScheme.onSecondary,
                       ),
                       const SizedBox(height: 12),
                       _FeatureCard(
-                        emoji: '🏫',
-                        title: 'Google Classroom Links',
+                        emoji: '🏆',
+                        title: 'Friends Leaderboard',
                         description:
-                            'Classes are cleaner and more organized, with direct Google Classroom links so students can jump into the right place faster.',
+                            'Climb the ranks against your friends and see who is really putting in the work this season.',
+                        color: const Color(0xFFB8860B),
+                        onSurface: Colors.white,
+                      ),
+                      const SizedBox(height: 12),
+                      _FeatureCard(
+                        emoji: '🖼️',
+                        title: 'Holiday Frames & Nameplates',
+                        description:
+                            'Deck out your profile with festive frames and nameplates earned in Season 4 and Cocoa Clash.',
+                        color: const Color(0xFF2E7D32),
+                        onSurface: Colors.white,
+                      ),
+                      const SizedBox(height: 12),
+                      _FeatureCard(
+                        emoji: '⏰',
+                        title: 'Smart Due-Date Reminders',
+                        description:
+                            'Gentle reminders with a countdown on Home, so nothing sneaks up on you.',
                         color: colorScheme.tertiary,
                         onSurface: colorScheme.onTertiary,
                       ),
                       const SizedBox(height: 12),
                       _FeatureCard(
-                        emoji: '🏠',
-                        title: 'Better Home Page',
+                        emoji: '🔁',
+                        title: 'Recurring Assignment Templates',
                         description:
-                            'The home page is cleaner, more useful, and easier to scan so you can see what matters right away.',
-                        color: const Color(0xFFE65100),
+                            'Homework that repeats every week? Set it once and it comes back on its own.',
+                        color: const Color(0xFFC62828),
+                        onSurface: Colors.white,
+                      ),
+                      const SizedBox(height: 12),
+                      _FeatureCard(
+                        emoji: '🌙',
+                        title: "Tonight's Workload",
+                        description:
+                            'A nightly summary of everything due, so you know exactly what to tackle before bed.',
+                        color: const Color(0xFF5E35B1),
                         onSurface: Colors.white,
                       ),
                       const SizedBox(height: 24),
@@ -181,7 +228,7 @@ class FeatureDropScreen extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      "Open the April Drop",
+                      "Open the December Drop",
                       style: GoogleFonts.lexend(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,

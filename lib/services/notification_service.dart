@@ -24,6 +24,12 @@ class NotificationService {
   static const int _timerOngoingId = 2;
   static const int _studySessionId = 3;
   static const int _deadlineBaseId = 100; // offset for deadline notifications
+  // Offset for the day-before deadline reminder.  Callers must pass a
+  // SMALL [assignmentId] (see [scheduleDeadlineReminders]): the id is used
+  // verbatim as an Android notification id (32-bit), so a raw epoch-millis
+  // id would overflow.  AssignmentsProvider maps string ids down to
+  // < 2^24 before calling in, keeping both offsets inside int32 range.
+  static const int _deadlineDayBeforeBaseId = 2000000;
 
   static const AndroidNotificationDetails _androidTimer =
       AndroidNotificationDetails(
@@ -233,7 +239,9 @@ class NotificationService {
   /// Schedules a reminder notification one hour before [deadline].
   ///
   /// Uses [assignmentId] as the unique notification ID offset so that
-  /// multiple deadlines can be tracked independently.
+  /// multiple deadlines can be tracked independently.  [assignmentId] must
+  /// be a small int (see [_deadlineDayBeforeBaseId] note above) — callers
+  /// map string ids down first.
   Future<void> scheduleDeadlineReminder({
     required int assignmentId,
     required String title,
@@ -261,11 +269,58 @@ class NotificationService {
     }
   }
 
-  /// Cancels the scheduled reminder for [assignmentId].
+  /// Schedules both deadline reminders for an assignment:
+  ///   1. Day-before — 4:00 PM local on the day before [deadline]'s date
+  ///      ("Due tomorrow!"), so it lands after school, not at midnight.
+  ///   2. One hour before [deadline] (via [scheduleDeadlineReminder]).
+  ///
+  /// Callers pass [deadline] as the END of the due day (23:59), since due
+  /// dates in this app are date-only — so the 1-hour reminder fires at
+  /// 22:59 on the due day itself.  Each reminder whose time is already past
+  /// is skipped silently; the other still schedules.
+  Future<void> scheduleDeadlineReminders({
+    required int assignmentId,
+    required String title,
+    required DateTime deadline,
+  }) async {
+    if (!_initialized) return;
+    final dueDay = DateTime(deadline.year, deadline.month, deadline.day);
+    final dayBefore = dueDay
+        .subtract(const Duration(days: 1))
+        .add(const Duration(hours: 16)); // 4:00 PM the day before
+    if (dayBefore.isAfter(DateTime.now())) {
+      try {
+        await _plugin.zonedSchedule(
+          id: _deadlineDayBeforeBaseId + assignmentId,
+          title: '📚 Due tomorrow!',
+          body: '"$title" is due tomorrow.',
+          scheduledDate: tz.TZDateTime.from(dayBefore, tz.local),
+          notificationDetails: const NotificationDetails(
+            android: _androidDeadline,
+            iOS: DarwinNotificationDetails(),
+            macOS: DarwinNotificationDetails(),
+          ),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        );
+      } catch (e) {
+        debugPrint(
+            '[NotificationService] day-before deadline reminder failed: $e');
+      }
+    }
+    await scheduleDeadlineReminder(
+      assignmentId: assignmentId,
+      title: title,
+      deadline: deadline,
+    );
+  }
+
+  /// Cancels the scheduled reminder(s) for [assignmentId] — both the
+  /// 1-hour and the day-before reminders.
   Future<void> cancelDeadlineReminder(int assignmentId) async {
     if (!_initialized) return;
     try {
       await _plugin.cancel(id: _deadlineBaseId + assignmentId);
+      await _plugin.cancel(id: _deadlineDayBeforeBaseId + assignmentId);
     } catch (_) {}
   }
 

@@ -155,6 +155,45 @@ const _season2PermanentItems = [
   ),
 ];
 
+const _season4PermanentItems = [
+  _ShopItem(
+    seasonId: 'season_4',
+    id: 'snowflake_badge',
+    name: 'Snowflake Badge',
+    description: 'A crisp snowflake badge for your profile.',
+    emoji: '❄️',
+    price: 200,
+    cosmeticType: _CosmeticType.badge,
+  ),
+  _ShopItem(
+    seasonId: 'season_4',
+    id: 'cocoa_mug_badge',
+    name: 'Cocoa Mug Badge',
+    description: 'A warm cocoa mug badge for cozy study nights.',
+    emoji: '☕',
+    price: 220,
+    cosmeticType: _CosmeticType.badge,
+  ),
+  _ShopItem(
+    seasonId: 'season_4',
+    id: 'frostbite_nameplate',
+    name: 'Frostbite Nameplate',
+    description: 'An icy blue plate behind your username.',
+    emoji: '🧊',
+    price: 240,
+    cosmeticType: _CosmeticType.nameplate,
+  ),
+  _ShopItem(
+    seasonId: 'season_4',
+    id: 'evergreen_name_color',
+    name: 'Evergreen Name Color',
+    description: 'Make your username glow in deep evergreen.',
+    emoji: '🎄',
+    price: 260,
+    cosmeticType: _CosmeticType.nameColor,
+  ),
+];
+
 const _season1TimedTemplates = [
   _ShopItem(
     seasonId: 'season_1',
@@ -233,6 +272,45 @@ const _season2TimedTemplates = [
   ),
 ];
 
+const _season4TimedTemplates = [
+  _ShopItem(
+    seasonId: 'season_4',
+    id: 'snow_globe_card',
+    name: 'Snow Globe Card',
+    description: 'A frosty snow globe card around your name.',
+    emoji: '🔮',
+    price: 290,
+    cosmeticType: _CosmeticType.nameplate,
+  ),
+  _ShopItem(
+    seasonId: 'season_4',
+    id: 'midnight_sleigh_badge',
+    name: 'Midnight Sleigh Badge',
+    description: 'A badge for late-night holiday study runs.',
+    emoji: '🛷',
+    price: 190,
+    cosmeticType: _CosmeticType.badge,
+  ),
+  _ShopItem(
+    seasonId: 'season_4',
+    id: 'candy_cane_name',
+    name: 'Candy Cane Name Color',
+    description: 'Make your username pop in candy-cane red.',
+    emoji: '🍬',
+    price: 250,
+    cosmeticType: _CosmeticType.nameColor,
+  ),
+  _ShopItem(
+    seasonId: 'season_4',
+    id: 'northern_lights_plate',
+    name: 'Northern Lights Nameplate',
+    description: 'An aurora plate behind your username.',
+    emoji: '🌌',
+    price: 300,
+    cosmeticType: _CosmeticType.nameplate,
+  ),
+];
+
 const _season1RolloverRules = [
   (
     id: 'badge_spring_sprout',
@@ -294,33 +372,6 @@ class _ShopBody extends StatefulWidget {
 }
 
 class _ShopBodyState extends State<_ShopBody> {
-  bool _compensationChecked = false;
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  void _maybeGrantCompensation(UserProvider user) {
-    if (_compensationChecked || !user.isLoaded) return;
-    _compensationChecked = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final granted = context
-          .read<UserProvider>()
-          .grantShopCompensationIfNeeded();
-      if (!granted || !mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            '🎁 Thanks for sticking with us! +50 coins added to your shop balance.',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    });
-  }
-
   void _purchase(BuildContext context, _ShopItem item) {
     final user = context.read<UserProvider>();
 
@@ -372,7 +423,6 @@ class _ShopBodyState extends State<_ShopBody> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<UserProvider>();
-    _maybeGrantCompensation(user);
     final colorScheme = Theme.of(context).colorScheme;
     final timeTravelEnabled = user.shopTimeTravelEnabled;
     final nowUtc = context.watch<DevClockProvider>().nowUtc();
@@ -380,13 +430,17 @@ class _ShopBodyState extends State<_ShopBody> {
 
     final currentPermanent = activeSeason.id == kSeason1.id
         ? _season1PermanentItems
-        : _season2PermanentItems;
+        : activeSeason.id == kSeason4.id
+            ? _season4PermanentItems
+            : _season2PermanentItems;
     final currentTimed = _buildTimedDrops(
       activeSeason.id,
       activeSeason.startsAtUtc,
       activeSeason.id == kSeason1.id
           ? _season1TimedTemplates
-          : _season2TimedTemplates,
+          : activeSeason.id == kSeason4.id
+              ? _season4TimedTemplates
+              : _season2TimedTemplates,
     );
     final legacyTimed = _buildTimedDrops(
       kSeason1.id,
@@ -484,7 +538,9 @@ class _ShopBodyState extends State<_ShopBody> {
           title: 'Season ${activeSeason.number}: Featured Now',
           subtitle: activeSeason.id == kSeason1.id
               ? 'Spring Bloomin\' collection'
-              : 'Finals Frenzy collection',
+              : activeSeason.id == kSeason4.id
+                  ? 'Holiday Hustle collection'
+                  : 'Finals Frenzy collection',
           colorScheme: colorScheme,
         ),
         const SizedBox(height: 12),
@@ -551,6 +607,47 @@ class _ShopBodyState extends State<_ShopBody> {
           ),
           const SizedBox(height: 12),
           ..._season1PermanentItems.map((item) {
+            final owned = user.unlockedCosmetics.contains(item.id);
+            final equipped = _isEquipped(user, item);
+            return _ShopItemCard(
+              item: item,
+              owned: owned,
+              equipped: equipped,
+              colorScheme: colorScheme,
+              onTap: () => _purchase(context, item),
+            );
+          }),
+        ],
+
+        if (activeSeason.id == kSeason4.id) ...[
+          const SizedBox(height: 16),
+          _SectionHeader(
+            title: 'Season 1 Legacy Vault',
+            subtitle:
+                'Older seasonal items stay organized here for quick access.',
+            colorScheme: colorScheme,
+          ),
+          const SizedBox(height: 12),
+          ..._season1PermanentItems.map((item) {
+            final owned = user.unlockedCosmetics.contains(item.id);
+            final equipped = _isEquipped(user, item);
+            return _ShopItemCard(
+              item: item,
+              owned: owned,
+              equipped: equipped,
+              colorScheme: colorScheme,
+              onTap: () => _purchase(context, item),
+            );
+          }),
+          const SizedBox(height: 16),
+          _SectionHeader(
+            title: 'Season 2 Legacy Vault',
+            subtitle:
+                'Older seasonal items stay organized here for quick access.',
+            colorScheme: colorScheme,
+          ),
+          const SizedBox(height: 12),
+          ..._season2PermanentItems.map((item) {
             final owned = user.unlockedCosmetics.contains(item.id);
             final equipped = _isEquipped(user, item);
             return _ShopItemCard(

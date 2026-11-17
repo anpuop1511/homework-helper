@@ -36,6 +36,14 @@ class _SocialScreenState extends State<SocialScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    // Friend docs snapshot stats at accept time, so pull each friend's live
+    // stats from their user doc when this tab opens.  The provider also
+    // refreshes when the friends stream emits, and pull-to-refresh forces it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<SocialProvider>().refreshFriendStats();
+      }
+    });
   }
 
   @override
@@ -745,30 +753,49 @@ class _SocialScreenState extends State<SocialScreen>
 
   Widget _buildFriendsTab(
       BuildContext context, ColorScheme colorScheme, SocialProvider social) {
-    if (social.friends.isEmpty) {
-      return ListView(
+    final friends = social.friends;
+    return RefreshIndicator(
+      onRefresh: () => social.refreshFriendStats(force: true),
+      color: _kElectricBlue,
+      child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          _EmptyFriendsCard(colorScheme: colorScheme),
-        ],
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: social.friends.length,
-      itemBuilder: (_, idx) {
-        final friend = social.friends[idx];
-        return FadeInLeft(
-          delay: Duration(milliseconds: idx * 50),
-          duration: const Duration(milliseconds: 300),
-          child: _FriendCard(
-            friend: friend,
+          // Leaderboard (top XP + longest streak, you included) — always
+          // shown, even with no friends yet, so the section is discoverable.
+          _LeaderboardCard(
             colorScheme: colorScheme,
-            onRemove: () =>
-                context.read<SocialProvider>().removeFriend(friend.id),
+            byXp: social.leaderboardByXp,
+            byStreak: social.leaderboardByStreak,
+            myUid: social.uid,
+            isRefreshing: social.isRefreshingFriendStats,
           ),
-        );
-      },
+          const SizedBox(height: 12),
+          // Real activity feed, derived from friends' refreshed stats.
+          _ActivityFeedCard(
+            colorScheme: colorScheme,
+            activity: social.activity,
+            showActivity: social.showStudyActivity,
+          ),
+          const SizedBox(height: 12),
+          if (friends.isEmpty)
+            _EmptyFriendsCard(colorScheme: colorScheme)
+          else
+            ...friends.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final friend = entry.value;
+              return FadeInLeft(
+                delay: Duration(milliseconds: idx * 50),
+                duration: const Duration(milliseconds: 300),
+                child: _FriendCard(
+                  friend: friend,
+                  colorScheme: colorScheme,
+                  onRemove: () =>
+                      context.read<SocialProvider>().removeFriend(friend.id),
+                ),
+              );
+            }),
+        ],
+      ),
     );
   }
 
@@ -1663,6 +1690,376 @@ class _FriendCard extends StatelessWidget {
             },
             child: const Text('Remove'),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Short relative time ("just now", "5m ago", "3h ago", "2d ago").
+String _timeAgo(DateTime timestamp) {
+  final diff = DateTime.now().difference(timestamp);
+  if (diff.inMinutes < 1) return 'just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+  if (diff.inHours < 24) return '${diff.inHours}h ago';
+  if (diff.inDays < 7) return '${diff.inDays}d ago';
+  return '${timestamp.month}/${timestamp.day}/${timestamp.year}';
+}
+
+// ── Leaderboard ─────────────────────────────────────────────────────────────
+
+/// Leaderboard section at the top of the Friends tab: two mini-boards
+/// (most XP, longest streak) side by side on wide screens, stacked on
+/// narrow ones.  Ranks friends + you from the freshly refreshed stats, so
+/// it is never staler than the last stats refresh.  Values are all-time
+/// total XP and current streak — no weekly XP counter exists yet.
+class _LeaderboardCard extends StatelessWidget {
+  final ColorScheme colorScheme;
+  final List<Friend> byXp;
+  final List<Friend> byStreak;
+  final String? myUid;
+  final bool isRefreshing;
+
+  const _LeaderboardCard({
+    required this.colorScheme,
+    required this.byXp,
+    required this.byStreak,
+    required this.myUid,
+    required this.isRefreshing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            _kElectricBlue.withAlpha(14),
+            colorScheme.surfaceContainerLow,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _kElectricBlue.withAlpha(45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: _kElectricBlue.withAlpha(30),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.leaderboard_rounded,
+                    size: 18, color: _kElectricBlue),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Leaderboard',
+                  style: GoogleFonts.lexend(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              if (isRefreshing)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'All-time XP · Current streak — pull down to refresh',
+            style: TextStyle(
+              fontSize: 12,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 500;
+              final xpBoard = _MiniBoard(
+                title: '🏆 Most XP',
+                entries: byXp,
+                valueLabel: (f) => '${f.totalXp} XP',
+                colorScheme: colorScheme,
+                myUid: myUid,
+              );
+              final streakBoard = _MiniBoard(
+                title: '🔥 Longest streak',
+                entries: byStreak,
+                valueLabel: (f) => '${f.streak} day${f.streak == 1 ? '' : 's'}',
+                colorScheme: colorScheme,
+                myUid: myUid,
+              );
+              if (wide) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: xpBoard),
+                    const SizedBox(width: 12),
+                    Expanded(child: streakBoard),
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  xpBoard,
+                  const SizedBox(height: 12),
+                  streakBoard,
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One ranked mini-board (up to 5 rows) inside [_LeaderboardCard].
+class _MiniBoard extends StatelessWidget {
+  final String title;
+  final List<Friend> entries;
+  final String Function(Friend) valueLabel;
+  final ColorScheme colorScheme;
+  final String? myUid;
+
+  const _MiniBoard({
+    required this.title,
+    required this.entries,
+    required this.valueLabel,
+    required this.colorScheme,
+    required this.myUid,
+  });
+
+  static const _medals = ['🥇', '🥈', '🥉'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.lexend(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 6),
+        if (entries.isEmpty)
+          Text(
+            'No entries yet.',
+            style: TextStyle(
+              fontSize: 12,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          )
+        else
+          ...entries.asMap().entries.map((entry) {
+            final rank = entry.key;
+            final friend = entry.value;
+            final isMe = myUid != null && friend.id == myUid;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 4),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: isMe
+                    ? _kElectricBlue.withAlpha(22)
+                    : colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+                border: isMe
+                    ? Border.all(color: _kElectricBlue.withAlpha(70))
+                    : null,
+              ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 24,
+                    child: Text(
+                      rank < _medals.length ? _medals[rank] : '${rank + 1}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      isMe ? 'You' : friend.displayHandle,
+                      style: TextStyle(
+                        fontWeight:
+                            isMe ? FontWeight.w700 : FontWeight.w600,
+                        fontSize: 13,
+                        color: colorScheme.onSurface,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    valueLabel(friend),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+      ],
+    );
+  }
+}
+
+// ── Activity feed ───────────────────────────────────────────────────────────
+
+/// Real activity feed section on the Friends tab: friend level-ups, streak
+/// milestones, assignment completions and XP earned, derived from friends'
+/// refreshed stats (see SocialProvider).  Newest first, latest 10 shown.
+class _ActivityFeedCard extends StatelessWidget {
+  final ColorScheme colorScheme;
+  final List<ActivityItem> activity;
+  final bool showActivity;
+
+  const _ActivityFeedCard({
+    required this.colorScheme,
+    required this.activity,
+    required this.showActivity,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = activity.take(10).toList();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: colorScheme.tertiaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.local_activity_rounded,
+                    size: 18, color: colorScheme.onTertiaryContainer),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Friend Activity',
+                  style: GoogleFonts.lexend(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (!showActivity)
+            Text(
+              'Friend activity is turned off. Enable “Show Study Activity to '
+              'Friends” in Settings → Privacy & Security to see it here.',
+              style: TextStyle(
+                fontSize: 13,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            )
+          else if (shown.isEmpty)
+            Text(
+              'Nothing yet — when friends level up, hit a streak, or finish '
+              'an assignment, it will show up here.',
+              style: TextStyle(
+                fontSize: 13,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            )
+          else
+            ...shown.map((item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHigh,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          item.type.emoji,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            RichText(
+                              text: TextSpan(
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colorScheme.onSurface,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: item.friendName,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w700),
+                                  ),
+                                  TextSpan(text: ' ${item.message}'),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _timeAgo(item.timestamp),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          if (showActivity && activity.length > shown.length)
+            Text(
+              'Showing latest ${shown.length} of ${activity.length}',
+              style: TextStyle(
+                fontSize: 11,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
         ],
       ),
     );

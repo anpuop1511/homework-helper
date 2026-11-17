@@ -3,6 +3,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:typed_data';
 import '../models/assignment.dart';
+import '../models/assignment_template.dart';
 import '../models/class_model.dart';
 import '../models/entitlement_model.dart';
 import '../models/social_models.dart';
@@ -13,6 +14,7 @@ import '../providers/theme_provider.dart';
 /// All operations are scoped to the authenticated user's documents:
 ///   users/{uid}                  – XP, level, streak, vibe, email, username
 ///   users/{uid}/assignments/{id} – individual assignments
+///   users/{uid}/assignment_templates/{id} – recurring assignment templates
 ///   users/{uid}/entitlements/subscription – subscription entitlement
 ///   users/{uid}/friends/{fid}    – accepted friends (sub-collection)
 ///   friend_requests/{id}         – global pending friend requests
@@ -32,6 +34,40 @@ class DatabaseService {
   Future<Map<String, dynamic>?> getUserData(String uid) async {
     final snap = await _userDoc(uid).get();
     return snap.data();
+  }
+
+  /// Batch-reads user documents for [uids] in parallel.
+  ///
+  /// Used by the Social tab to refresh every friend's level / XP / streak /
+  /// badge from their live user doc (friend docs only snapshot those fields
+  /// at accept time).  A single failed read never fails the whole batch —
+  /// that uid is simply omitted from the result.
+  Future<Map<String, Map<String, dynamic>>> getUsersDataBatch(
+      List<String> uids) async {
+    final entries = await Future.wait(
+      uids.map((uid) async {
+        try {
+          final data = await getUserData(uid);
+          return MapEntry(uid, data);
+        } catch (_) {
+          return const MapEntry<String, Map<String, dynamic>?>(uid, null);
+        }
+      }),
+    );
+    return {
+      for (final e in entries)
+        if (e.value != null) e.key: e.value!,
+    };
+  }
+
+  /// Total XP across all levels, from the per-level [xp] and [level] fields.
+  ///
+  /// Same formula as UserProvider.totalXp (baseXp = 100): the sum of XP
+  /// for levels 1..(level-1) plus the XP earned within the current level.
+  /// `acceptFriendRequest` inlines this formula; keep both in sync.
+  static int totalXpFor({required int level, required int xp}) {
+    const baseXp = 100;
+    return baseXp * (level - 1) * level ~/ 2 + xp;
   }
 
   /// Writes / merges user stats (XP, level, streak, name).
@@ -422,6 +458,10 @@ class DatabaseService {
       dueDate: dueDate,
       isCompleted: isCompleted,
       rewardsClaimed: rewardsClaimed,
+      // New in the Dec drop: older documents simply lack these fields.
+      estimatedMinutes:
+          (d['estimatedMinutes'] as int?),
+      templateId: d['templateId'] as String?,
     );
   }
 
@@ -432,7 +472,36 @@ class DatabaseService {
         'dueDate': a.dueDate.millisecondsSinceEpoch,
         'isCompleted': a.isCompleted,
         'rewardsClaimed': a.rewardsClaimed,
+        if (a.estimatedMinutes != null)
+          'estimatedMinutes': a.estimatedMinutes,
+        if (a.templateId != null) 'templateId': a.templateId,
       };
+
+  // ── Recurring assignment templates ──────────────────────────────────────
+
+  CollectionReference<Map<String, dynamic>> _templatesCol(String uid) =>
+      _userDoc(uid).collection('assignment_templates');
+
+  /// Returns a real-time stream of the user's recurring assignment
+  /// templates, ordered by weekday (Mon → Sun).
+  Stream<List<AssignmentTemplate>> templatesStream(String uid) {
+    return _templatesCol(uid).orderBy('weekday').snapshots().map(
+        (snap) => snap.docs
+            .map((doc) => AssignmentTemplate.fromFirestore(
+                doc.id, doc.data()))
+            .toList());
+  }
+
+  /// Writes (or overwrites) a single recurring assignment template.
+  Future<void> saveTemplate(String uid, AssignmentTemplate template) async {
+    await _templatesCol(uid).doc(template.id).set(template.toFirestore());
+  }
+
+  /// Deletes a single recurring assignment template.  Assignments the
+  /// template already spawned are left alone.
+  Future<void> deleteTemplate(String uid, String templateId) async {
+    await _templatesCol(uid).doc(templateId).delete();
+  }
 
   // ── Social / Friends ─────────────────────────────────────────────────────
 

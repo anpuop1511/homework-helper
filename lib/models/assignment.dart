@@ -10,6 +10,16 @@ class Assignment {
   /// assignment.  Prevents farming by toggling completion repeatedly.
   bool rewardsClaimed;
 
+  /// Rough estimate of how long the assignment takes, in minutes.
+  /// Null when the user did not give one — the "Tonight's workload" card
+  /// only totals the estimates it has and says so when there are none.
+  final int? estimatedMinutes;
+
+  /// Id of the [AssignmentTemplate] this assignment was spawned from, if any.
+  /// Null for one-off assignments.  Used to stop a template spawning the
+  /// same day's assignment twice.
+  final String? templateId;
+
   Assignment({
     required this.id,
     required this.title,
@@ -17,6 +27,8 @@ class Assignment {
     required this.dueDate,
     this.isCompleted = false,
     this.rewardsClaimed = false,
+    this.estimatedMinutes,
+    this.templateId,
   });
 
   /// Creates a copy of this assignment with updated fields.
@@ -27,6 +39,8 @@ class Assignment {
     DateTime? dueDate,
     bool? isCompleted,
     bool? rewardsClaimed,
+    int? estimatedMinutes,
+    String? templateId,
   }) {
     return Assignment(
       id: id ?? this.id,
@@ -35,6 +49,8 @@ class Assignment {
       dueDate: dueDate ?? this.dueDate,
       isCompleted: isCompleted ?? this.isCompleted,
       rewardsClaimed: rewardsClaimed ?? this.rewardsClaimed,
+      estimatedMinutes: estimatedMinutes ?? this.estimatedMinutes,
+      templateId: templateId ?? this.templateId,
     );
   }
 
@@ -42,7 +58,8 @@ class Assignment {
   String toString() {
     return 'Assignment(id: $id, title: $title, subject: $subject, '
         'dueDate: $dueDate, isCompleted: $isCompleted, '
-        'rewardsClaimed: $rewardsClaimed)';
+        'rewardsClaimed: $rewardsClaimed, '
+        'estimatedMinutes: $estimatedMinutes, templateId: $templateId)';
   }
 
   @override

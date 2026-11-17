@@ -5,8 +5,15 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/social_provider.dart';
 import '../services/database_service.dart';
+import '../widgets/nameplate_widget.dart';
 
 const _kElectricBlue = Color(0xFF007FFF);
+
+/// Holiday (Season 4: Holiday Hustle) accent palette — matches the
+/// profile screen's halo so a friend's profile feels like the same season.
+const _kHolidayGold = Color(0xFFB8860B);
+const _kHolidayPine = Color(0xFF2E7D32);
+const _kHolidayBerry = Color(0xFFC62828);
 
 /// Public profile screen for a user identified by @[handle].
 ///
@@ -254,6 +261,10 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
     final streak = profile['streak'] as int? ?? 0;
     final initial = username.isNotEmpty ? username[0].toUpperCase() : '?';
     final photoUrl = profile['photoUrl'] as String?;
+    // Equipped nameplate, if any (stored as 'bp_activeNameplate' on the
+    // user document).  Holiday nameplates render here once their ids are
+    // registered in nameplateGradientColors.
+    final activeNameplate = profile['bp_activeNameplate'] as String? ?? '';
 
     // Check privacy
     final profileVisibilityIndex = profile['profileVisibility'] as int? ?? 0;
@@ -276,24 +287,38 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       children: [
         // ── Avatar ────────────────────────────────────────────────────
+        // Holiday ring: a thin pine/gold/berry gradient circle behind the
+        // avatar so public profiles carry the same seasonal accent as the
+        // own-profile halo.
         FadeIn(
           duration: const Duration(milliseconds: 400),
           child: Center(
-            child: CircleAvatar(
-              radius: 52,
-              backgroundColor: colorScheme.primaryContainer,
-              backgroundImage:
-                  photoUrl != null ? NetworkImage(photoUrl) : null,
-              child: photoUrl == null
-                  ? Text(
-                      initial,
-                      style: GoogleFonts.lexend(
-                        fontSize: 40,
-                        fontWeight: FontWeight.w700,
-                        color: colorScheme.onPrimaryContainer,
-                      ),
-                    )
-                  : null,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [_kHolidayPine, _kHolidayGold, _kHolidayBerry],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 52,
+                backgroundColor: colorScheme.primaryContainer,
+                backgroundImage:
+                    photoUrl != null ? NetworkImage(photoUrl) : null,
+                child: photoUrl == null
+                    ? Text(
+                        initial,
+                        style: GoogleFonts.lexend(
+                          fontSize: 40,
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                      )
+                    : null,
+              ),
             ),
           ),
         ),
@@ -305,15 +330,28 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
           duration: const Duration(milliseconds: 350),
           child: Column(
             children: [
-              Text(
-                isProfileVisible ? displayName : '@$_cleanHandle',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.lexend(
+              // Display name — wrapped in the equipped nameplate when
+              // one is set and recognised.  The gradient check guards
+              // against unknown ids: NameplateWidget renders nothing for
+              // those, so fall back to plain text instead of a blank name.
+              if (activeNameplate.isNotEmpty &&
+                  nameplateGradientColors(activeNameplate).isNotEmpty)
+                NameplateWidget(
+                  username:
+                      isProfileVisible ? displayName : '@$_cleanHandle',
+                  nameplateId: activeNameplate,
                   fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: colorScheme.onSurface,
+                )
+              else
+                Text(
+                  isProfileVisible ? displayName : '@$_cleanHandle',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.lexend(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
-              ),
               const SizedBox(height: 4),
               Text(
                 '@$username',

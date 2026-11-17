@@ -46,13 +46,15 @@ class ActivityItem {
       );
 }
 
-enum ActivityType { levelUp, focusSession, assignment, other }
+enum ActivityType { levelUp, streak, focusSession, assignment, other }
 
 extension ActivityTypeExtension on ActivityType {
   String get emoji {
     switch (this) {
       case ActivityType.levelUp:
         return '🏆';
+      case ActivityType.streak:
+        return '🔥';
       case ActivityType.focusSession:
         return '⏱️';
       case ActivityType.assignment:
@@ -63,6 +65,36 @@ extension ActivityTypeExtension on ActivityType {
   }
 }
 
+/// Last-seen gamification stats for one friend, used to derive feed items.
+///
+/// Persisted locally (SharedPreferences) so a level-up / streak milestone is
+/// reported exactly once: the snapshot is compared against the freshly
+/// fetched user doc on each refresh, then updated to the fresh values.
+class _SeenFriendStats {
+  final int level;
+  final int totalXp;
+  final int streak;
+
+  const _SeenFriendStats({
+    required this.level,
+    required this.totalXp,
+    required this.streak,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'level': level,
+        'totalXp': totalXp,
+        'streak': streak,
+      };
+
+  factory _SeenFriendStats.fromJson(Map<String, dynamic> json) =>
+      _SeenFriendStats(
+        level: json['level'] as int? ?? 1,
+        totalXp: json['totalXp'] as int? ?? 0,
+        streak: json['streak'] as int? ?? 0,
+      );
+}
+
 /// Manages the social features: friends list, pending requests, and activity feed.
 ///
 /// When a Firebase UID is set (via [setUid]) the provider subscribes to
@@ -71,6 +103,7 @@ extension ActivityTypeExtension on ActivityType {
 class SocialProvider extends ChangeNotifier {
   static const _prefFriends = 'social_friends';
   static const _prefActivity = 'social_activity';
+  static const _prefFriendStatsSnapshot = 'social_friend_stats_snapshot';
   static const _prefShowActivity = 'social_show_activity';
   static const _prefProfileVisibility = 'social_profile_visibility';
   static const _prefFriendRequestsPrivacy = 'social_friend_requests_privacy';
@@ -89,7 +122,20 @@ class SocialProvider extends ChangeNotifier {
   final List<FriendRequest> _pendingRequests = [];
   final List<SentRequest> _sentRequests = [];
   final List<ActivityItem> _activity = [];
+
+  /// Last-seen stats per friend id, for deriving feed items (see
+  /// [_SeenFriendStats]).  Keyed by friend uid.
+  final Map<String, _SeenFriendStats> _friendStatsSnapshot = {};
+
   bool _isLoading = false;
+
+  /// True while a friend-stats refresh is in flight.
+  bool _isRefreshingFriendStats = false;
+
+  /// Last time [refreshFriendStats] completed, for throttling stream-triggered
+  /// refreshes (the friends stream can emit often; each refresh is N reads).
+  DateTime? _lastFriendStatsRefresh;
+
   bool _showStudyActivity = true;
   ProfileVisibility _profileVisibility = ProfileVisibility.public;
   FriendRequestsPrivacy _friendRequestsPrivacy = FriendRequestsPrivacy.everyone;
@@ -104,6 +150,12 @@ class SocialProvider extends ChangeNotifier {
   List<SentRequest> get sentRequests => List.unmodifiable(_sentRequests);
   List<ActivityItem> get activity => List.unmodifiable(_activity);
   bool get isLoading => _isLoading;
+
+  /// True while a friend-stats refresh (see [refreshFriendStats]) is running.
+  bool get isRefreshingFriendStats => _isRefreshingFriendStats;
+
+  /// UID of the signed-in user, or null in guest / offline mode.
+  String? get uid => _uid;
   bool get showStudyActivity => _showStudyActivity;
   ProfileVisibility get profileVisibility => _profileVisibility;
   FriendRequestsPrivacy get friendRequestsPrivacy => _friendRequestsPrivacy;
@@ -172,6 +224,11 @@ class SocialProvider extends ChangeNotifier {
             ..clear()
             ..addAll(list);
           notifyListeners();
+          // The snapshot in Firestore is stale by design (stats are copied
+          // once at accept time), so refresh from each friend's live user
+          // doc.  Throttled inside [refreshFriendStats]; no Firestore
+          // writes, so this cannot re-trigger the stream.
+          _maybeRefreshFriendStats();
         },
         onError: (_) {/* keep existing list */},
       );
@@ -283,6 +340,20 @@ class SocialProvider extends ChangeNotifier {
         _activity.add(ActivityItem.fromJson(map));
       } catch (_) {}
     }
+    // Load last-seen friend stats (feed diff baseline).
+    _friendStatsSnapshot.clear();
+    final snapshotRaw = prefs.getString(_prefFriendStatsSnapshot);
+    if (snapshotRaw != null) {
+      try {
+        final map = json.decode(snapshotRaw) as Map<String, dynamic>;
+        for (final entry in map.entries) {
+          if (entry.value is Map<String, dynamic>) {
+            _friendStatsSnapshot[entry.key] =
+                _SeenFriendStats.fromJson(entry.value as Map<String, dynamic>);
+          }
+        }
+      } catch (_) {}
+    }
     final pvIndex = prefs.getInt(_prefProfileVisibility) ?? 0;
     _profileVisibility = ProfileVisibility.values[pvIndex.clamp(0, ProfileVisibility.values.length - 1)];
     final frpIndex = prefs.getInt(_prefFriendRequestsPrivacy) ?? 0;
@@ -299,6 +370,16 @@ class SocialProvider extends ChangeNotifier {
     await prefs.setStringList(
       _prefActivity,
       _activity.map((a) => json.encode(a.toJson())).toList(),
+    );
+  }
+
+  Future<void> _saveFriendStatsSnapshot() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _prefFriendStatsSnapshot,
+      json.encode({
+        for (final e in _friendStatsSnapshot.entries) e.key: e.value.toJson(),
+      }),
     );
   }
 
@@ -540,6 +621,11 @@ class SocialProvider extends ChangeNotifier {
     // Save a snapshot for rollback in case the backend call fails.
     final snapshot = List<Friend>.from(_friends);
 
+    // Drop the feed-diff baseline too, so re-adding this person later does
+    // not report their intervening progress as one burst of fake activity.
+    final removedStats = _friendStatsSnapshot.remove(id);
+    if (removedStats != null) _saveFriendStatsSnapshot();
+
     // Optimistically remove from local state immediately for instant UI feedback.
     _friends.removeWhere((f) => f.id == id);
     notifyListeners();
@@ -555,6 +641,10 @@ class SocialProvider extends ChangeNotifier {
         _friends
           ..clear()
           ..addAll(snapshot);
+        if (removedStats != null) {
+          _friendStatsSnapshot[id] = removedStats;
+          _saveFriendStatsSnapshot();
+        }
         notifyListeners();
       }
     } else {
@@ -607,27 +697,253 @@ class SocialProvider extends ChangeNotifier {
     }
   }
 
-  // ── Activity feed (demo / future) ────────────────────────────────────────
+  // ── Friend stats refresh + real activity feed ──────────────────────────
 
-  /// Adds a sample activity item (used for demo purposes).
-  void addSampleActivity() {
-    const samples = [
-      ('Alex', 'levelled up to Level 5! 🎉', ActivityType.levelUp),
-      ('Sam', 'completed a 25-min focus session 🔥', ActivityType.focusSession),
-      ('Jordan', 'finished 3 assignments today ✅', ActivityType.assignment),
-    ];
-    final sample = samples[_activity.length % samples.length];
-    _activity.insert(
-      0,
-      ActivityItem(
-        friendName: sample.$1,
-        message: sample.$2,
-        type: sample.$3,
-        timestamp: DateTime.now(),
-      ),
-    );
+  /// Streak lengths that count as a feed-worthy milestone.
+  static const _streakMilestones = <int>{3, 7, 14, 30, 60, 100};
+
+  /// XP awarded for one assignment completion (the assignments provider
+  /// awards exactly 25 XP per completion).  Used only to *attribute* an
+  /// XP jump: no other award path grants exactly 25 XP (focus sessions grant
+  /// 15, Battle Pass rewards grant 50), so a lone +25 jump between refreshes
+  /// is an assignment completion.  Larger / mixed jumps are reported
+  /// honestly as plain XP earned, never guessed as assignments.
+  static const _xpPerAssignment = 25;
+
+  /// How often stream-triggered refreshes may run.  Manual refreshes
+  /// ([refreshFriendStats] with `force: true`, e.g. pull-to-refresh) bypass it.
+  static const _refreshThrottle = Duration(seconds: 30);
+
+  /// Stream-triggered refresh that respects the throttle and never throws.
+  void _maybeRefreshFriendStats() {
+    refreshFriendStats().ignore();
+  }
+
+  /// Refreshes every friend's level / XP / streak / badge from their live
+  /// user document (`users/{fid}`), fixing the stale-stats bug: friend docs
+  /// (`users/{uid}/friends/{fid}`) only snapshot those fields once, at
+  /// accept time, and nothing ever updated them afterwards.
+  ///
+  /// This is in-memory only (plus the local SharedPreferences cache via
+  /// [_save]) — no Firestore writes, no model or rules change.  The friends
+  /// stream therefore keeps emitting the stale snapshot, and this refresh
+  /// re-applies the fresh values on top of it each time it fires.
+  ///
+  /// As a side effect it derives real activity-feed items by diffing the
+  /// fresh stats against [_friendStatsSnapshot] (see [_deriveActivityItems]).
+  /// Callers: the friends-stream listener, the Social screen on open, and
+  /// pull-to-refresh (with `force: true`).
+  Future<void> refreshFriendStats({bool force = false}) async {
+    if (_uid == null || _friends.isEmpty || _isRefreshingFriendStats) return;
+    if (!force &&
+        _lastFriendStatsRefresh != null &&
+        DateTime.now().difference(_lastFriendStatsRefresh!) <
+            _refreshThrottle) {
+      return;
+    }
+    _isRefreshingFriendStats = true;
     notifyListeners();
-    _save();
+    try {
+      final docs = await DatabaseService.instance
+          .getUsersDataBatch(_friends.map((f) => f.id).toList());
+
+      // Build the refreshed list, preserving order.  A friend whose doc
+      // could not be read keeps their previous (stale) entry.
+      final fresh = _friends.map((friend) {
+        final data = docs[friend.id];
+        if (data == null) return friend;
+        return _friendFromUserDoc(friend, data);
+      }).toList();
+
+      _deriveActivityItems(fresh);
+
+      // Advance the diff baseline to the fresh values, pruning friends who
+      // are no longer in the list.
+      _friendStatsSnapshot
+        ..clear()
+        ..addEntries(fresh.map((f) => MapEntry(
+              f.id,
+              _SeenFriendStats(
+                  level: f.level, totalXp: f.totalXp, streak: f.streak),
+            )));
+
+      _friends
+        ..clear()
+        ..addAll(fresh);
+      _lastFriendStatsRefresh = DateTime.now();
+      notifyListeners();
+      await _save();
+      await _saveFriendStatsSnapshot();
+    } catch (_) {
+      // Offline / Firestore error — keep the existing (possibly stale) list.
+    } finally {
+      _isRefreshingFriendStats = false;
+      notifyListeners();
+    }
+  }
+
+  /// Rebuilds [old] with live stats from their user document [data].
+  ///
+  /// User-doc fields (same names [UserProvider] writes via
+  /// [DatabaseService.saveUserStats] / `saveBattlePassData`): `level` and
+  /// per-level `xp` (combined into total XP with
+  /// [DatabaseService.totalXpFor]), `streak`, `bp_passType`,
+  /// `bp_equippedBadge`, `bp_activeNameplate`, `photoUrl`.  Display name /
+  /// username are refreshed too when the user doc has a newer non-empty value.
+  Friend _friendFromUserDoc(Friend old, Map<String, dynamic> data) {
+    final level = data['level'] as int? ?? old.level;
+    // If the user doc has no per-level `xp` field (very old account) and the
+    // level is unchanged, keep the previously known total instead of
+    // recomputing it as 0 XP into the level (which would understate it).
+    final xpRaw = data['xp'] as int?;
+    final totalXp = xpRaw == null && level == old.level
+        ? old.totalXp
+        : DatabaseService.totalXpFor(level: level, xp: xpRaw ?? 0);
+    final name = data['name'] as String?;
+    final username = data['username'] as String?;
+    final photoUrl = data['photoUrl'] as String?;
+    final nameplate = data['bp_activeNameplate'] as String?;
+    final passType = data['bp_passType'] as String?;
+    final badge = data['bp_equippedBadge'] as String?;
+    return Friend(
+      id: old.id,
+      name: (name != null && name.isNotEmpty) ? name : old.name,
+      email: old.email,
+      username:
+          (username != null && username.isNotEmpty) ? username : old.username,
+      photoUrl: (photoUrl != null && photoUrl.isNotEmpty)
+          ? photoUrl
+          : old.photoUrl,
+      level: level,
+      totalXp: totalXp,
+      streak: data['streak'] as int? ?? old.streak,
+      activeNameplate: (nameplate != null && nameplate.isNotEmpty)
+          ? nameplate
+          : old.activeNameplate,
+      passType: (passType != null && passType.isNotEmpty)
+          ? passType
+          : old.passType,
+      equippedBadge: badge ?? old.equippedBadge,
+    );
+  }
+
+  /// Derives feed items from the diff between [fresh] stats and the
+  /// previously seen snapshot, then prepends them (newest first, capped at
+  /// 30 items).  Nothing is invented: a friend with no previous snapshot is
+  /// seeded silently, so installing this version never reports old progress
+  /// as new activity.
+  ///
+  /// Data source — derived from friends' public user docs, the cheapest
+  /// correct source available here.  Writing activity records at event time
+  /// was rejected: the event owners (UserProvider.awardXp,
+  /// AssignmentsProvider.toggleComplete) live outside this feature's files,
+  /// and there is nowhere friends could read such records — friends'
+  /// subcollections are owner-only per `firestore.rules`, and a new shared
+  /// collection would need a rules change.  Consequence: assignment
+  /// completions are only visible as an exact +25 XP jump (see
+  /// [_xpPerAssignment]); anything else is reported as XP earned.
+  void _deriveActivityItems(List<Friend> fresh) {
+    final now = DateTime.now();
+    final items = <ActivityItem>[];
+    for (final friend in fresh) {
+      final prev = _friendStatsSnapshot[friend.id];
+      // First sighting: seed the baseline, emit nothing.
+      if (prev == null) continue;
+      final name = friend.displayHandle;
+
+      // Level-up (also implies an XP gain, so no separate XP item).
+      if (friend.level > prev.level) {
+        items.add(ActivityItem(
+          friendName: name,
+          message: 'levelled up to Level ${friend.level}! 🎉',
+          type: ActivityType.levelUp,
+          timestamp: now,
+        ));
+      }
+      // Streak milestone: the highest milestone crossed since last seen.
+      final crossed = _streakMilestones
+          .where((m) => prev.streak < m && friend.streak >= m)
+          .toList();
+      if (crossed.isNotEmpty) {
+        final milestone = crossed.reduce((a, b) => a > b ? a : b);
+        items.add(ActivityItem(
+          friendName: name,
+          message: 'hit a $milestone-day streak! 🔥',
+          type: ActivityType.streak,
+          timestamp: now,
+        ));
+      }
+      // XP-only progress (no level-up this refresh): attribute an exact
+      // +25 jump to an assignment, anything else to plain XP earned.
+      if (friend.level == prev.level) {
+        final delta = friend.totalXp - prev.totalXp;
+        if (delta == _xpPerAssignment) {
+          items.add(ActivityItem(
+            friendName: name,
+            message: 'finished an assignment ✅',
+            type: ActivityType.assignment,
+            timestamp: now,
+          ));
+        } else if (delta > 0) {
+          items.add(ActivityItem(
+            friendName: name,
+            message: 'earned $delta XP ⚡',
+            type: ActivityType.other,
+            timestamp: now,
+          ));
+        }
+      }
+    }
+    if (items.isEmpty) return;
+    // Items were collected oldest-friend first; reverse so the newest
+    // derived item lands at the top of the feed.
+    _activity.insertAll(0, items.reversed);
+    if (_activity.length > 30) {
+      _activity.removeRange(30, _activity.length);
+    }
+  }
+
+  // ── Leaderboard ──────────────────────────────────────────────────────────
+
+  /// The signed-in user as a [Friend] entry, so the leaderboard can rank
+  /// "You" alongside friends using the same live stats.
+  Friend? get _selfAsFriend {
+    final user = _userProvider;
+    if (_uid == null || user == null) return null;
+    return Friend(
+      id: _uid!,
+      name: _userName ?? _userEmail?.split('@').first ?? 'You',
+      email: _userEmail ?? '',
+      username: _userUsername ?? '',
+      level: user.level,
+      totalXp: user.totalXp,
+      streak: user.streak,
+      passType: user.passType,
+      equippedBadge: user.equippedBadge,
+    );
+  }
+
+  /// Friends + you, ranked by total XP (highest first), top 5.
+  ///
+  /// Uses the freshly refreshed stats from [refreshFriendStats], so the
+  /// board is never staler than the last refresh.  NOTE: this is all-time
+  /// total XP, not "this week" — no weekly XP counter exists in the user
+  /// doc, so a true weekly board needs a new field first.
+  List<Friend> get leaderboardByXp {
+    final entries = [..._friends];
+    final self = _selfAsFriend;
+    if (self != null) entries.add(self);
+    entries.sort((a, b) => b.totalXp.compareTo(a.totalXp));
+    return entries.take(5).toList();
+  }
+
+  /// Friends + you, ranked by current streak (longest first), top 5.
+  List<Friend> get leaderboardByStreak {
+    final entries = [..._friends];
+    final self = _selfAsFriend;
+    if (self != null) entries.add(self);
+    entries.sort((a, b) => b.streak.compareTo(a.streak));
+    return entries.take(5).toList();
   }
 
   @override
