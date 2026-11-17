@@ -10,8 +10,6 @@ import '../services/widget_service.dart';
 /// to Cloud Firestore and, on first cloud login, migrates any locally stored
 /// data so nothing is lost.
 class UserProvider extends ChangeNotifier {
-  static const _kShopCompensationFlag = 'comp_shop_50c_apr2026';
-
   static const _prefXp = 'user_xp';
   static const _prefLevel = 'user_level';
   static const _prefStreak = 'user_streak';
@@ -364,19 +362,6 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
     _saveLocal();
     _syncToCloud();
-  }
-
-  /// Grants a one-time 50-coin compensation for the Season Shop.
-  ///
-  /// Returns true when coins were granted during this call.
-  bool grantShopCompensationIfNeeded() {
-    if (_unlockedCosmetics.contains(_kShopCompensationFlag)) return false;
-    _coins += 50;
-    _unlockedCosmetics = [..._unlockedCosmetics, _kShopCompensationFlag];
-    notifyListeners();
-    _saveLocal();
-    _syncToCloud();
-    return true;
   }
 
   /// Deducts [amount] coins if the user has enough. Returns true on success.

@@ -23,6 +23,8 @@ Color? nameplateBorderColor(String id) {
       return const Color(0xFFFFD600);
     case 'animated_sharpener_nameplate':
       return const Color(0xFFFFEB3B);
+    case 'animated_cocoa_nameplate':
+      return const Color(0xFF8D6E63);
     default:
       return null;
   }
@@ -69,6 +71,8 @@ List<Color> nameplateGradientColors(String id) {
       return [const Color(0xFFFFD600), const Color(0xFFFF6D00)];
     case 'animated_sharpener_nameplate':
       return [const Color(0xFFFFEB3B), const Color(0xFF212121)];
+    case 'animated_cocoa_nameplate':
+      return [const Color(0xFF8D6E63), const Color(0xFF4E342E)];
     case 'aurora_purple':
       return [const Color(0xFFCE93D8), const Color(0xFF7B1FA2)];
     case 'ocean_deep':
@@ -106,6 +110,8 @@ String badgeEmoji(String id) {
       return '💥';
     case 'night_owl_badge':
       return '🦉';
+    case 'cocoa_badge':
+      return '☕';
     // ── Battle-pass badges (stored as 'badge_{value}') ──────────────────
     case 'badge_spring_sprout':
       return '🌱';
@@ -179,7 +185,8 @@ bool isAnimatedNameplate(String id) {
   final normalized = _normalizeNameplateId(id);
   return normalized == 'animated_golden_cherry_blossom' ||
       normalized == 'animated_aplus_nameplate' ||
-      normalized == 'animated_sharpener_nameplate';
+      normalized == 'animated_sharpener_nameplate' ||
+      normalized == 'animated_cocoa_nameplate';
 }
 
 /// Renders a username (or any text) inside a coloured nameplate background.

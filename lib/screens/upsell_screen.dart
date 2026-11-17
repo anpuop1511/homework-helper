@@ -76,23 +76,20 @@ class UpsellScreen extends StatelessWidget {
             _TierCard(
               emoji: '🏅',
               name: 'Season Pass',
-              price: r'$2.99/month',
-              trialText: r'7-day free trial · then $1.99/mo for 2 months',
-              ladderPromoText:
-                  'Complete the Ladder event → one-time 14-day free trial',
+              price: 'Unlock with coins',
               highlightColor: const Color(0xFFB8860B),
               isCurrentTier: entitlements.tier == EntitlementTier.pass,
               features: const [
                 _Feature('Seasonal battle pass access', included: true),
                 _Feature('Season Battle Pass auto-activated', included: true),
-                _Feature('750 coins on billing date', included: true),
+                _Feature('Earn coins from Battle Pass tiers', included: true),
                 _Feature('Pass badge', included: true),
                 _Feature('AI model choice (BYOK non-Gemini)', included: true),
               ],
               actionWidget: kIsWeb
                   ? _WebSubscribeButton(colorScheme: colorScheme)
                   : _PurchaseButton(
-                      label: 'Start Free Trial',
+                      label: 'Unlock with Coins',
                       // TODO(billing): wire up Google Play in_app_purchase
                       // SKU: helper_pass_monthly_2_99 (7-day trial)
                       onTap: () => _showComingSoon(context),
@@ -116,10 +113,10 @@ class UpsellScreen extends StatelessWidget {
   static void _showComingSoon(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        // TODO(billing): remove this snackbar once Google Play billing is wired.
+        // Passes unlock with earned coins — no billing is wired.
         content: Text(
-          'In-app purchase coming soon! '
-          'Billing integration will be added in a future update.',
+          'Season Pass unlocks with coins earned in the app — '
+          'no purchase needed. Check the Battle Pass screen.',
         ),
         behavior: SnackBarBehavior.floating,
       ),
@@ -523,7 +520,7 @@ class _WebSubscribeButton extends StatelessWidget {
         onPressed: null,
         icon: const Icon(Icons.smartphone_rounded, size: 18),
         label: Text(
-          'Subscribe on Android',
+          'Unlock on Android',
           style: GoogleFonts.lexend(fontWeight: FontWeight.w600),
         ),
         style: FilledButton.styleFrom(
@@ -548,11 +545,11 @@ class _RestorePurchasesButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        // TODO(billing): call in_app_purchase restorePurchases() here.
+        // No billing exists, so there is nothing to restore.
         onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-                'Restore purchases coming soon once billing is integrated.'),
+                'Nothing to restore — Season Pass unlocks with coins earned in the app.'),
             behavior: SnackBarBehavior.floating,
           ),
         ),

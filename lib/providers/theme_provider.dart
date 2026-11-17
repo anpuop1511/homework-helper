@@ -22,6 +22,10 @@ enum AppVibe {
   // ── Premium vibes (requires Helper+ or Helper Pass) ──────────────────────
   neonSunrise,
   deepOcean,
+  // ── Season 4 (Holiday Hustle) ────────────────────────────────────────────
+  frostbite,
+  evergreen,
+  cocoa,
 }
 
 /// The set of vibes that require an active Helper+ or Helper Pass subscription.
@@ -64,6 +68,12 @@ extension AppVibeExtension on AppVibe {
         return 'Neon Sunrise';
       case AppVibe.deepOcean:
         return 'Deep Ocean';
+      case AppVibe.frostbite:
+        return 'Frostbite';
+      case AppVibe.evergreen:
+        return 'Evergreen';
+      case AppVibe.cocoa:
+        return 'Cocoa';
     }
   }
 
@@ -103,6 +113,12 @@ extension AppVibeExtension on AppVibe {
         return '🌄';
       case AppVibe.deepOcean:
         return '🌌';
+      case AppVibe.frostbite:
+        return '❄️';
+      case AppVibe.evergreen:
+        return '🎄';
+      case AppVibe.cocoa:
+        return '☕';
     }
   }
 
@@ -142,6 +158,12 @@ extension AppVibeExtension on AppVibe {
         return const Color(0xFFFF6B00); // vivid orange-red
       case AppVibe.deepOcean:
         return const Color(0xFF003D8F); // deep navy blue
+      case AppVibe.frostbite:
+        return const Color(0xFF4FC3F7); // icy frost blue
+      case AppVibe.evergreen:
+        return const Color(0xFF1B5E20); // deep evergreen
+      case AppVibe.cocoa:
+        return const Color(0xFF6D4C41); // warm cocoa brown
     }
   }
 
@@ -159,6 +181,11 @@ extension AppVibeExtension on AppVibe {
       case AppVibe.arcticPulse:
       case AppVibe.neonForest:
         return 2;
+      // Season 4 (Holiday Hustle) – Frost, Evergreen, Cocoa
+      case AppVibe.frostbite:
+      case AppVibe.evergreen:
+      case AppVibe.cocoa:
+        return 4;
       // Evergreen/Base themes
       case AppVibe.systemDynamic:
       case AppVibe.defaultPurple:
@@ -185,6 +212,7 @@ extension AppVibeExtension on AppVibe {
     final season = seasonNumber;
     if (season == 1) return 'Season 1: Spring Bloomin\'';
     if (season == 2) return 'Season 2: Finals Frenzy';
+    if (season == 4) return 'Season 4: Holiday Hustle';
     return 'Classics';
   }
 }

@@ -6,29 +6,186 @@ import '../services/database_service.dart';
 /// The state the limited-time event is currently in.
 enum EventState { upcoming, active, ended }
 
-/// Manages the May 2026 "Pencil Sharpener" XP event.
+/// What kind of cosmetic a milestone grants.
+enum EventRewardKind { badge, profileFrame, nameplate }
+
+/// One XP milestone of a limited-time event.
+class EventMilestone {
+  /// XP needed to reach this milestone.
+  final int xp;
+
+  /// Cosmetic ID granted on claim (see [EventRewardKind]).
+  final String cosmeticId;
+
+  final EventRewardKind kind;
+
+  /// Tile title, e.g. `'1000 XP · Cocoa Badge'`.
+  final String title;
+
+  final String subtitle;
+
+  /// Emoji shown on the milestone tile.
+  final String emoji;
+
+  const EventMilestone({
+    required this.xp,
+    required this.cosmeticId,
+    required this.kind,
+    required this.title,
+    required this.subtitle,
+    required this.emoji,
+  });
+}
+
+/// A parameterised limited-time XP event.
 ///
-/// Event window: May 3 - May 15, 2026 (local time, inclusive).
+/// To ship a new event, add a definition below and point
+/// [EventProvider.current] at it. Nothing else in the provider is
+/// event-specific: the window, milestones, rewards and persistence keys all
+/// derive from the definition, so progress for one event can never leak into
+/// another (Firestore doc id and SharedPreferences keys both embed
+/// [EventDefinition.id]).
+class EventDefinition {
+  /// Stable id, also used as the Firestore `events/{id}` doc id.
+  final String id;
+
+  /// Display name, e.g. `'Cocoa Clash'`.
+  final String name;
+
+  /// Window start (local time, inclusive).
+  final DateTime start;
+
+  /// Window end (local time, exclusive).
+  final DateTime end;
+
+  /// Human-readable window, e.g. `'Dec 1 – 25'`.
+  final String windowLabel;
+
+  /// Milestones in ascending XP order (1-indexed for the UI).
+  final List<EventMilestone> milestones;
+
+  /// Weekend double-XP bonus cap per day.
+  final int weekendBonusDailyCap;
+
+  const EventDefinition({
+    required this.id,
+    required this.name,
+    required this.start,
+    required this.end,
+    required this.windowLabel,
+    required this.milestones,
+    this.weekendBonusDailyCap = 500,
+  });
+}
+
+/// May 2026 "Pencil Sharpener" event — kept for reference only.
+/// Its progress lives under its own id/keys and is not migrated into the
+/// current event; see [EventProvider.current].
+const kPencilSharpener2026 = EventDefinition(
+  id: 'pencil_sharpener_2026_05',
+  name: 'Pencil Sharpener',
+  start: DateTime(2026, 5, 3),
+  end: DateTime(2026, 5, 16), // exclusive
+  windowLabel: 'May 3 – 15',
+  milestones: [
+    EventMilestone(
+      xp: 1000,
+      cosmeticId: 'pencil_badge',
+      kind: EventRewardKind.badge,
+      title: '1000 XP · Pencil Badge',
+      subtitle: 'Unlock and auto-equip your new pencil badge.',
+      emoji: '✏️',
+    ),
+    EventMilestone(
+      xp: 2000,
+      cosmeticId: 'sharpener_profile_frame',
+      kind: EventRewardKind.profileFrame,
+      title: '2000 XP · Profile Frame',
+      subtitle: 'Unlock the yellow + black sharpener-glow profile frame.',
+      emoji: '🟨',
+    ),
+    EventMilestone(
+      xp: 3000,
+      cosmeticId: 'animated_sharpener_nameplate',
+      kind: EventRewardKind.nameplate,
+      title: '3000 XP · Animated Nameplate',
+      subtitle: 'Unlock and auto-equip the animated sharpener nameplate.',
+      emoji: '⚡',
+    ),
+  ],
+);
+
+/// Holiday event: "Cocoa Clash", Dec 1 – 25, 2026.
+///
+/// Milestone shape kept from Pencil Sharpener (1k / 2k / 3k XP): the window
+/// is longer (25 days vs 13), so the top tier is easier to reach than it
+/// was in May, but the shape is familiar and the weekend cap still throttles
+/// farming. Rewards are holiday cosmetics (badge → profile frame → animated
+/// nameplate).
+const kCocoaClash2026 = EventDefinition(
+  id: 'cocoa_clash_2026_12',
+  name: 'Cocoa Clash',
+  start: DateTime(2026, 12, 1),
+  end: DateTime(2026, 12, 26), // exclusive — Dec 25 is the last full day
+  windowLabel: 'Dec 1 – 25',
+  milestones: [
+    EventMilestone(
+      xp: 1000,
+      cosmeticId: 'cocoa_badge',
+      kind: EventRewardKind.badge,
+      title: '1000 XP · Cocoa Badge',
+      subtitle: 'Unlock and auto-equip your new cocoa badge.',
+      emoji: '☕',
+    ),
+    EventMilestone(
+      xp: 2000,
+      cosmeticId: 'cocoa_profile_frame',
+      kind: EventRewardKind.profileFrame,
+      title: '2000 XP · Cocoa Profile Frame',
+      subtitle: 'Unlock the cocoa + marshmallow-glow profile frame.',
+      emoji: '🖼️',
+    ),
+    EventMilestone(
+      xp: 3000,
+      cosmeticId: 'animated_cocoa_nameplate',
+      kind: EventRewardKind.nameplate,
+      title: '3000 XP · Animated Cocoa Nameplate',
+      subtitle: 'Unlock and auto-equip the animated cocoa nameplate.',
+      emoji: '✨',
+    ),
+  ],
+);
+
+/// Manages the current limited-time XP event ([kCocoaClash2026]).
+///
 /// Progress is based on XP earned from assignment completions recorded via
 /// [recordAssignmentCompletion].
 class EventProvider extends ChangeNotifier {
-  static const String eventId = 'pencil_sharpener_2026_05';
+  /// The event currently being run. Swap this to ship the next event.
+  static const EventDefinition current = kCocoaClash2026;
 
-  static final DateTime _eventStart = DateTime(2026, 5, 3);
-  static final DateTime _eventEnd = DateTime(2026, 5, 16); // exclusive
+  /// Id of the current event (Firestore doc id + persistence-key namespace).
+  static String get eventId => current.id;
 
-  /// Milestones (1-indexed): 1000 XP, 2000 XP, 3000 XP.
-  static const List<int> milestoneXp = [0, 1000, 2000, 3000];
+  static DateTime get _eventStart => current.start;
+  static DateTime get _eventEnd => current.end;
+
+  /// Milestones (1-indexed): [0, ...milestone XP thresholds].
+  /// Kept as a list for existing callers (`milestoneXp[3]` = top tier).
+  static List<int> get milestoneXp =>
+      [0, ...current.milestones.map((m) => m.xp)];
 
   /// Weekend double-XP bonus cap per day.
-  static const int weekendBonusDailyCap = 500;
+  static int get weekendBonusDailyCap => current.weekendBonusDailyCap;
 
-  // ── Persistence keys ───────────────────────────────────────────────────
+  // ── Persistence keys (derived from the event id) ──────────────────────
 
-  static const _prefTotalXp = 'event_may_total_xp';
-  static const _prefClaimed = 'event_may_claimed_milestones';
-  static const _prefCountedIds = 'event_may_counted_assignment_ids';
-  static const _prefWeekendBonusByDay = 'event_may_weekend_bonus_by_day';
+  static String get _prefTotalXp => 'event_${eventId}_total_xp';
+  static String get _prefClaimed => 'event_${eventId}_claimed_milestones';
+  static String get _prefCountedIds =>
+      'event_${eventId}_counted_assignment_ids';
+  static String get _prefWeekendBonusByDay =>
+      'event_${eventId}_weekend_bonus_by_day';
 
   // ── State ───────────────────────────────────────────────────────────────
 
@@ -39,6 +196,13 @@ class EventProvider extends ChangeNotifier {
   String? _uid;
 
   // ── Getters ─────────────────────────────────────────────────────────────
+
+  /// The definition of the event currently being run.
+  EventDefinition get definition => current;
+
+  String get eventName => current.name;
+
+  String get windowLabel => current.windowLabel;
 
   int get totalXpDuringEvent => _totalXp;
 
@@ -63,8 +227,22 @@ class EventProvider extends ChangeNotifier {
     return _eventStart.difference(now);
   }
 
+  Duration get timeUntilEnd {
+    final now = DateTime.now();
+    if (now.isAfter(_eventEnd)) return Duration.zero;
+    return _eventEnd.difference(now);
+  }
+
+  int get milestoneCount => current.milestones.length;
+
+  /// 1-indexed milestone definition, or null when out of range.
+  EventMilestone? milestone(int milestone) {
+    if (milestone < 1 || milestone > current.milestones.length) return null;
+    return current.milestones[milestone - 1];
+  }
+
   int get highestReachedMilestone {
-    for (int m = 3; m >= 1; m--) {
+    for (int m = current.milestones.length; m >= 1; m--) {
       if (_totalXp >= milestoneXp[m]) return m;
     }
     return 0;
@@ -75,18 +253,20 @@ class EventProvider extends ChangeNotifier {
 
   int get currentWorkingMilestone {
     final reached = highestReachedMilestone;
-    return reached < 3 ? reached + 1 : 3;
+    return reached < milestoneCount ? reached + 1 : milestoneCount;
   }
 
   int get progressToCurrentMilestone {
-    if (highestReachedMilestone >= 3) return milestoneXp[3];
+    if (highestReachedMilestone >= milestoneCount) {
+      return milestoneXp[milestoneCount];
+    }
     return _totalXp;
   }
 
   int get currentMilestoneGoal => milestoneXp[currentWorkingMilestone];
 
   bool isMilestoneReached(int milestone) {
-    if (milestone < 1 || milestone > 3) return false;
+    if (milestone < 1 || milestone > milestoneCount) return false;
     return _totalXp >= milestoneXp[milestone];
   }
 
@@ -174,7 +354,7 @@ class EventProvider extends ChangeNotifier {
     }
   }
 
-  // ── Local persistence ────────────────────────────────────────────────────
+  // ── Local persistence ───────────────────────────────────────────────────
 
   Future<void> _loadLocal() async {
     final prefs = await SharedPreferences.getInstance();

@@ -6,7 +6,6 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../config/season_live_ops.dart';
 import '../config/secrets.dart';
 import '../models/assignment.dart';
 import '../models/class_model.dart';
@@ -21,6 +20,7 @@ import '../providers/subjects_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/assignment_card.dart';
+import '../widgets/homework_summary_cards.dart';
 import '../widgets/add_task_sheet.dart';
 import '../widgets/gradient_text.dart';
 import 'ladder_event_screen.dart';
@@ -57,6 +57,18 @@ class _HomeScreenState extends State<HomeScreen> {
     '"You don\'t have to be great to start, but you have to start to be great." — Zig Ziglar',
     '"Study while others are sleeping; work while others are loafing." — William A. Ward',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Spawn any recurring-template assignments due today.  Signed-in mode
+    // is also covered by the provider's Firestore stream listeners; this
+    // call is idempotent and is what triggers spawning in guest mode.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AssignmentsProvider>().checkAndSpawnTemplates();
+    });
+  }
 
   String _dailyQuoteFor(DateTime now) {
     final dayOfYear = now.difference(DateTime(now.year)).inDays;
@@ -306,6 +318,33 @@ class _HomeScreenState extends State<HomeScreen> {
             SliverToBoxAdapter(
               child: _EventBannerCard(colorScheme: colorScheme),
             ),
+
+            // ── Due countdown + tonight's workload (Dec feature drop) ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: DueCountdownCard(assignments: provider.assignments),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child:
+                    TonightsWorkloadCard(assignments: provider.assignments),
+              ),
+            ),
+            if (provider.templates.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: RecurringTemplatesCard(
+                    templates: provider.templates,
+                    onDelete: (id) => context
+                        .read<AssignmentsProvider>()
+                        .deleteTemplate(id),
+                  ),
+                ),
+              ),
 
             // Command center: filters + quick status
             SliverToBoxAdapter(
@@ -918,17 +957,6 @@ class _ClassesSection extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => StudyToolsScreen(initialTab: initialTab),
-      ),
-    );
-  }
-
-  void _showSeason2LockedMessage(BuildContext context) {
-    final starts = kSeason2.startsAtUtc;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Season 2 features unlock on ${starts.month}/${starts.day}/${starts.year} (UTC).',
-        ),
       ),
     );
   }
@@ -1898,6 +1926,14 @@ class _EventBannerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final event = context.watch<EventProvider>();
 
+    // After the event ends the banner disappears entirely — except while
+    // the user still has unclaimed rewards, so they can still reach them.
+    // (The old permanent "Pencil Sharpener – Ended" banner is gone.)
+    if (event.state == EventState.ended &&
+        event.highestReachedMilestone - event.claimedMilestones.length <= 0) {
+      return const SizedBox.shrink();
+    }
+
     String title;
     String subtitle;
     Color accentColor;
@@ -1905,27 +1941,27 @@ class _EventBannerCard extends StatelessWidget {
 
     switch (event.state) {
       case EventState.upcoming:
-        title = 'May Event – Starting Soon!';
-        subtitle = 'Pencil Sharpener event runs May 3–15. Earn XP for rewards.';
-        accentColor = const Color(0xFFFFA000);
-        emoji = '⏳';
+        title = '${event.eventName} – Coming ${event.windowLabel}!';
+        subtitle =
+            'Holiday event ${event.windowLabel}. Earn XP for cocoa rewards.';
+        accentColor = const Color(0xFF8D6E63);
+        emoji = '☕';
       case EventState.active:
         final reached = event.highestReachedMilestone;
-        title = 'Pencil Sharpener – Live Now!';
+        title = '${event.eventName} – Live Now!';
         subtitle = reached > 0
             ? 'Milestone $reached reached · ${event.totalXpDuringEvent} XP earned'
-            : 'Complete assignments to fill the sharpener and unlock rewards!';
-        accentColor = const Color(0xFFFFC107);
-        emoji = '🔥';
+            : 'Complete assignments to earn cocoa and unlock rewards!';
+        accentColor = const Color(0xFF6D4C41);
+        emoji = '☕';
       case EventState.ended:
         final unclaimed =
             event.highestReachedMilestone - event.claimedMilestones.length;
-        title = 'Pencil Sharpener – Ended';
-        subtitle = unclaimed > 0
-            ? '$unclaimed unclaimed reward${unclaimed != 1 ? "s" : ""} waiting!'
-            : 'Thanks for participating!';
-        accentColor = colorScheme.onSurfaceVariant;
-        emoji = '🏁';
+        title = '${event.eventName} – Rewards Waiting!';
+        subtitle =
+            '$unclaimed unclaimed reward${unclaimed != 1 ? "s" : ""} waiting!';
+        accentColor = const Color(0xFFFFA000);
+        emoji = '🎁';
     }
 
     return GestureDetector(

@@ -48,7 +48,7 @@ class _LadderEventScreenState extends State<LadderEventScreen> {
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
         title: Text(
-          'May Event: Pencil Sharpener',
+          '☕ ${event.eventName}',
           style: GoogleFonts.lexend(fontWeight: FontWeight.w700),
         ),
       ),
@@ -67,37 +67,19 @@ class _LadderEventScreenState extends State<LadderEventScreen> {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
             sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _MilestoneTile(
-                  milestone: 1,
-                  title: '1000 XP · Pencil Badge',
-                  subtitle: 'Unlock and auto-equip your new pencil badge.',
-                  rewardEmoji: '✏️',
-                  colorScheme: colorScheme,
-                  event: event,
-                  user: user,
-                ),
-                _MilestoneTile(
-                  milestone: 2,
-                  title: '2000 XP · Profile Frame',
-                  subtitle:
-                      'Unlock the yellow + black sharpener-glow profile frame.',
-                  rewardEmoji: '🟨',
-                  colorScheme: colorScheme,
-                  event: event,
-                  user: user,
-                ),
-                _MilestoneTile(
-                  milestone: 3,
-                  title: '3000 XP · Animated Nameplate',
-                  subtitle:
-                      'Unlock and auto-equip the animated sharpener nameplate.',
-                  rewardEmoji: '⚡',
-                  colorScheme: colorScheme,
-                  event: event,
-                  user: user,
-                ),
-              ]),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final milestoneDef = event.definition.milestones[index];
+                  return _MilestoneTile(
+                    milestone: index + 1,
+                    definition: milestoneDef,
+                    colorScheme: colorScheme,
+                    event: event,
+                    user: user,
+                  );
+                },
+                childCount: event.milestoneCount,
+              ),
             ),
           ),
         ],
@@ -120,7 +102,8 @@ class _EventHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final xp = event.totalXpDuringEvent;
-    final progressToGoal = (xp / EventProvider.milestoneXp[3]).clamp(0.0, 1.0);
+    final topXp = EventProvider.milestoneXp[event.milestoneCount];
+    final progressToGoal = (xp / topXp).clamp(0.0, 1.0);
 
     String title;
     String subtitle;
@@ -135,18 +118,21 @@ class _EventHeader extends StatelessWidget {
         title = 'Starting Soon';
         subtitle =
             '${days}d ${hours.toString().padLeft(2, '0')}h ${mins.toString().padLeft(2, '0')}m until launch';
-        accent = const Color(0xFFFFA000);
+        accent = const Color(0xFFA1887F);
       case EventState.active:
-        title = 'Event Live · May 3 - 15';
-        subtitle = '$xp XP earned · Milestone ${event.highestReachedMilestone}/3 reached';
-        accent = const Color(0xFFFFC107);
+        final daysLeft = event.timeUntilEnd.inDays;
+        title = 'Event Live · ${event.windowLabel}';
+        subtitle =
+            '$xp XP earned · Milestone ${event.highestReachedMilestone}/${event.milestoneCount} reached'
+            '${daysLeft > 0 ? ' · $daysLeft day${daysLeft == 1 ? '' : 's'} left' : ''}';
+        accent = const Color(0xFF6D4C41);
       case EventState.ended:
         final unclaimed =
             event.highestReachedMilestone - event.claimedMilestones.length;
         title = 'Event Ended';
         subtitle = unclaimed > 0
             ? '$unclaimed reward${unclaimed == 1 ? '' : 's'} still waiting to be claimed.'
-            : 'Thanks for playing the May event.';
+            : 'Thanks for playing the ${event.eventName} event.';
         accent = colorScheme.onSurfaceVariant;
     }
 
@@ -156,8 +142,8 @@ class _EventHeader extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFFFFEB3B).withAlpha(38),
-            const Color(0xFF212121).withAlpha(32),
+            const Color(0xFF8D6E63).withAlpha(48),
+            const Color(0xFFFFF3E0).withAlpha(40),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -188,12 +174,12 @@ class _EventHeader extends StatelessWidget {
               minHeight: 10,
               value: progressToGoal,
               backgroundColor: colorScheme.surfaceContainerHighest,
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFFC107)),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6D4C41)),
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            '$xp / 3000 XP',
+            '$xp / $topXp XP',
             style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
           ),
         ],
@@ -222,7 +208,7 @@ class _WeekendRuleCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Text('🎯', style: TextStyle(fontSize: 18)),
+          const Text('☕', style: TextStyle(fontSize: 18)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -242,18 +228,14 @@ class _WeekendRuleCard extends StatelessWidget {
 
 class _MilestoneTile extends StatelessWidget {
   final int milestone;
-  final String title;
-  final String subtitle;
-  final String rewardEmoji;
+  final EventMilestone definition;
   final ColorScheme colorScheme;
   final EventProvider event;
   final UserProvider user;
 
   const _MilestoneTile({
     required this.milestone,
-    required this.title,
-    required this.subtitle,
-    required this.rewardEmoji,
+    required this.definition,
     required this.colorScheme,
     required this.event,
     required this.user,
@@ -284,14 +266,14 @@ class _MilestoneTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(rewardEmoji, style: const TextStyle(fontSize: 24)),
+          Text(definition.emoji, style: const TextStyle(fontSize: 24)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  definition.title,
                   style: GoogleFonts.lexend(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -299,7 +281,7 @@ class _MilestoneTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  subtitle,
+                  definition.subtitle,
                   style: TextStyle(
                     fontSize: 12,
                     color: colorScheme.onSurfaceVariant,
@@ -339,36 +321,34 @@ class _MilestoneTile extends StatelessWidget {
     final ok = event.claimMilestone(milestone);
     if (!ok) return;
 
-    if (milestone == 1) {
-      user.unlockCosmetic('pencil_badge');
-      user.equipBadge('pencil_badge');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✏️ Pencil badge unlocked and equipped!'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
+    final id = definition.cosmeticId;
+    switch (definition.kind) {
+      case EventRewardKind.badge:
+        user.unlockCosmetic(id);
+        user.equipBadge(id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${definition.emoji} ${definition.title} unlocked and equipped!'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      case EventRewardKind.profileFrame:
+        user.unlockCosmetic(id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${definition.emoji} ${definition.title} unlocked!'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      case EventRewardKind.nameplate:
+        user.unlockCosmetic(id);
+        user.setActiveNameplate(id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${definition.emoji} ${definition.title} unlocked + equipped!'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
     }
-
-    if (milestone == 2) {
-      user.unlockCosmetic('sharpener_profile_frame');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🟨 Sharpener profile frame unlocked!'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    user.unlockCosmetic('animated_sharpener_nameplate');
-    user.setActiveNameplate('animated_sharpener_nameplate');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('⚡ Animated sharpener nameplate unlocked + equipped!'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 }

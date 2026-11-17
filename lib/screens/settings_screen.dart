@@ -3236,6 +3236,7 @@ class _ThemeCategoriesState extends State<_ThemeCategories> {
   bool _classicsExpanded = true;
   bool _season1Expanded = false;
   bool _season2Expanded = false;
+  bool _season4Expanded = false;
   bool _battlePassExpanded = false;
 
   @override
@@ -3248,6 +3249,9 @@ class _ThemeCategoriesState extends State<_ThemeCategories> {
         .toList();
     final season2Vibes = AppVibe.values
         .where((v) => v.seasonNumber == 2)
+        .toList();
+    final season4Vibes = AppVibe.values
+        .where((v) => v.seasonNumber == 4)
         .toList();
 
     return Column(
@@ -3300,6 +3304,23 @@ class _ThemeCategoriesState extends State<_ThemeCategories> {
           context: context,
           isBattlePass: true,
           seasonId: 'season_2',
+        ),
+        const SizedBox(height: 8),
+        _ThemeCategoryCard(
+          title: 'Season 4: Holiday Hustle',
+          isExpanded: _season4Expanded,
+          onExpand: () => setState(() => _season4Expanded = !_season4Expanded),
+          icon: Icons.ac_unit_rounded,
+          vibes: season4Vibes,
+          themeProvider: widget.themeProvider,
+          colorScheme: widget.colorScheme,
+          textTheme: widget.textTheme,
+          userProvider: widget.userProvider,
+          entitlements: widget.entitlements,
+          effectiveNow: widget.effectiveNow,
+          context: context,
+          isBattlePass: true,
+          seasonId: 'season_4',
         ),
       ],
     );

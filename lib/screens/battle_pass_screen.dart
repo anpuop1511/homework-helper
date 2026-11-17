@@ -13,6 +13,9 @@ const _kOrange = Color(0xFFFFB347);
 const _kGoldDark = Color(0xFFB8860B);
 const _kPremiumGradient = [Color(0xFFFFD700), Color(0xFFFF8C00)];
 const _kFreeGradient = [Color(0xFF64B5F6), Color(0xFF1976D2)];
+// Season 4 (Holiday Hustle) header palette — frosty indigo into icy teal.
+const _kHolidayGradient = [Color(0xFF1A237E), Color(0xFF00838F)];
+const _kHolidayAppBar = Color(0xFF1A237E);
 
 String _monthDay(DateTime utc) {
   const month = [
@@ -33,7 +36,7 @@ String _monthDay(DateTime utc) {
   return '${month[utc.month]} ${utc.day}';
 }
 
-/// The Homework Battle Pass screen — Season 1: Spring Bloomin' 🌸
+/// The Homework Battle Pass screen — reward tables follow the active season.
 class BattlePassScreen extends StatelessWidget {
   const BattlePassScreen({super.key});
 
@@ -54,11 +57,9 @@ class _BattlePassBody extends StatelessWidget {
     final activeSeason = activeSeasonAt(
       context.watch<DevClockProvider>().nowUtc(),
     );
-    final freeRewards =
-        activeSeason.id == kSeason2.id ? _season2FreeRewards : _freeRewards;
-    final premiumRewards = activeSeason.id == kSeason2.id
-        ? _season2PremiumRewards
-        : _premiumRewards;
+    final isHolidaySeason = activeSeason.id == kSeason4.id;
+    final freeRewards = _freeRewardsForSeason(activeSeason.id);
+    final premiumRewards = _premiumRewardsForSeason(activeSeason.id);
 
     return CustomScrollView(
       slivers: [
@@ -69,9 +70,11 @@ class _BattlePassBody extends StatelessWidget {
           flexibleSpace: FlexibleSpaceBar(
             collapseMode: CollapseMode.pin,
             background: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFFFF6B9D), Color(0xFFFFB347)],
+                  colors: isHolidaySeason
+                      ? _kHolidayGradient
+                      : const [Color(0xFFFF6B9D), Color(0xFFFFB347)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -84,7 +87,8 @@ class _BattlePassBody extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Text('🌸', style: TextStyle(fontSize: 28)),
+                          Text(isHolidaySeason ? '❄️' : '🌸',
+                              style: const TextStyle(fontSize: 28)),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
@@ -146,7 +150,7 @@ class _BattlePassBody extends StatelessWidget {
               ),
             ),
           ),
-          backgroundColor: _kPink,
+          backgroundColor: isHolidaySeason ? _kHolidayAppBar : _kPink,
         ),
 
         // ── Track header labels ──────────────────────────────────────
@@ -436,10 +440,16 @@ class _PassPurchaseSection extends StatelessWidget {
               const _PerkRow(emoji: '🎁', text: 'Exclusive pass badges & nameplates'),
               const _PerkRow(emoji: '[+]', text: '[+] icon shown next to your name'),
               _PerkRow(
-                emoji: season.id == kSeason2.id ? '🎓' : '🌿',
-                text: season.id == kSeason2.id
-                    ? 'Finals-themed cosmetics and cards'
-                    : 'Spring Mint theme unlock',
+                emoji: season.id == kSeason4.id
+                    ? '☕'
+                    : season.id == kSeason2.id
+                        ? '🎓'
+                        : '🌿',
+                text: season.id == kSeason4.id
+                    ? 'Holiday-themed cosmetics and cards'
+                    : season.id == kSeason2.id
+                        ? 'Finals-themed cosmetics and cards'
+                        : 'Spring Mint theme unlock',
               ),
             ] else ...[
               const _PerkRow(emoji: '✅', text: 'Access to the Premium reward track'),
@@ -447,16 +457,24 @@ class _PassPurchaseSection extends StatelessWidget {
               const _PerkRow(emoji: '🏆', text: 'Golden & Magical Coin Cups'),
               _PerkRow(
                 emoji: '✨',
-                text: season.id == kSeason2.id
-                    ? 'Animated A+ Nameplate at Tier 50'
-                    : 'Animated Golden Cherry Blossom Nameplate at Tier 50',
+                text: season.id == kSeason4.id
+                    ? 'Animated Snow Globe Nameplate at Tier 50'
+                    : season.id == kSeason2.id
+                        ? 'Animated A+ Nameplate at Tier 50'
+                        : 'Animated Golden Cherry Blossom Nameplate at Tier 50',
               ),
               const _PerkRow(emoji: '[★]', text: '[★] icon shown next to your name'),
               _PerkRow(
-                emoji: season.id == kSeason2.id ? '🃏' : '🌼',
-                text: season.id == kSeason2.id
-                    ? 'Exclusive finals cards, badges, and themes'
-                    : 'Daffodil & Cherry Blossom themes',
+                emoji: season.id == kSeason4.id
+                    ? '❄️'
+                    : season.id == kSeason2.id
+                        ? '🃏'
+                        : '🌼',
+                text: season.id == kSeason4.id
+                    ? 'Frostbite, Evergreen & Cocoa themes'
+                    : season.id == kSeason2.id
+                        ? 'Exclusive finals cards, badges, and themes'
+                        : 'Daffodil & Cherry Blossom themes',
               ),
             ],
             const SizedBox(height: 12),
@@ -975,12 +993,229 @@ const _season2PremiumRewards = <_TierReward>[
   _TierReward(label: 'Animated A+ Nameplate', emoji: '✨', type: _RewardType.nameplate, value: 'animated_aplus_nameplate'),
 ];
 
+// ── Season 4 (Holiday Hustle) free-track reward table ──────────────────────
+// Index 0 = Tier 1, index 49 = Tier 50. Mirrors the Season 1 cadence:
+// coin cups + XP boosts, badges at T4/T14/T24/T34/T44, themes at T15/T30.
+
+const _season4FreeRewards = <_TierReward>[
+  // T1
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T2
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T3
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T4
+  _TierReward(label: 'Snowflake Badge', emoji: '❄️', type: _RewardType.badge, value: 'snowflake'),
+  // T5
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T6
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T7
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T8
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T9
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T10
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T11
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T12
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T13
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T14
+  _TierReward(label: 'Cocoa Cup Badge', emoji: '☕', type: _RewardType.badge, value: 'cocoa_cup'),
+  // T15
+  _TierReward(label: 'Frostbite Theme', emoji: '❄️', type: _RewardType.theme, value: 'frostbite'),
+  // T16
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T17
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T18
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T19
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T20
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T21
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T22
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T23
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T24
+  _TierReward(label: 'Evergreen Badge', emoji: '🎄', type: _RewardType.badge, value: 'evergreen_badge'),
+  // T25
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T26
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T27
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T28
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T29
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T30
+  _TierReward(label: 'Evergreen Theme', emoji: '🎄', type: _RewardType.theme, value: 'evergreen'),
+  // T31
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T32
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T33
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T34
+  _TierReward(label: 'Holiday Hustler Badge', emoji: '🎁', type: _RewardType.badge, value: 'holiday_hustler'),
+  // T35
+  _TierReward(label: 'Shiny Coin Cup', emoji: '✨', type: _RewardType.coins, cupRarity: CupRarity.shiny),
+  // T36
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T37
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T38
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T39
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T40
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T41
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T42
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T43
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T44
+  _TierReward(label: 'Snowstorm Badge', emoji: '🌨️', type: _RewardType.badge, value: 'snowstorm'),
+  // T45
+  _TierReward(label: 'Rare Coin Cup', emoji: '🥤', type: _RewardType.coins, cupRarity: CupRarity.rare),
+  // T46
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T47
+  _TierReward(label: 'Shiny Coin Cup', emoji: '✨', type: _RewardType.coins, cupRarity: CupRarity.shiny),
+  // T48
+  _TierReward(label: '+50 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 50),
+  // T49
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T50
+  _TierReward(label: 'Holiday Hustle Nameplate', emoji: '🎄', type: _RewardType.nameplate, value: 'holiday_hustle_nameplate'),
+];
+
+// ── Season 4 (Holiday Hustle) Plus/Premium-track reward table ──────────────
+// Nameplates at T4/T14, Cocoa theme at T10, animated Snow Globe at T50.
+
+const _season4PremiumRewards = <_TierReward>[
+  // T1
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T2
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T3
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T4
+  _TierReward(label: 'Cocoa Clash Card', emoji: '🃏', type: _RewardType.nameplate, value: 'cocoa_clash_card'),
+  // T5
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T6
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T7
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T8
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T9
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T10
+  _TierReward(label: 'Cocoa Theme', emoji: '☕', type: _RewardType.theme, value: 'cocoa'),
+  // T11
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T12
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T13
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T14
+  _TierReward(label: 'Snow Globe Card', emoji: '🔮', type: _RewardType.nameplate, value: 'snow_globe_card'),
+  // T15
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  // T16
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T17
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T18
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T19
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T20
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T21
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T22
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T23
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T24
+  _TierReward(label: 'Frostbite Legend Badge', emoji: '🧊', type: _RewardType.badge, value: 'frostbite_legend'),
+  // T25
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  // T26
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T27
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T28
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T29
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T30
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  // T31
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T32
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T33
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T34
+  _TierReward(label: 'Snowstorm Legend Badge', emoji: '🌨️', type: _RewardType.badge, value: 'snowstorm_legend'),
+  // T35
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  // T36
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T37
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T38
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T39
+  _TierReward(label: 'Epic Coin Cup', emoji: '🧪', type: _RewardType.coins, cupRarity: CupRarity.epic),
+  // T40
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  // T41
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T42
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T43
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T44
+  _TierReward(label: 'Grand Cocoa Badge', emoji: '☕', type: _RewardType.badge, value: 'grand_cocoa'),
+  // T45
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  // T46
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T47
+  _TierReward(label: 'Magical Coin Cup', emoji: '🔮', type: _RewardType.coins, cupRarity: CupRarity.magical),
+  // T48
+  _TierReward(label: '+100 XP Boost', emoji: '⚡', type: _RewardType.xpBoost, xpAmount: 100),
+  // T49
+  _TierReward(label: 'Golden Coin Cup', emoji: '🏆', type: _RewardType.coins, cupRarity: CupRarity.golden),
+  // T50
+  _TierReward(label: 'Animated Snow Globe Nameplate', emoji: '✨', type: _RewardType.nameplate, value: 'animated_snow_globe_nameplate'),
+];
+
 List<_TierReward> _freeRewardsForSeason(String seasonId) {
-  return seasonId == kSeason2.id ? _season2FreeRewards : _freeRewards;
+  if (seasonId == kSeason2.id) return _season2FreeRewards;
+  if (seasonId == kSeason4.id) return _season4FreeRewards;
+  return _freeRewards;
 }
 
 List<_TierReward> _premiumRewardsForSeason(String seasonId) {
-  return seasonId == kSeason2.id ? _season2PremiumRewards : _premiumRewards;
+  if (seasonId == kSeason2.id) return _season2PremiumRewards;
+  if (seasonId == kSeason4.id) return _season4PremiumRewards;
+  return _premiumRewards;
 }
 
 class _UnclaimedRewardsSection extends StatelessWidget {
@@ -1348,7 +1583,7 @@ class _TierRow extends StatelessWidget {
         user.unlockCosmetic('nameplate_${reward.value}');
         user.claimTierReward(tier, side: 'free', seasonId: season.id);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('🌸 ${reward.label} equipped!')),
+          SnackBar(content: Text('✨ ${reward.label} equipped!')),
         );
       case _RewardType.xpBoost:
         user.awardXp(reward.xpAmount);
@@ -1385,7 +1620,7 @@ class _TierRow extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text(
-                'Premium Pass required for the Animated Golden Nameplate!')),
+                'Premium Pass required for the Tier 50 animated nameplate!')),
       );
       return;
     }

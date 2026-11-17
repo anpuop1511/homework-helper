@@ -36,12 +36,20 @@ final kSeason2 = SeasonDefinition(
 final kSeason3 = SeasonDefinition(
   id: 'season_3',
   number: 3,
-  name: 'Season Three',
+  name: 'Autumn Study',
   startsAtUtc: DateTime.utc(2026, 8, 1),
   endsAtUtc: DateTime.utc(2026, 11, 1),
 );
 
-final kAllSeasons = <SeasonDefinition>[kSeason1, kSeason2, kSeason3];
+final kSeason4 = SeasonDefinition(
+  id: 'season_4',
+  number: 4,
+  name: 'Holiday Hustle',
+  startsAtUtc: DateTime.utc(2026, 11, 18),
+  endsAtUtc: DateTime.utc(2027, 1, 1),
+);
+
+final kAllSeasons = <SeasonDefinition>[kSeason1, kSeason2, kSeason3, kSeason4];
 
 SeasonDefinition activeSeasonAt(DateTime utcNow) {
   final now = utcNow.toUtc();
